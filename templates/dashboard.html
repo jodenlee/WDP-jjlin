@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterGen Connect - Dashboard</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --dark-color: #5a5c69;
+            --light-color: #f8f9fc;
+        }
+        
+        body {
+            background-color: var(--light-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px; /* For fixed navbar */
+        }
+        
+        /* ========== NAVIGATION BAR ========== */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            padding: 0.5rem 0;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .navbar-brand {
+            font-weight: 800;
+            color: var(--primary-color) !important;
+            font-size: 1.5rem;
+        }
+        
+        .navbar-nav {
+            margin-left: 2rem;
+        }
+        
+        .nav-link {
+            color: var(--dark-color) !important;
+            font-weight: 600;
+            padding: 0.75rem 1.25rem !important;
+            margin: 0 0.1rem;
+            border-radius: 0.35rem;
+            transition: all 0.3s;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(78, 115, 223, 0.1);
+            color: var(--primary-color) !important;
+        }
+        
+        .nav-link.active {
+            background-color: var(--primary-color) !important;
+            color: white !important;
+        }
+        
+        .nav-badge {
+            font-size: 0.65rem;
+            margin-left: 0.3rem;
+            vertical-align: middle;
+        }
+        
+        /* ========== USER PROFILE DROPDOWN ========== */
+        .profile-dropdown-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 0.35rem;
+            transition: all 0.3s;
+        }
+        
+        .profile-dropdown-toggle:hover {
+            background-color: rgba(78, 115, 223, 0.1);
+        }
+        
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-color);
+        }
+        
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--dark-color);
+        }
+        
+        .user-type {
+            font-size: 0.75rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border-radius: 0.5rem;
+            min-width: 200px;
+        }
+        
+        /* ========== DASHBOARD CONTENT ========== */
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0.75rem;
+            color: white;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        
+        .welcome-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* ========== STATISTICS CARDS ========== */
+        .stat-card {
+            border-radius: 0.75rem;
+            border: none;
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            overflow: hidden;
+            border-left: 4px solid;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-icon {
+            font-size: 2.5rem;
+            opacity: 0.3;
+            position: absolute;
+            right: 1.5rem;
+            bottom: 1.5rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #858796;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-stories {
+            border-left-color: var(--primary-color);
+        }
+        
+        .stat-activities {
+            border-left-color: var(--success-color);
+        }
+        
+        .stat-messages {
+            border-left-color: var(--info-color);
+        }
+        
+        .stat-groups {
+            border-left-color: var(--warning-color);
+        }
+        
+        /* ========== QUICK ACTIONS ========== */
+        .quick-action-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            height: 100%;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        
+        .quick-action-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary-color);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        
+        .quick-action-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .action-stories {
+            background-color: rgba(78, 115, 223, 0.1);
+            color: var(--primary-color);
+        }
+        
+        .action-activities {
+            background-color: rgba(28, 200, 138, 0.1);
+            color: var(--success-color);
+        }
+        
+        .action-messages {
+            background-color: rgba(54, 185, 204, 0.1);
+            color: var(--info-color);
+        }
+        
+        .action-groups {
+            background-color: rgba(246, 194, 62, 0.1);
+            color: var(--warning-color);
+        }
+        
+        /* ========== RECENT ACTIVITIES ========== */
+        .activity-card {
+            border-radius: 0.75rem;
+            border: none;
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        
+        .activity-item {
+            padding: 1.25rem;
+            border-left: 4px solid;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            background-color: white;
+            transition: all 0.3s;
+        }
+        
+        .activity-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+        }
+        
+        .activity-story {
+            border-left-color: var(--primary-color);
+        }
+        
+        .activity-event {
+            border-left-color: var(--success-color);
+        }
+        
+        .activity-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        /* ========== RESPONSIVE DESIGN ========== */
+        @media (max-width: 992px) {
+            .navbar-nav {
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+            
+            .nav-link {
+                margin: 0.25rem 0;
+            }
+            
+            .welcome-text {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .user-info {
+                display: none;
+            }
+            
+            .stat-number {
+                font-size: 1.5rem;
+            }
+            
+            .quick-action-card {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========== NAVIGATION BAR ========== -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <!-- Brand Logo -->
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-hands-helping me-2"></i>
+                InterGen Connect
+            </a>
+            
+            <!-- Mobile Toggle Button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Navigation Tabs -->
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-book me-1"></i> Stories
+                            <span class="badge bg-success nav-badge">{{ stats.stories }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-calendar-alt me-1"></i> Activities
+                            <span class="badge bg-info nav-badge">{{ stats.activities }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-comments me-1"></i> Messages
+                            <span class="badge bg-danger nav-badge">{{ stats.messages }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-users me-1"></i> Groups
+                            <span class="badge bg-warning text-dark nav-badge">{{ stats.groups }}</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- User Profile (Top Right) -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link profile-dropdown-toggle" href="#" id="userDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="{{ user.profile_pic }}" alt="Profile" class="profile-avatar">
+                            <div class="user-info">
+                                <span class="user-name">{{ user.full_name }}</span>
+                                <span class="user-type">{{ user.user_type }}</span>
+                            </div>
+                            <i class="fas fa-chevron-down ms-1"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-user me-2"></i> My Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-cog me-2"></i> Settings
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-bell me-2"></i> Notifications
+                                    <span class="badge bg-danger float-end">3</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-question-circle me-2"></i> Help & Support
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="#">
+                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="container-fluid">
+        <!-- Welcome Banner -->
+        <div class="dashboard-header">
+            <h1 class="welcome-text">Welcome back, {{ user.full_name }}! 👋</h1>
+            <p class="lead mb-0">Here's what's happening with your intergenerational connections today.</p>
+        </div>
+        
+        <!-- Statistics Row -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card stat-card stat-stories">
+                    <div class="card-body position-relative">
+                        <div class="stat-label">Stories Shared</div>
+                        <div class="stat-number">{{ stats.stories }}</div>
+                        <i class="fas fa-book stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card stat-card stat-activities">
+                    <div class="card-body position-relative">
+                        <div class="stat-label">Activities</div>
+                        <div class="stat-number">{{ stats.activities }}</div>
+                        <i class="fas fa-calendar-check stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card stat-card stat-messages">
+                    <div class="card-body position-relative">
+                        <div class="stat-label">Messages</div>
+                        <div class="stat-number">{{ stats.messages }}</div>
+                        <i class="fas fa-comments stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card stat-card stat-groups">
+                    <div class="card-body position-relative">
+                        <div class="stat-label">Groups</div>
+                        <div class="stat-number">{{ stats.groups }}</div>
+                        <i class="fas fa-users stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-bolt me-2"></i> Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-lg-3 col-md-6">
+                                <div class="quick-action-card">
+                                    <div class="quick-action-icon action-stories">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                    <h5>Share a Story</h5>
+                                    <p class="text-muted small">Share your memories and experiences</p>
+                                    <button class="btn btn-primary btn-sm">Start Writing</button>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <div class="quick-action-card">
+                                    <div class="quick-action-icon action-activities">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </div>
+                                    <h5>Create Activity</h5>
+                                    <p class="text-muted small">Plan an intergenerational event</p>
+                                    <button class="btn btn-success btn-sm">Create Now</button>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <div class="quick-action-card">
+                                    <div class="quick-action-icon action-messages">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <h5>Send Message</h5>
+                                    <p class="text-muted small">Connect with others</p>
+                                    <button class="btn btn-info btn-sm text-white">New Message</button>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <div class="quick-action-card">
+                                    <div class="quick-action-icon action-groups">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <h5>Join Group</h5>
+                                    <p class="text-muted small">Find communities to join</p>
+                                    <button class="btn btn-warning btn-sm">Browse Groups</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activities -->
+        <div class="row">
+            <!-- Recent Stories -->
+            <div class="col-lg-6 mb-4">
+                <div class="card activity-card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-book me-2 text-primary"></i> Recent Stories</h5>
+                        <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                    </div>
+                    <div class="card-body">
+                        {% for story in recent_stories %}
+                        <div class="activity-item activity-story">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">{{ story.title }}</h6>
+                                <span class="badge bg-primary activity-badge">Story</span>
+                            </div>
+                            <p class="text-muted small mb-2">{{ story.preview }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i> {{ story.author }}
+                                </small>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i> {{ story.date }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upcoming Activities -->
+            <div class="col-lg-6 mb-4">
+                <div class="card activity-card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2 text-success"></i> Upcoming Activities</h5>
+                        <a href="#" class="btn btn-sm btn-outline-success">View All</a>
+                    </div>
+                    <div class="card-body">
+                        {% for activity in upcoming_activities %}
+                        <div class="activity-item activity-event">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">{{ activity.title }}</h6>
+                                <span class="badge bg-success activity-badge">Event</span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                <i class="fas fa-map-marker-alt me-1"></i> {{ activity.location }}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-check me-1"></i> Join
+                                </button>
+                                <small class="text-muted">
+                                    <i class="far fa-calendar me-1"></i> {{ activity.date }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-5 pt-4 border-top">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>InterGen Connect</h6>
+                    <p class="text-muted small">Bridging generations through meaningful digital connections.</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="text-muted small">Team jJLin © 2024</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Simple JavaScript for interactivity -->
+    <script>
+        // Update message count animation
+        function updateMessageCount() {
+            const messageBadge = document.querySelector('.nav-link:nth-child(4) .badge');
+            if (messageBadge && Math.random() > 0.7) { // 30% chance
+                const current = parseInt(messageBadge.textContent);
+                messageBadge.textContent = current + 1;
+                messageBadge.classList.add('animate__animated', 'animate__pulse');
+                setTimeout(() => {
+                    messageBadge.classList.remove('animate__animated', 'animate__pulse');
+                }, 1000);
+            }
+        }
+        
+        // Update every 30 seconds
+        setInterval(updateMessageCount, 30000);
+        
+        // Quick action button effects
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('.quick-action-icon');
+                icon.style.transform = 'scale(1.2)';
+                icon.style.transition = 'transform 0.3s';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('.quick-action-icon');
+                icon.style.transform = 'scale(1)';
+            });
+        });
+        
+        // Tab switching functionality
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (!this.href.includes('#')) {
+                    e.preventDefault();
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.nav-link').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Show loading state
+                    const welcomeText = document.querySelector('.welcome-text');
+                    const originalText = welcomeText.textContent;
+                    welcomeText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Loading...';
+                    
+                    // Simulate page load
+                    setTimeout(() => {
+                        welcomeText.textContent = originalText;
+                    }, 500);
+                }
+            });
+        });
+        
+        // Font size toggle for accessibility
+        const fontSizeToggle = document.createElement('button');
+        fontSizeToggle.innerHTML = '<i class="fas fa-text-height"></i>';
+        fontSizeToggle.className = 'btn btn-sm btn-outline-secondary position-fixed bottom-3 end-3 rounded-circle';
+        fontSizeToggle.style.width = '50px';
+        fontSizeToggle.style.height = '50px';
+        fontSizeToggle.title = 'Toggle font size';
+        
+        fontSizeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('senior-mode');
+            localStorage.setItem('seniorMode', document.body.classList.contains('senior-mode'));
+        });
+        
+        // Load saved preference
+        if (localStorage.getItem('seniorMode') === 'true') {
+            document.body.classList.add('senior-mode');
+        }
+        
+        document.body.appendChild(fontSizeToggle);
+    </script>
+</body>
+</html>
