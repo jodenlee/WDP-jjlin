@@ -12,10 +12,13 @@ class User:
             raise ValueError("Role must be either 'senior' or 'youth'.")
 
 class Story:
-    def __init__(self, title, content, author_id):
+    def __init__(self, title, content, author_id, location="", image_url="", likes=0):
         self.title = title
         self.content = content
         self.author_id = author_id
+        self.location = location
+        self.image_url = image_url
+        self.likes = likes
         self.validate()
 
     def validate(self):

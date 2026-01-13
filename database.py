@@ -34,7 +34,30 @@ class Database:
                 content TEXT NOT NULL,
                 author_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                likes INTEGER DEFAULT 0,
+                location TEXT,
+                image_url TEXT,
                 FOREIGN KEY (author_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Check if new columns exist (for manual migration in this session)
+        try:
+            cursor.execute("SELECT likes FROM stories LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE stories ADD COLUMN likes INTEGER DEFAULT 0")
+            cursor.execute("ALTER TABLE stories ADD COLUMN location TEXT")
+            cursor.execute("ALTER TABLE stories ADD COLUMN image_url TEXT")
+
+        # Bookmarks table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                story_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (story_id) REFERENCES stories (id),
+                UNIQUE(user_id, story_id)
             )
         ''')
         

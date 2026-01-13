@@ -25,13 +25,13 @@ def seed_data():
 
     # Create Stories (linked to Senior)
     stories = [
-        Story("The Old Oak Tree", "When I was young, we used to swing on the old oak tree...", user_ids[0]),
-        Story("My First Car", "It was a bright red convertible from 1955...", user_ids[0])
+        Story("The Old Oak Tree", "When I was young, we used to swing on the old oak tree...", user_ids[0], "Jurong West Park", "https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=800&q=80"),
+        Story("My First Car", "It was a bright red convertible from 1955...", user_ids[0], "Orchard Road", "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80")
     ]
 
     for story in stories:
-        cursor.execute("INSERT INTO stories (title, content, author_id) VALUES (?, ?, ?)",
-                       (story.title, story.content, story.author_id))
+        cursor.execute("INSERT INTO stories (title, content, author_id, location, image_url) VALUES (?, ?, ?, ?, ?)",
+                       (story.title, story.content, story.author_id, story.location, story.image_url))
 
     # Create Activities
     activities = [

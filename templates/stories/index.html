@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="stories-header">
+    <h1>Stories Feed</h1>
+    <div class="stories-actions">
+        <!-- Search and Filter Form -->
+        <form action="{{ url_for('stories') }}" method="get" class="filter-form">
+            <input type="text" name="search" placeholder="Search stories..."
+                value="{{ request.args.get('search', '') }}">
+
+            <select name="sort">
+                <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest</option>
+                <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Most Popular
+                </option>
+            </select>
+
+            <input type="text" name="location" list="singapore-locations" placeholder="Filter by Location"
+                value="{{ request.args.get('location', '') }}">
+            {% include 'partials/locations.html' %}
+
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+
+        <div class="action-buttons">
+            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-secondary">My Bookmarks</a>
+            <a href="{{ url_for('create_story') }}" class="btn btn-primary">Post Story</a>
+        </div>
+    </div>
+</section>
+
+<div class="stories-grid">
+    {% if stories %}
+    {% for story in stories %}
+    {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
+    <a href="{{ url_for('view_story', story_id=story['id']) }}" class="story-card-link">
+        <div class="story-card">
+            <div class="story-image" style="background-image: url('{{ bg_image }}');">
+            </div>
+            <div class="story-content">
+                <h3>{{ story['title'] }}</h3>
+                <p class="location"><small>📍 {{ story['location'] or 'Unknown Location' }}</small></p>
+                <p>{{ story['content'][:80] }}...</p>
+                <div class="story-meta">
+                    <span>❤️ {{ story['likes'] }} Likes</span>
+                    <!-- In a real app, prevent event propagation for bookmark button on card click -->
+                    <span class="bookmark-icon">🔖</span>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+    {% else %}
+    <p>No stories found. Be the first to share!</p>
+    {% endif %}
+</div>
+{% endblock %}
