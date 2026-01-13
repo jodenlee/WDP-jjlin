@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TogetherSG</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo">TogetherSG</div>
+            <button class="hamburger" aria-label="Toggle navigation">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}" class="nav-item">Home</a></li>
+                <li><a href="{{ url_for('stories') }}" class="nav-item">Stories</a></li>
+                <li><a href="{{ url_for('activities') }}" class="nav-item">Activities</a></li>
+                <li><a href="{{ url_for('messages') }}" class="nav-item">Messages</a></li>
+                <li class="profile-nav-item">
+                    <a href="{{ url_for('profile') }}" class="nav-item">Profile</a>
+                    <a href="{{ url_for('profile') }}" class="profile-pic-link">
+                        <div class="profile-pic-placeholder"></div>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Intergenerational Platform. Connecting hearts across ages.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% set hero_image = story['image_url'] or 'https://via.placeholder.com/800x400' %}
+<section class="story-detail">
+    <div class="story-hero" style="background-image: url('{{ hero_image }}');">
+        <!-- Overlay if needed -->
+    </div>
+
+    <div class="story-container">
+        <h1>{{ story['title'] }}</h1>
+        <div class="meta-info">
+            <span>📍 {{ story['location'] or 'Unknown Location' }}</span>
+            <span>📅 {{ story['created_at'] }}</span>
+            <span>❤️ {{ story['likes'] }} Likes</span>
+        </div>
+
+        <div class="story-body">
+            <p>{{ story['content'] }}</p>
+        </div>
+
+        <div class="story-actions">
+            <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST">
+                <button type="submit" class="btn {% if is_bookmarked %}btn-primary{% else %}btn-secondary{% endif %}">
+                    {% if is_bookmarked %}Bookmarked ✅{% else %}Bookmark 🔖{% endif %}
+                </button>
+            </form>
+            <a href="{{ url_for('stories') }}" class="btn btn-secondary">Back to Stories</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
