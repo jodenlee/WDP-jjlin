@@ -235,21 +235,30 @@ footer {
     }
 
     .nav-links {
-        display: none;
-        /* Hidden by default */
+        display: flex;
+        /* Always flex layout */
         flex-direction: column;
         width: 100%;
         text-align: center;
-        margin-top: 1rem;
         background-color: #fff;
-        border-top: 2px solid #eee;
         padding: 0;
-        /* Remove default UL padding */
+
+        /* Animation Props */
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out, margin-top 0.4s ease-in-out;
+
+        margin-top: 0;
+        border-top: none;
     }
 
     .nav-links.active {
-        display: flex;
-        /* Show when active class is present */
+        max-height: 500px;
+        /* Large enough to fit content */
+        opacity: 1;
+        margin-top: 1rem;
+        border-top: 2px solid #eee;
     }
 
     .nav-links li {
