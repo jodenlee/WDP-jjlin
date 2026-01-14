@@ -60,6 +60,19 @@ class Database:
                 UNIQUE(user_id, story_id)
             )
         ''')
+
+        # Story Likes Table (New)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS story_likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                story_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (story_id) REFERENCES stories (id),
+                UNIQUE(user_id, story_id)
+            )
+        ''')
         
         # Activity table (Shared activities)
         cursor.execute('''
@@ -69,6 +82,19 @@ class Database:
                 description TEXT NOT NULL,
                 type TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Comments Table (New)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                story_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (story_id) REFERENCES stories (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
         

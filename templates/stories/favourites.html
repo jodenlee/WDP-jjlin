@@ -2,31 +2,11 @@
 
 {% block content %}
 <section class="stories-header">
-    <div class="search-container">
-        <form action="{{ url_for('stories') }}" method="get" class="search-form-top">
-            <input type="text" name="search" placeholder="Search stories..."
-                value="{{ request.args.get('search', '') }}">
-
-            <input type="text" name="location" list="singapore-locations" placeholder="Location"
-                style="max-width: 150px;" value="{{ request.args.get('location', '') }}">
-            {% include 'partials/locations.html' %}
-
-            <select name="sort" style="max-width: 150px;">
-                <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest</option>
-                <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Most Popular
-                </option>
-            </select>
-
-            <button type="submit" class="btn btn-primary">Search</button>
-        </form>
-    </div>
-
-    <div class="stories-actions-row">
-        <h1>Stories Feed</h1>
-        <div class="action-buttons">
-            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-secondary">My Favourites</a>
-            <a href="{{ url_for('create_story') }}" class="btn btn-primary">Post Story</a>
-        </div>
+    <div class="header-top-row"
+        style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 2rem;">
+        <a href="{{ url_for('stories') }}" class="btn btn-secondary" style="position: absolute; left: 0;">← Back to
+            Stories</a>
+        <h1 style="margin: 0;">My Favourites</h1>
     </div>
 </section>
 
@@ -36,26 +16,22 @@
     {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
 
     <div class="feed-story-card">
-        <!-- Overlay Link: Covers entire card -->
+        <!-- Card Link Overlay -->
         <a href="{{ url_for('view_story', story_id=story['id']) }}" class="card-link-overlay"></a>
 
         <div class="story-header" style="background-image: url('{{ bg_image | safe }}');">
             <div class="header-overlay">
-                <!-- Star Form: High Z-Index & Interactive -->
+                <!-- Bookmark Form (High Z-Index) -->
                 <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST" class="fav-form">
-                    <button type="submit" class="btn-icon star-icon" title="Favourite">
-                        {% if story['id'] in bookmarked_story_ids %}
+                    <button type="submit" class="btn-icon star-icon" title="Remove Favourite">
+                        <!-- Always filled star on favourites page -->
                         ★
-                        {% else %}
-                        ☆
-                        {% endif %}
                     </button>
                 </form>
                 <span class="category-tag">YOUTH</span>
             </div>
         </div>
 
-        <!-- Content: No longer wrapped in 'a', allows overlay to handle click -->
         <div class="story-content">
             <h3>{{ story['title'] }}</h3>
             <p>{{ story['content'][:80] }}...</p>
@@ -79,7 +55,10 @@
 
     {% endfor %}
     {% else %}
-    <p>No stories found. Be the first to share!</p>
+    <div style="text-align: center; grid-column: 1/-1;">
+        <p>No favourites yet. Go explore and star some stories!</p>
+        <a href="{{ url_for('stories') }}" class="btn btn-primary" style="margin-top: 1rem;">Browse Stories</a>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

@@ -56,7 +56,18 @@ def stories():
         query += " ORDER BY created_at DESC"
         
     stories_data = db.query(query, args)
-    return render_template('stories/index.html', stories=stories_data)
+    
+    # Get user's bookmarks (Hardcoded user_id=1)
+    bookmarks_query = "SELECT story_id FROM bookmarks WHERE user_id = ?"
+    bookmarks = db.query(bookmarks_query, (1,))
+    bookmarked_story_ids = [b['story_id'] for b in bookmarks]
+
+    # Get user's liked stories (Hardcoded user_id=1)
+    likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
+    liked_rows = db.query(likes_query, (1,))
+    liked_story_ids = [l['story_id'] for l in liked_rows]
+    
+    return render_template('stories/index.html', stories=stories_data, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
 
 @app.route('/stories/new', methods=['GET', 'POST'])
 def create_story():
@@ -84,7 +95,16 @@ def create_story():
 @app.route('/stories/<int:story_id>')
 def view_story(story_id):
     db = get_db()
-    story = db.query("SELECT * FROM stories WHERE id = ?", (story_id,), one=True)
+    # Join with users to get author name
+    # Join with users to get author name
+    query = """
+        SELECT s.*, u.username as author_name 
+        FROM stories s 
+        LEFT JOIN users u ON s.author_id = u.id 
+        WHERE s.id = ?
+    """
+    story = db.query(query, (story_id,), one=True)
+    
     if not story:
         return "Story not found", 404
         
@@ -94,7 +114,23 @@ def view_story(story_id):
     if bookmark:
         is_bookmarked = True
         
-    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked)
+    # Check if liked
+    is_liked = False
+    like_check = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (1, story_id), one=True)
+    if like_check:
+        is_liked = True
+        
+    # Fetch Comments
+    comments_query = """
+        SELECT c.*, u.username, u.role 
+        FROM comments c 
+        JOIN users u ON c.user_id = u.id 
+        WHERE c.story_id = ? 
+        ORDER BY c.created_at DESC
+    """
+    comments = db.query(comments_query, (story_id,))
+        
+    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments)
 
 @app.route('/stories/bookmarks')
 def my_bookmarks():
@@ -106,7 +142,16 @@ def my_bookmarks():
         WHERE b.user_id = ?
     """
     bookmarks = db.query(query, (1,))
-    return render_template('stories/index.html', stories=bookmarks)
+    
+    # Also fetch the list of IDs for the icon logic (even though all here are bookmarked, it keeps template consistent)
+    bookmarked_story_ids = [b['id'] for b in bookmarks]
+
+    # Get user's liked stories (Hardcoded user_id=1)
+    likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
+    liked_rows = db.query(likes_query, (1,))
+    liked_story_ids = [l['story_id'] for l in liked_rows]
+    
+    return render_template('stories/favourites.html', stories=bookmarks, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
 
 @app.route('/stories/<int:story_id>/bookmark', methods=['POST'])
 def toggle_bookmark(story_id):
@@ -121,6 +166,75 @@ def toggle_bookmark(story_id):
     else:
         conn.execute("INSERT INTO bookmarks (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
         
+    conn.commit()
+    conn.commit()
+    
+    # Redirect back to where the user came from (feed or detail view)
+    return redirect(request.referrer or url_for('view_story', story_id=story_id))
+
+@app.route('/stories/<int:story_id>/like', methods=['POST'])
+def toggle_like(story_id):
+    db = get_db()
+    conn = db.get_connection()
+    user_id = 1 # Hardcoded
+    
+    # Check exist
+    exists = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
+    
+    if exists:
+        # Unlike
+        conn.execute("DELETE FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id))
+        conn.execute("UPDATE stories SET likes = likes - 1 WHERE id = ?", (story_id,))
+    else:
+        # Like
+        conn.execute("INSERT INTO story_likes (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
+        conn.execute("UPDATE stories SET likes = likes + 1 WHERE id = ?", (story_id,))
+        
+    conn.commit()
+    
+    return redirect(request.referrer or url_for('stories'))
+
+@app.route('/stories/<int:story_id>/edit', methods=['GET', 'POST'])
+def edit_story(story_id):
+    db = get_db()
+    
+    if request.method == 'POST':
+        title = request.form['title']
+        content = request.form['content']
+        location = request.form['location']
+        image_url = request.form['image_url']
+        
+        conn = db.get_connection()
+        conn.execute("UPDATE stories SET title=?, content=?, location=?, image_url=? WHERE id=?", 
+                     (title, content, location, image_url, story_id))
+        conn.commit()
+        return redirect(url_for('view_story', story_id=story_id))
+    
+    story = db.query("SELECT * FROM stories WHERE id = ?", (story_id,), one=True)
+    return render_template('stories/edit.html', story=story)
+
+@app.route('/stories/<int:story_id>/delete', methods=['POST'])
+def delete_story(story_id):
+    db = get_db()
+    conn = db.get_connection()
+    # Delete related data first (FK constraints usually handled, but explicit is safe)
+    conn.execute("DELETE FROM bookmarks WHERE story_id = ?", (story_id,))
+    conn.execute("DELETE FROM story_likes WHERE story_id = ?", (story_id,))
+    conn.execute("DELETE FROM comments WHERE story_id = ?", (story_id,))
+    conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
+    conn.commit()
+    return redirect(url_for('stories'))
+
+@app.route('/stories/<int:story_id>/comment', methods=['POST'])
+def add_comment(story_id):
+    content = request.form['content']
+    if not content.strip():
+        return redirect(url_for('view_story', story_id=story_id))
+        
+    user_id = 1 # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
     conn.commit()
     return redirect(url_for('view_story', story_id=story_id))
 
