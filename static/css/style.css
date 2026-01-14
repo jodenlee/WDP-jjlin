@@ -336,6 +336,56 @@ footer {
     font-size: 1rem;
 }
 
+.filter-form input[name="search"] {
+    flex-grow: 1;
+    /* Stretch search bar */
+    min-width: 200px;
+}
+
+/* Distinct Button Styling */
+.btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #eee;
+    color: var(--text-color);
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.btn-icon:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
 .action-buttons {
     display: flex;
     gap: 1rem;
@@ -355,7 +405,7 @@ footer {
     display: block;
 }
 
-.story-card {
+.feed-story-card {
     background: #fff;
     border-radius: var(--border-radius);
     overflow: hidden;
@@ -366,43 +416,460 @@ footer {
     flex-direction: column;
 }
 
-.story-card:hover {
+.feed-story-card:hover {
     transform: translateY(-5px);
 }
 
-.story-image {
-    height: 200px;
-    background-size: cover;
-    background-position: center;
-    background-color: #eee;
-}
-
-.story-content {
-    padding: 1.5rem;
-    flex-grow: 1;
+.feed-story-card {
+    background: #f8f9fa;
+    /* Light background similar to screenshot */
+    border-radius: 20px;
+    /* More rounded */
+    overflow: hidden;
+    box-shadow: none;
+    /* Flat look or subtle shadow */
+    border: 1px solid #eee;
+    transition: transform 0.2s;
+    height: 100%;
     display: flex;
     flex-direction: column;
 }
 
-.story-content h3 {
-    margin-bottom: 0.5rem;
-    color: var(--text-color);
+.feed-story-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
 }
 
-.story-content .location {
-    color: var(--secondary-color);
-    font-weight: 600;
+.story-header {
+    height: 180px;
+    /* Reduced height relative to card */
+    background-size: cover;
+    background-position: center;
+    background-color: #e3f2fd;
+    /* Light blue fallback */
+    position: relative;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.header-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.star-icon {
+    font-size: 1.5rem;
+    color: #4285f4;
+    /* Blue star or classic gold? Screenshot looked blue-ish star or icon */
+    background: transparent;
+    padding: 0;
+    line-height: 1;
+}
+
+.category-tag {
+    background-color: #00bcd4;
+    /* Cyan/Teal like screenshot */
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.story-card-link {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+}
+
+.story-content {
+    padding: 1.5rem;
+    background: #fff;
+    /* White content area */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+
+.story-content h3 {
     margin-bottom: 0.5rem;
+    color: #222;
+    font-size: 1.2rem;
+    line-height: 1.3;
+}
+
+.story-content p {
+    color: #555;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.story-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    /* Separator if desired, or clean */
+}
+
+/* Feed Like Button Update */
+.like-btn {
+    font-size: 2.2rem;
+    /* Even larger as requested "like button larger in feed card" */
+    color: #e74c3c;
+    padding: 0.2rem;
+}
+
+/* Detail View Redesign */
+.story-detail-container {
+    max-width: 600px;
+    /* Mobile-app like feel */
+    margin: 0 auto;
+    background: #fff;
+    padding-bottom: 2rem;
+}
+
+/* Carousel */
+.detail-carousel {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: #f0f0f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.detail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 3rem;
+    color: #3498db;
+    cursor: pointer;
+    padding: 0 1rem;
+}
+
+.left-arrow {
+    left: 0;
+}
+
+.right-arrow {
+    right: 0;
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    background: #ccc;
+    border-radius: 50%;
+}
+
+.dot.active {
+    background: #3498db;
+}
+
+/* Header & Content */
+.detail-header {
+    padding: 1.5rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.detail-header h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.like-btn-large {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #222;
+    /* Black count/heart per design? Or red heart. Screenshot shows outline heart + number. */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.story-desc {
+    color: #555;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.tags-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pill-tag {
+    background: #999;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.pill-tag.cyan {
+    background: #00bcd4;
+}
+
+.pill-tag.orange {
+    background: #D35400;
+}
+
+.report-link {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 0;
+}
+
+/* Author Section */
+.author-section {
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+}
+
+.author-avatar {
+    width: 35px;
+    height: 35px;
+    background: #e3f2fd;
+    border-radius: 50%;
+}
+
+.chat-btn {
+    border: 1px solid #3498db;
+    background: white;
+    color: #3498db;
+    padding: 4px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Comments */
+.comments-section {
+    padding: 1.5rem;
+}
+
+.comments-header h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.comment-form textarea {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin-bottom: 0.5rem;
+}
+
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.validation-msg {
+    color: #e74c3c;
+    font-size: 0.8rem;
+}
+
+.post-btn {
+    background: #007bff;
+    /* Blue */
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.comments-list {
+    margin-top: 2rem;
+}
+
+.comment-item {
+    margin-bottom: 0.5rem;
+}
+
+.comment-user-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+}
+
+.comment-text {
+    color: #333;
+    margin: 0;
+}
+
+.comment-divider {
+    border-top: 1px solid #eee;
+    margin: 1rem 0;
+}
+
+/* Location Map */
+.location-section {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.location-section h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.map-placeholder {
+    height: 150px;
+    background: #e3e3e3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    background-image: url('https://img.freepik.com/free-vector/city-map-background-concept_23-2148599187.jpg');
+    /* Simple mock map background */
+    background-size: cover;
+    border-radius: 12px;
+}
+
+.map-pin {
+    font-size: 2rem;
+}
+
+.location-info h3 {
+    margin: 0 0 0.2rem;
+    font-size: 1.1rem;
+}
+
+.location-info p {
+    margin: 0;
+    color: #777;
+    font-size: 0.9rem;
+}
+
+.owner-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.text-link {
+    color: #3498db;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.text-danger-link {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+}
+
+@media (max-width: 768px) {
+    .stories-actions-row {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+.like-count {
+    font-weight: 700;
+    color: #222;
+    min-width: 20px;
+}
+
+.footer-location {
+    color: var(--text-light);
+    font-size: 1.2rem;
+    /* Larger font size as requested */
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.heart-icon {
+    font-size: 1.4rem;
+    color: #222;
+    /* Dark heart outline or filled */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
 }
 
 .story-meta {
-    margin-top: auto;
-    padding-top: 1rem;
-    display: flex;
-    justify-content: space-between;
-    color: var(--text-light);
-    font-size: 0.9rem;
-    border-top: 1px solid #eee;
+    /* Deprecated, handled in footer/header now */
+    display: none;
 }
 
 /* Forms */
@@ -473,23 +940,121 @@ footer {
     gap: 1rem;
 }
 
+/* Feed Header Updates */
+.search-container {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    /* Squeezed spacing */
+}
+
+.search-form-top {
+    display: flex;
+    gap: 0.5rem;
+    /* Tighter gap */
+    max-width: 800px;
+    /* Increased to fit filters */
+    margin: 0 auto;
+    flex-wrap: wrap;
+    /* Wrap on small screens */
+}
+
+.search-form-top input,
+.search-form-top select {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.search-form-top input[name="search"] {
+    flex-grow: 1;
+    min-width: 200px;
+}
+
+.stories-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    /* Reduced top margin */
+}
+
+.stories-header h1 {
+    font-size: 2rem;
+    /* Slightly smaller for compactness */
+    margin: 0;
+}
+
+/* Card Updates */
+.feed-story-card {
+    position: relative;
+    /* ... existing styles ... */
+    background: #f8f9fa;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: none;
+    border: 1px solid #eee;
+    transition: transform 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-link-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.header-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.fav-form {
+    pointer-events: auto;
+}
+
+.star-icon {
+    font-size: 2.2rem;
+    /* Consistent size */
+    color: #FFD700;
+    /* Yellow */
+    background: transparent;
+    padding: 0;
+    line-height: 1;
+    transition: transform 0.2s;
+    /* Removed filters/stroke for "simpler" look */
+}
+
+.star-icon:hover {
+    transform: scale(1.1);
+}
+
+.star-icon:active {
+    transform: scale(0.9);
+}
+
 @media (max-width: 768px) {
-    .filter-form {
+    .stories-actions-row {
         flex-direction: column;
-    }
-
-    .filter-form input,
-    .filter-form select,
-    .filter-form button {
-        width: 100%;
-    }
-
-    .story-hero {
-        height: 250px;
-    }
-
-    .meta-info {
-        flex-direction: column;
-        gap: 0.5rem;
+        text-align: center;
     }
 }

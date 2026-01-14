@@ -1,32 +1,110 @@
 {% extends 'base.html' %}
 
 {% block content %}
-{% set hero_image = story['image_url'] or 'https://via.placeholder.com/800x400' %}
-<section class="story-detail">
-    <div class="story-hero" style="background-image: url('{{ hero_image }}');">
-        <!-- Overlay if needed -->
-    </div>
+<div class="story-detail-container">
 
-    <div class="story-container">
-        <h1>{{ story['title'] }}</h1>
-        <div class="meta-info">
-            <span>📍 {{ story['location'] or 'Unknown Location' }}</span>
-            <span>📅 {{ story['created_at'] }}</span>
-            <span>❤️ {{ story['likes'] }} Likes</span>
-        </div>
-
-        <div class="story-body">
-            <p>{{ story['content'] }}</p>
-        </div>
-
-        <div class="story-actions">
-            <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST">
-                <button type="submit" class="btn {% if is_bookmarked %}btn-primary{% else %}btn-secondary{% endif %}">
-                    {% if is_bookmarked %}Bookmarked ✅{% else %}Bookmark 🔖{% endif %}
-                </button>
-            </form>
-            <a href="{{ url_for('stories') }}" class="btn btn-secondary">Back to Stories</a>
+    <!-- Image Carousel (Mocked with single image for now, arrows for visual) -->
+    <div class="detail-carousel">
+        <button class="nav-arrow left-arrow">‹</button>
+        <img src="{{ story['image_url'] | safe }}" alt="{{ story['title'] }}" class="detail-image">
+        <button class="nav-arrow right-arrow">›</button>
+        <div class="carousel-dots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
         </div>
     </div>
-</section>
+
+    <!-- Header Section -->
+    <div class="detail-header">
+        <div class="header-content">
+            <h1>{{ story['title'] }}</h1>
+            <div class="header-actions">
+                <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="like-btn-large">
+                        {% if is_liked %}♥{% else %}♡{% endif %}
+                        <span class="count">{{ story['likes'] }}</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+        <p class="story-desc">{{ story['content'] }}</p>
+
+        <div class="tags-row">
+            <span class="pill-tag">PLACES</span>
+
+            {% if story['author_id'] == 1 %} <!-- Simulate Owner -->
+            <div class="owner-actions">
+                <a href="{{ url_for('edit_story', story_id=story['id']) }}" class="text-link">Edit</a>
+                <span class="separator">|</span>
+                <form action="{{ url_for('delete_story', story_id=story['id']) }}" method="POST" style="display:inline;"
+                    onsubmit="return confirm('Are you sure?');">
+                    <button type="submit" class="text-danger-link">Delete</button>
+                </form>
+            </div>
+            {% else %}
+            <a href="#" class="report-link">Report</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Author Section -->
+    <div class="author-section">
+        <div class="author-info">
+            <span class="posted-by">Posted by: {{ story['author_name'] }}</span>
+            <div class="author-avatar placeholder-avatar"></div>
+        </div>
+        <button class="chat-btn">CHAT</button>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Comments Section -->
+    <div class="comments-section">
+        <div class="comments-header">
+            <h2>Comments <span class="comment-count">{{ comments|length }}</span></h2>
+        </div>
+
+        <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="comment-form">
+            <textarea name="content" placeholder="Leave a comment!" required></textarea>
+            <div class="form-footer">
+                <span class="validation-msg">* No Blank Comment</span>
+                <button type="submit" class="post-btn">Post</button>
+            </div>
+        </form>
+
+        <div class="comments-list">
+            {% for comment in comments %}
+            <div class="comment-item">
+                <div class="comment-user-row">
+                    <strong>{{ comment['username'] or 'User' }}</strong>
+                    {% if comment['role'] == 'youth' %}
+                    <span class="pill-tag cyan">YOUTH</span>
+                    {% else %}
+                    <span class="pill-tag orange">SENIOR</span>
+                    {% endif %}
+                </div>
+                <p class="comment-text">{{ comment['content'] }}</p>
+            </div>
+            <hr class="comment-divider">
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Location Section -->
+    <div class="location-section">
+        <h2>Location</h2>
+        <div class="map-placeholder">
+            <!-- Static map image or iframe placeholder -->
+            <div class="map-pin">📍</div>
+        </div>
+        <div class="location-info">
+            <h3>{{ story['location'] or 'Unknown' }}</h3>
+            <p>Nostalgic Hawker Center in Singapore</p> <!-- Hardcoded desc for now or add field later -->
+        </div>
+    </div>
+
+</div>
 {% endblock %}
