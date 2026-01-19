@@ -1,13 +1,34 @@
-from flask import Flask, render_template, g, request, redirect, url_for
+from flask import Flask, render_template, g, request, redirect, url_for, session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 from database import Database
+import re
 
 app = Flask(__name__)
+app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
 
 # Database Helper to get db connection per request
 def get_db():
     if 'db' not in g:
         g.db = Database()
     return g.db
+
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Get current user helper
+def get_current_user():
+    if 'user_id' in session:
+        db = get_db()
+        return db.query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
+    return None
 
 @app.teardown_appcontext
 def close_db(error):
@@ -17,31 +38,121 @@ def close_db(error):
         # But for good practice if we changed implementation:
         pass
 
+# Authentication Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    
+    error = None
+    success = request.args.get('success')
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        
+        if not email or not password:
+            error = 'Please enter both email and password.'
+        else:
+            db = get_db()
+            user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+            
+            if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                flash('Welcome back, ' + (user['full_name'] or user['username']) + '!', 'success')
+                return redirect(url_for('home'))
+            else:
+                error = 'Invalid email or password.'
+    
+    return render_template('auth/login.html', error=error, success=success)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    
+    errors = []
+    form = {}
+    
+    if request.method == 'POST':
+        form['full_name'] = request.form.get('full_name', '').strip()
+        form['username'] = request.form.get('username', '').strip().lower()
+        form['email'] = request.form.get('email', '').strip().lower()
+        form['role'] = request.form.get('role', 'youth')
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        terms = request.form.get('terms')
+        
+        # Validation
+        if not form['full_name']:
+            errors.append('Full name is required.')
+        
+        if not form['username']:
+            errors.append('Username is required.')
+        elif not re.match(r'^[a-zA-Z0-9_]{3,20}$', form['username']):
+            errors.append('Username must be 3-20 characters, letters, numbers, and underscores only.')
+        
+        if not form['email']:
+            errors.append('Email is required.')
+        elif not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', form['email']):
+            errors.append('Please enter a valid email address.')
+        
+        if not password:
+            errors.append('Password is required.')
+        elif len(password) < 6:
+            errors.append('Password must be at least 6 characters.')
+        
+        if password != confirm_password:
+            errors.append('Passwords do not match.')
+        
+        if not terms:
+            errors.append('You must agree to the terms.')
+        
+        # Check if username or email already exists
+        if not errors:
+            db = get_db()
+            existing_user = db.query("SELECT * FROM users WHERE username = ? OR email = ?", 
+                                     (form['username'], form['email']), one=True)
+            if existing_user:
+                if existing_user['username'] == form['username']:
+                    errors.append('Username already taken.')
+                if existing_user['email'] == form['email']:
+                    errors.append('Email already registered.')
+        
+        # Create user if no errors
+        if not errors:
+            password_hash = generate_password_hash(password)
+            db = get_db()
+            conn = db.get_connection()
+            try:
+                conn.execute(
+                    """INSERT INTO users (username, email, password_hash, role, full_name) 
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (form['username'], form['email'], password_hash, form['role'], form['full_name'])
+                )
+                conn.commit()
+                return redirect(url_for('login', success='Account created successfully! Please log in.'))
+            except Exception as e:
+                errors.append('An error occurred. Please try again.')
+    
+    return render_template('auth/register.html', errors=errors, form=form)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
-def dashboard():
-    # Initialize DB (creates tables if not exist)
+def home():
+    # Homepage with simple navigation grid
     db = get_db()
     
-    # Fetch some sample data to display
     recent_stories = db.query("SELECT * FROM stories ORDER BY created_at DESC LIMIT 3")
     upcoming_activities = db.query("SELECT * FROM activities ORDER BY created_at DESC LIMIT 3")
     
-    # Mock User Data (Simulation of logged-in user)
-    user = {
-        'full_name': 'Joden Lee',
-        'user_type': 'Senior',
-        'profile_pic': 'https://ui-avatars.com/api/?name=Joden+Lee&background=D35400&color=fff'
-    }
-    
-    # Mock Stats (or we could count simple queries)
-    stats = {
-        'stories': len(db.query("SELECT id FROM stories")),
-        'activities': len(db.query("SELECT id FROM activities")),
-        'messages': 3, # Mock
-        'groups': 5    # Mock
-    }
-    
-    return render_template('dashboard.html', recent_stories=recent_stories, upcoming_activities=upcoming_activities, user=user, stats=stats)
+    return render_template('index.html', stories=recent_stories, activities=upcoming_activities)
 
 @app.route('/stories')
 def stories():
@@ -254,19 +365,259 @@ def add_comment(story_id):
 
 @app.route('/activities')
 def activities():
-    return render_template('index.html', stories=[], activities=[]) # Placeholder
+    db = get_db()
+    # Get activities with RSVP counts
+    activities_data = db.query("""
+        SELECT a.*, 
+               (SELECT COUNT(*) FROM activity_rsvps WHERE activity_id = a.id) as rsvp_count
+        FROM activities a
+        ORDER BY a.event_date DESC, a.created_at DESC
+    """)
+    return render_template('activities/index.html', activities=activities_data)
+
+@app.route('/activities/<int:activity_id>')
+def view_activity(activity_id):
+    db = get_db()
+    activity = db.query("SELECT * FROM activities WHERE id = ?", (activity_id,), one=True)
+    if not activity:
+        return "Activity not found", 404
+    
+    user_id = 1  # Hardcoded
+    rsvp = db.query("SELECT * FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id), one=True)
+    rsvp_count = len(db.query("SELECT * FROM activity_rsvps WHERE activity_id = ?", (activity_id,)))
+    
+    return render_template('activities/view.html', activity=activity, is_joined=bool(rsvp), rsvp_count=rsvp_count)
+
+@app.route('/activities/new', methods=['GET', 'POST'])
+def create_activity():
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form['description']
+        activity_type = request.form['type']
+        location = request.form.get('location', '')
+        event_date = request.form.get('event_date', '')
+        
+        db = get_db()
+        conn = db.get_connection()
+        conn.execute(
+            "INSERT INTO activities (title, description, type, location, event_date, organizer_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (title, description, activity_type, location, event_date, 1)
+        )
+        conn.commit()
+        return redirect(url_for('activities'))
+    
+    return render_template('activities/create.html')
+
+@app.route('/activities/<int:activity_id>/join', methods=['POST'])
+def join_activity(activity_id):
+    user_id = 1  # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    try:
+        conn.execute("INSERT INTO activity_rsvps (activity_id, user_id) VALUES (?, ?)", (activity_id, user_id))
+        conn.commit()
+    except:
+        pass  # Already joined
+    return redirect(url_for('view_activity', activity_id=activity_id))
+
+@app.route('/activities/<int:activity_id>/leave', methods=['POST'])
+def leave_activity(activity_id):
+    user_id = 1  # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
+    conn.commit()
+    return redirect(url_for('view_activity', activity_id=activity_id))
 
 @app.route('/messages')
 def messages():
-    return render_template('index.html', stories=[], activities=[]) # Placeholder
+    db = get_db()
+    user_id = 1  # Hardcoded
+    
+    # Get all users for starting new conversations
+    users = db.query("SELECT * FROM users WHERE id != ?", (user_id,))
+    
+    # Get conversations (users we've messaged with)
+    conversations = db.query("""
+        SELECT DISTINCT 
+            CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as user_id,
+            u.username,
+            (SELECT content FROM messages m2 
+             WHERE (m2.sender_id = u.id AND m2.receiver_id = ?) 
+                OR (m2.sender_id = ? AND m2.receiver_id = u.id)
+             ORDER BY m2.created_at DESC LIMIT 1) as last_message,
+            (SELECT created_at FROM messages m3 
+             WHERE (m3.sender_id = u.id AND m3.receiver_id = ?) 
+                OR (m3.sender_id = ? AND m3.receiver_id = u.id)
+             ORDER BY m3.created_at DESC LIMIT 1) as last_message_time,
+            (SELECT COUNT(*) FROM messages m4 
+             WHERE m4.sender_id = u.id AND m4.receiver_id = ? AND m4.is_read = 0) as unread_count
+        FROM messages m
+        JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END
+        WHERE m.sender_id = ? OR m.receiver_id = ?
+        ORDER BY last_message_time DESC
+    """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id))
+    
+    return render_template('messages/index.html', conversations=conversations, users=users)
+
+@app.route('/messages/<int:user_id>')
+def chat(user_id):
+    db = get_db()
+    current_user_id = 1  # Hardcoded
+    
+    other_user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+    if not other_user:
+        return "User not found", 404
+    
+    # Get messages between users
+    messages_data = db.query("""
+        SELECT * FROM messages 
+        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+        ORDER BY created_at ASC
+    """, (current_user_id, user_id, user_id, current_user_id))
+    
+    # Mark messages as read
+    conn = db.get_connection()
+    conn.execute("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?", (user_id, current_user_id))
+    conn.commit()
+    
+    return render_template('messages/chat.html', messages=messages_data, other_user=other_user, current_user_id=current_user_id)
+
+@app.route('/messages/<int:user_id>/send', methods=['POST'])
+def send_message(user_id):
+    content = request.form['content']
+    if not content.strip():
+        return redirect(url_for('chat', user_id=user_id))
+    
+    current_user_id = 1  # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)", 
+                 (current_user_id, user_id, content))
+    conn.commit()
+    return redirect(url_for('chat', user_id=user_id))
 
 @app.route('/profile')
 def profile():
-    return render_template('index.html', stories=[], activities=[]) # Placeholder
+    db = get_db()
+    user_id = 1  # Hardcoded
+    
+    # Get user from database or use defaults
+    user_data = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+    
+    if user_data:
+        user = {
+            'id': user_data['id'],
+            'full_name': user_data['full_name'] or user_data['username'],
+            'username': user_data['username'],
+            'user_type': user_data['role'].capitalize(),
+            'bio': user_data['bio'],
+            'profile_pic': user_data['profile_pic'] or f"https://ui-avatars.com/api/?name={user_data['username']}&background=8D6E63&color=fff"
+        }
+    else:
+        user = {
+            'id': 1,
+            'full_name': 'Joden Lee',
+            'username': 'joden',
+            'user_type': 'Senior',
+            'bio': '',
+            'profile_pic': 'https://ui-avatars.com/api/?name=Joden+Lee&background=8D6E63&color=fff'
+        }
+    
+    return render_template('profile.html', user=user)
+
+@app.route('/profile/update', methods=['POST'])
+def update_profile():
+    user_id = 1  # Hardcoded
+    full_name = request.form.get('full_name', '')
+    bio = request.form.get('bio', '')
+    profile_pic = request.form.get('profile_pic', '')
+    
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute(
+        "UPDATE users SET full_name = ?, bio = ?, profile_pic = ? WHERE id = ?",
+        (full_name, bio, profile_pic, user_id)
+    )
+    conn.commit()
+    
+    return redirect(url_for('profile'))
 
 @app.route('/community')
 def community():
-    return render_template('index.html', stories=[], activities=[]) # Placeholder
+    db = get_db()
+    # Get groups with member counts
+    groups = db.query("""
+        SELECT g.*, 
+               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
+        FROM groups g
+        ORDER BY g.created_at DESC
+    """)
+    return render_template('community/index.html', groups=groups)
+
+@app.route('/community/<int:group_id>')
+def view_group(group_id):
+    db = get_db()
+    group = db.query("SELECT * FROM groups WHERE id = ?", (group_id,), one=True)
+    if not group:
+        return "Group not found", 404
+    
+    user_id = 1  # Hardcoded
+    membership = db.query("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id), one=True)
+    member_count = len(db.query("SELECT * FROM group_members WHERE group_id = ?", (group_id,)))
+    
+    # Get members
+    members = db.query("""
+        SELECT u.* FROM users u
+        JOIN group_members gm ON u.id = gm.user_id
+        WHERE gm.group_id = ?
+    """, (group_id,))
+    
+    return render_template('community/view.html', group=group, is_member=bool(membership), member_count=member_count, members=members)
+
+@app.route('/community/new', methods=['GET', 'POST'])
+def create_group():
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form.get('description', '')
+        image_url = request.form.get('image_url', '')
+        
+        db = get_db()
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO groups (name, description, image_url, created_by) VALUES (?, ?, ?, ?)",
+            (name, description, image_url, 1)
+        )
+        group_id = cursor.lastrowid
+        # Auto-join creator
+        cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, 1))
+        conn.commit()
+        return redirect(url_for('community'))
+    
+    return render_template('community/create.html')
+
+@app.route('/community/<int:group_id>/join', methods=['POST'])
+def join_group(group_id):
+    user_id = 1  # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    try:
+        conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
+        conn.commit()
+    except:
+        pass  # Already a member
+    return redirect(url_for('view_group', group_id=group_id))
+
+@app.route('/community/<int:group_id>/leave', methods=['POST'])
+def leave_group(group_id):
+    user_id = 1  # Hardcoded
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
+    conn.commit()
+    return redirect(url_for('view_group', group_id=group_id))
 
 if __name__ == '__main__':
     app.run(debug=True)
+

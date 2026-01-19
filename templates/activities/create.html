@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('activities') }}" class="btn btn-link text-muted px-0">
+        <i class="fas fa-arrow-left me-1"></i> Back to Activities
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="card nav-card-minimal">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h4 class="fw-bold"><i class="fas fa-plus-circle me-2" style="color: var(--primary-color);"></i> Create
+                    Activity</h4>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('create_activity') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label fw-bold">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required
+                            placeholder="Activity name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" required
+                            placeholder="What's this activity about?"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="type" class="form-label fw-bold">Type</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="Workshop">Workshop</option>
+                                <option value="Social">Social Gathering</option>
+                                <option value="Exercise">Exercise</option>
+                                <option value="Learning">Learning</option>
+                                <option value="Community">Community Service</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="event_date" class="form-label fw-bold">Date</label>
+                            <input type="date" class="form-control" id="event_date" name="event_date">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="location" class="form-label fw-bold">Location</label>
+                        <input type="text" class="form-control" id="location" name="location"
+                            placeholder="Where will this take place?">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Create Activity</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

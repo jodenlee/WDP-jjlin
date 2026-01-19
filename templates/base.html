@@ -19,7 +19,7 @@
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
             <div class="container">
-                <a class="navbar-brand text-primary fw-bold fs-2" href="{{ url_for('dashboard') }}">TogetherSG</a>
+                <a class="navbar-brand text-primary fw-bold fs-2" href="{{ url_for('home') }}">TogetherSG</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -27,22 +27,44 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto align-items-center">
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('dashboard') }}">Home</a></li>
+                                href="{{ url_for('home') }}">Home</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('stories') }}">Stories</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('activities') }}">Activities</a></li>
+
+                        {% if session.get('user_id') %}
+                        <!-- Logged in user navigation -->
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('messages') }}">Messages</a></li>
-                        <li class="nav-item d-flex align-items-center ms-lg-3 mt-2 mt-lg-0">
-                            <a class="nav-link fs-5 fw-semibold text-dark me-2"
-                                href="{{ url_for('profile') }}">Profile</a>
-                            <a href="{{ url_for('profile') }}" class="profile-pic-link">
-                                <div class="profile-pic-placeholder"
-                                    style="width: 40px; height: 40px; background-color: #ddd; border-radius: 50%; border: 2px solid #D35400;">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
+                                role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center"
+                                    style="width: 35px; height: 35px; background-color: var(--accent-color);">
+                                    <i class="fas fa-user" style="color: var(--primary-color);"></i>
                                 </div>
+                                <span class="fw-semibold">{{ session.get('username', 'User') }}</span>
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                                        <i class="fas fa-cog me-2"></i> Settings</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                        <i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+                            </ul>
                         </li>
+                        {% else %}
+                        <!-- Guest navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link fs-5 fw-semibold text-dark" href="{{ url_for('login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-primary ms-2" href="{{ url_for('register') }}">Sign Up</a>
+                        </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
@@ -50,6 +72,19 @@
     </header>
 
     <main class="container my-4">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show"
+            role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </main>
 

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-calendar-alt me-2"></i> Activities</h2>
+    <a href="{{ url_for('create_activity') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> New Activity
+    </a>
+</div>
+
+<!-- Activities Grid -->
+<div class="row g-4">
+    {% if activities %}
+    {% for activity in activities %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card nav-card-minimal h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-secondary rounded-pill">{{ activity['type'] or 'Event' }}</span>
+                    {% if activity['event_date'] %}
+                    <small class="text-muted"><i class="fas fa-clock me-1"></i>{{ activity['event_date'] }}</small>
+                    {% endif %}
+                </div>
+                <h5 class="card-title fw-bold">{{ activity['title'] }}</h5>
+                <p class="card-text text-muted small">{{ activity['description'][:100] }}{% if
+                    activity['description']|length > 100 %}...{% endif %}</p>
+                {% if activity['location'] %}
+                <p class="text-muted small mb-2"><i class="fas fa-map-marker-alt me-1"></i> {{ activity['location'] }}
+                </p>
+                {% endif %}
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted small">
+                        <i class="fas fa-users me-1"></i> {{ activity['rsvp_count'] or 0 }} attending
+                    </span>
+                    <a href="{{ url_for('view_activity', activity_id=activity['id']) }}"
+                        class="btn btn-sm btn-outline-primary">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+        <p class="text-muted">No activities yet. Be the first to create one!</p>
+        <a href="{{ url_for('create_activity') }}" class="btn btn-primary">Create Activity</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
