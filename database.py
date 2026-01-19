@@ -156,6 +156,31 @@ class Database:
             )
         ''')
 
+        # Reports Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                reporter_id INTEGER NOT NULL,
+                target_type TEXT NOT NULL CHECK(target_type IN ('story', 'group', 'activity', 'comment')),
+                target_id INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (reporter_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Story Images Table (Multi-image support)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS story_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                story_id INTEGER NOT NULL,
+                image_path TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (story_id) REFERENCES stories (id)
+            )
+        ''')
+
         # Add location and event_date to activities if not exists
         try:
             cursor.execute("SELECT location FROM activities LIMIT 1")
@@ -178,6 +203,12 @@ class Database:
             cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
             cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
             cursor.execute("ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
+        # Add admin field to users if not exists
+        try:
+            cursor.execute("SELECT is_admin FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
         
         conn.commit()
         conn.close()

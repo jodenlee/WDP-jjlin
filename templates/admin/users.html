@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="admin-users mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>All Users</h1>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">ID</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Joined</th>
+                            <th>Admin?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td class="ps-4">{{ user['id'] }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white me-2"
+                                        style="width: 32px; height: 32px;">
+                                        {{ user['username'][0]|upper }}
+                                    </div>
+                                    <span class="fw-bold">{{ user['username'] }}</span>
+                                </div>
+                            </td>
+                            <td><span
+                                    class="badge {{ 'bg-warning text-dark' if user['role'] == 'senior' else 'bg-info text-white' }}">{{
+                                    user['role']|upper }}</span></td>
+                            <td>{{ user['email'] }}</td>
+                            <td>{{ user['created_at'] }}</td>
+                            <td>
+                                {% if user['is_admin'] %}
+                                <span class="badge bg-success">ADMIN</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

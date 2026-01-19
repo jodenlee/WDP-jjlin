@@ -28,23 +28,22 @@
                 {% endif %}
 
                 <form action="{{ url_for('register') }}" method="POST" id="registerForm" novalidate>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="full_name" class="form-label fw-bold">Full Name <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="full_name" name="full_name"
-                                placeholder="Your full name" value="{{ form.full_name or '' }}" required>
-                            <div class="invalid-feedback">Please enter your full name.</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="username" class="form-label fw-bold">Username <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="username" name="username"
-                                placeholder="Choose a username" value="{{ form.username or '' }}" required
-                                pattern="^[a-zA-Z0-9_]{3,20}$">
-                            <div class="form-text">3-20 characters, letters, numbers, and underscores only.</div>
-                            <div class="invalid-feedback">Invalid username format.</div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label fw-bold">Full Name <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="full_name" name="full_name"
+                            placeholder="Your full name" value="{{ form.full_name or '' }}" required>
+                        <div class="invalid-feedback">Please enter your full name.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-bold">Username <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username"
+                            placeholder="Choose a username" value="{{ form.username or '' }}" required
+                            pattern="^[a-zA-Z0-9_]{3,20}$">
+                        <div class="form-text">3-20 characters, letters, numbers, and underscores only.</div>
+                        <div class="invalid-feedback">Invalid username format.</div>
                     </div>
 
                     <div class="mb-3">
@@ -55,22 +54,21 @@
                         <div class="invalid-feedback">Please enter a valid email address.</div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="password" class="form-label fw-bold">Password <span
-                                    class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="password" name="password"
-                                placeholder="Create a password" required minlength="6">
-                            <div class="form-text">At least 6 characters.</div>
-                            <div class="invalid-feedback">Password must be at least 6 characters.</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="confirm_password" class="form-label fw-bold">Confirm Password <span
-                                    class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
-                                placeholder="Confirm password" required>
-                            <div class="invalid-feedback">Passwords do not match.</div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-bold">Password <span
+                                class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password"
+                            placeholder="Create a password" required minlength="6">
+                        <div class="form-text">At least 6 characters.</div>
+                        <div class="invalid-feedback">Password must be at least 6 characters.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label fw-bold">Confirm Password <span
+                                class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                            placeholder="Confirm password" required>
+                        <div class="invalid-feedback">Passwords do not match.</div>
                     </div>
 
                     <div class="mb-4">

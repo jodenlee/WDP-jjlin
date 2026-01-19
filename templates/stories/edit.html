@@ -3,25 +3,120 @@
 {% block content %}
 <div class="form-container">
     <h1>Edit Story</h1>
-    <form method="POST" class="story-form">
-        <label for="title">Title</label>
-        <input type="text" id="title" name="title" value="{{ story['title'] }}" required>
+    <form method="POST" class="story-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="title" class="form-label fw-bold">Title</label>
+            <input type="text" id="title" name="title" class="form-control" value="{{ story['title'] }}" required>
+        </div>
 
-        <label for="content">Story Content</label>
-        <textarea id="content" name="content" rows="6" required>{{ story['content'] }}</textarea>
+        <div class="mb-3">
+            <label for="location" class="form-label fw-bold">Location (Singapore)</label>
+            <input type="text" id="location" name="location" list="singapore-locations" class="form-control"
+                value="{{ story['location'] }}" placeholder="e.g. Toa Payoh Public Library">
+            {% include 'partials/locations.html' %}
+        </div>
 
-        <label for="location">Location (Singapore)</label>
-        <input type="text" id="location" name="location" list="singapore-locations" value="{{ story['location'] }}"
-            required>
-        {% include 'partials/locations.html' %}
+        <div class="mb-3">
+            <label class="form-label fw-bold">Manage Images</label>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if story['image_url'] %}
+                <div class="position-relative border rounded p-1" style="width: 100px; height: 100px;">
+                    <img src="{{ story['image_url'] }}" class="w-100 h-100 object-fit-cover" alt="Main Login">
+                    <div
+                        class="form-check position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center opacity-0 hover-opacity-100 transition">
+                        <input class="form-check-input" type="checkbox" name="delete_main_image" value="1"
+                            title="Delete this image">
+                    </div>
+                    <span
+                        class="position-absolute bottom-0 start-50 translate-middle-x badge bg-primary small">Main</span>
+                </div>
+                {% endif %}
 
-        <label for="image_url">Image URL</label>
-        <input type="url" id="image_url" name="image_url" value="{{ story['image_url'] }}" placeholder="https://..."
-            required>
+                {% for img in story_images %}
+                <div class="position-relative border rounded p-1" style="width: 100px; height: 100px;">
+                    <img src="{{ url_for('static', filename=img['image_path']) }}" class="w-100 h-100 object-fit-cover"
+                        alt="Image">
+                    <div
+                        class="form-check position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center opacity-0 hover-opacity-100 transition">
+                        <input class="form-check-input" type="checkbox" name="delete_image_ids" value="{{ img['id'] }}"
+                            title="Delete this image">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="form-text mb-3">Hover and check to remove existing images.</div>
 
-        <div class="form-actions" style="margin-top: 1rem; display: flex; gap: 1rem;">
+            <label class="form-label fw-bold">Add More Images</label>
+            <div id="image-inputs-container">
+                <div class="input-group mb-2">
+                    <input type="file" name="images" class="form-control" accept="image/*">
+                    <button type="button" class="btn btn-outline-danger remove-image-btn"
+                        style="display:none;">&times;</button>
+                </div>
+            </div>
+            <button type="button" id="add-image-btn"
+                class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2">
+                <i class="fas fa-plus"></i> Add Another Image
+            </button>
+            <div class="form-text mt-2">New images will be added to the existing carousel. Supported: jpg, png, webp.
+            </div>
+        </div>
+
+        <!-- script for dynamic inputs -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Image deletion hover effect logic styling handled by CSS classes generally, 
+                // but for simplicity inline styles used above. 
+                // Need to ensure the hover works.
+                const imgContainers = document.querySelectorAll('.position-relative');
+                imgContainers.forEach(div => {
+                    const check = div.querySelector('.form-check');
+                    if (check) {
+                        div.addEventListener('mouseenter', () => check.classList.remove('opacity-0'));
+                        div.addEventListener('mouseleave', () => {
+                            if (!check.querySelector('input').checked) check.classList.add('opacity-0');
+                        });
+                        check.querySelector('input').addEventListener('change', (e) => {
+                            if (e.target.checked) {
+                                check.classList.remove('opacity-0');
+                                div.classList.add('border-danger');
+                            } else {
+                                div.classList.remove('border-danger');
+                            }
+                        });
+                    }
+                });
+
+                const container = document.getElementById('image-inputs-container');
+                const addBtn = document.getElementById('add-image-btn');
+
+                addBtn.addEventListener('click', function () {
+                    const div = document.createElement('div');
+                    div.className = 'input-group mb-2';
+                    div.innerHTML = `
+                        <input type="file" name="images" class="form-control" accept="image/*">
+                        <button type="button" class="btn btn-outline-danger remove-image-btn">&times;</button>
+                    `;
+                    container.appendChild(div);
+                });
+
+                container.addEventListener('click', function (e) {
+                    if (e.target.classList.contains('remove-image-btn')) {
+                        e.target.parentElement.remove();
+                    }
+                });
+            });
+        </script>
+
+        <div class="mb-3">
+            <label for="content" class="form-label fw-bold">Story Content</label>
+            <textarea id="content" name="content" rows="6" class="form-control"
+                required>{{ story['content'] }}</textarea>
+        </div>
+
+        <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Update Story</button>
-            <a href="{{ url_for('view_story', story_id=story['id']) }}" class="btn btn-secondary">Cancel</a>
+            <a href="{{ url_for('view_story', story_id=story['id']) }}" class="btn btn-outline-secondary">Cancel</a>
         </div>
     </form>
 </div>

@@ -28,13 +28,17 @@
                     <ul class="navbar-nav ms-auto align-items-center">
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('home') }}">Home</a></li>
+
+                        {% if g.user %}
+                        <!-- Logged in user navigation -->
+
+
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('stories') }}">Stories</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
+                                href="{{ url_for('community') }}">Groups</a></li>
+                        <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('activities') }}">Activities</a></li>
-
-                        {% if session.get('user_id') %}
-                        <!-- Logged in user navigation -->
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('messages') }}">Messages</a></li>
                         <li class="nav-item dropdown">
@@ -44,7 +48,9 @@
                                     style="width: 35px; height: 35px; background-color: var(--accent-color);">
                                     <i class="fas fa-user" style="color: var(--primary-color);"></i>
                                 </div>
-                                <span class="fw-semibold">{{ session.get('username', 'User') }}</span>
+                                <div class="d-flex flex-column lh-1 text-start">
+                                    <span class="fw-semibold">{{ g.user['username'] }}</span>
+                                </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('profile') }}">
