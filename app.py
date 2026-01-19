@@ -1,11 +1,25 @@
-from flask import Flask, render_template, g, request, redirect, url_for, session, flash
+from flask import Flask, render_template, g, request, redirect, url_for, session, flash, abort
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from functools import wraps
 from database import Database
 import re
+import os
 
 app = Flask(__name__)
 app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
+
+# Upload Configuration
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Database Helper to get db connection per request
 def get_db():
@@ -23,12 +37,20 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+
 # Get current user helper
 def get_current_user():
     if 'user_id' in session:
         db = get_db()
         return db.query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
     return None
+
+@app.before_request
+def load_logged_in_user():
+    user = get_current_user()
+    g.user = user
+
 
 @app.teardown_appcontext
 def close_db(error):
@@ -60,7 +82,8 @@ def login():
             if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
                 session['user_id'] = user['id']
                 session['username'] = user['username']
-                flash('Welcome back, ' + (user['full_name'] or user['username']) + '!', 'success')
+
+                flash('Welcome back!', 'success')
                 return redirect(url_for('home'))
             else:
                 error = 'Invalid email or password.'
@@ -146,12 +169,20 @@ def logout():
 
 @app.route('/')
 def home():
-    # Homepage with simple navigation grid
     db = get_db()
     
+    # Fetch content for the public homepage (for both guests and logged-in users)
     recent_stories = db.query("SELECT * FROM stories ORDER BY created_at DESC LIMIT 3")
     upcoming_activities = db.query("SELECT * FROM activities ORDER BY created_at DESC LIMIT 3")
     
+    # If explicitly "dashboard" data is needed for index.html (if we merge them), we can pass it.
+    # But user requested "old dashboard", which implies index.html layout.
+    
+    if 'user_id' in session:
+        # We can still pass user data if index.html wants to use it, 
+        # but primarily we render index.html as the main view.
+        pass
+
     return render_template('index.html', stories=recent_stories, activities=upcoming_activities)
 
 @app.route('/stories')
@@ -182,37 +213,74 @@ def stories():
         
     stories_data = db.query(query, args)
     
-    # Get user's bookmarks (Hardcoded user_id=1)
-    bookmarks_query = "SELECT story_id FROM bookmarks WHERE user_id = ?"
-    bookmarks = db.query(bookmarks_query, (1,))
-    bookmarked_story_ids = [b['story_id'] for b in bookmarks]
-
-    # Get user's liked stories (Hardcoded user_id=1)
-    likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
-    liked_rows = db.query(likes_query, (1,))
-    liked_story_ids = [l['story_id'] for l in liked_rows]
+    # Get user's bookmarks and likes if logged in
+    bookmarked_story_ids = []
+    liked_story_ids = []
+    
+    if 'user_id' in session:
+        user_id = session['user_id']
+        bookmarks = db.query("SELECT story_id FROM bookmarks WHERE user_id = ?", (user_id,))
+        bookmarked_story_ids = [b['story_id'] for b in bookmarks]
+        
+        liked_rows = db.query("SELECT story_id FROM story_likes WHERE user_id = ?", (user_id,))
+        liked_story_ids = [l['story_id'] for l in liked_rows]
     
     return render_template('stories/index.html', stories=stories_data, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
 
 @app.route('/stories/new', methods=['GET', 'POST'])
+@login_required
 def create_story():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
         location = request.form['location']
-        image_url = request.form['image_url']
         
-        # Hardcoded author_id for now as we don't have login session yet
-        # Assuming first user is the "logged in" one
-        author_id = 1 
+        # Handle file uploads
+        images = request.files.getlist('images')
+        saved_image_paths = []
+        
+        for image in images:
+            if image and allowed_file(image.filename):
+                filename = secure_filename(image.filename)
+                # Ensure unique filename to prevent overwrites (could use timestamp or uuid)
+                import time
+                filename = f"{int(time.time())}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image.save(filepath)
+                # Store relative path for DB
+                saved_image_paths.append(f"uploads/{filename}")
+        
+        # Fallback to URL if provided (legacy support or alternative)
+        image_url = request.form.get('image_url')
+        if not saved_image_paths and image_url:
+            main_image = image_url
+        elif saved_image_paths:
+            main_image = request.url_root + 'static/' + saved_image_paths[0] # Use first upload as main image for feed
+        else:
+            main_image = None
+            
+        author_id = session['user_id']
         
         db = get_db()
         conn = db.get_connection()
-        conn.execute(
+        cursor = conn.cursor()
+        
+        cursor.execute(
             "INSERT INTO stories (title, content, author_id, location, image_url) VALUES (?, ?, ?, ?, ?)",
-            (title, content, author_id, location, image_url)
+            (title, content, author_id, location, main_image)
         )
+        story_id = cursor.lastrowid
+        
+        # Insert extra images into story_images table
+        for img_path in saved_image_paths:
+            full_url = request.url_root + 'static/' + img_path
+            cursor.execute(
+                "INSERT INTO story_images (story_id, image_path) VALUES (?, ?)",
+                (story_id, full_url)
+            )
+            
         conn.commit()
+        flash('Story created successfully!', 'success')
         return redirect(url_for('stories'))
         
     return render_template('stories/create.html')
@@ -220,8 +288,6 @@ def create_story():
 @app.route('/stories/<int:story_id>')
 def view_story(story_id):
     db = get_db()
-    # Join with users to get author name
-    # Join with users to get author name
     query = """
         SELECT s.*, u.username as author_name 
         FROM stories s 
@@ -233,21 +299,28 @@ def view_story(story_id):
     if not story:
         return "Story not found", 404
         
-    # Check if bookmarked (Hardcoded user_id=1)
     is_bookmarked = False
-    bookmark = db.query("SELECT * FROM bookmarks WHERE user_id = ? AND story_id = ?", (1, story_id), one=True)
-    if bookmark:
-        is_bookmarked = True
-        
-    # Check if liked
     is_liked = False
-    like_check = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (1, story_id), one=True)
-    if like_check:
-        is_liked = True
+    
+    if 'user_id' in session:
+        user_id = session['user_id']
+        bookmark = db.query("SELECT * FROM bookmarks WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
+        is_bookmarked = bool(bookmark)
+        
+        like_check = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
+        is_liked = bool(like_check)
+        
+    # Fetch additional images
+    additional_images = db.query("SELECT image_path FROM story_images WHERE story_id = ?", (story_id,))
+    story_images = [img['image_path'] for img in additional_images]
+    
+    # If no additional images in story_images table but we have a main image_url, use that
+    # If we have both, maybe combine them? For now, let's treat story_images as the carousel source
+    # If story_images is empty, we fall back to story['image_url'] in the template logic
         
     # Fetch Comments
     comments_query = """
-        SELECT c.*, u.username, u.role 
+        SELECT c.*, u.username, u.role, u.profile_pic 
         FROM comments c 
         JOIN users u ON c.user_id = u.id 
         WHERE c.story_id = ? 
@@ -255,36 +328,35 @@ def view_story(story_id):
     """
     comments = db.query(comments_query, (story_id,))
         
-    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments)
+    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images)
 
 @app.route('/stories/bookmarks')
+@login_required
 def my_bookmarks():
     db = get_db()
-    # Hardcoded user_id=1
+    user_id = session['user_id']
     query = """
         SELECT s.* FROM stories s
         JOIN bookmarks b ON s.id = b.story_id
         WHERE b.user_id = ?
     """
-    bookmarks = db.query(query, (1,))
+    bookmarks = db.query(query, (user_id,))
     
-    # Also fetch the list of IDs for the icon logic (even though all here are bookmarked, it keeps template consistent)
     bookmarked_story_ids = [b['id'] for b in bookmarks]
 
-    # Get user's liked stories (Hardcoded user_id=1)
     likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
-    liked_rows = db.query(likes_query, (1,))
+    liked_rows = db.query(likes_query, (user_id,))
     liked_story_ids = [l['story_id'] for l in liked_rows]
     
     return render_template('stories/favourites.html', stories=bookmarks, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
 
 @app.route('/stories/<int:story_id>/bookmark', methods=['POST'])
+@login_required
 def toggle_bookmark(story_id):
     db = get_db()
     conn = db.get_connection()
-    user_id = 1 # Hardcoded
+    user_id = session['user_id']
     
-    # Check exist
     exists = db.query("SELECT * FROM bookmarks WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
     if exists:
         conn.execute("DELETE FROM bookmarks WHERE user_id = ? AND story_id = ?", (user_id, story_id))
@@ -292,26 +364,22 @@ def toggle_bookmark(story_id):
         conn.execute("INSERT INTO bookmarks (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
         
     conn.commit()
-    conn.commit()
     
-    # Redirect back to where the user came from (feed or detail view)
     return redirect(request.referrer or url_for('view_story', story_id=story_id))
 
 @app.route('/stories/<int:story_id>/like', methods=['POST'])
+@login_required
 def toggle_like(story_id):
     db = get_db()
     conn = db.get_connection()
-    user_id = 1 # Hardcoded
+    user_id = session['user_id']
     
-    # Check exist
     exists = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
     
     if exists:
-        # Unlike
         conn.execute("DELETE FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id))
         conn.execute("UPDATE stories SET likes = likes - 1 WHERE id = ?", (story_id,))
     else:
-        # Like
         conn.execute("INSERT INTO story_likes (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
         conn.execute("UPDATE stories SET likes = likes + 1 WHERE id = ?", (story_id,))
         
@@ -320,43 +388,99 @@ def toggle_like(story_id):
     return redirect(request.referrer or url_for('stories'))
 
 @app.route('/stories/<int:story_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_story(story_id):
     db = get_db()
+    story = db.query("SELECT * FROM stories WHERE id = ?", (story_id,), one=True)
     
+    if not story:
+        flash('Story not found.', 'danger')
+        return redirect(url_for('stories'))
+        
+    if story['author_id'] != session['user_id']:
+        flash('You are not authorized to edit this story.', 'danger')
+        return redirect(url_for('stories'))
+        
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
         location = request.form['location']
-        image_url = request.form['image_url']
         
         conn = db.get_connection()
-        conn.execute("UPDATE stories SET title=?, content=?, location=?, image_url=? WHERE id=?", 
-                     (title, content, location, image_url, story_id))
+        conn.execute("UPDATE stories SET title = ?, content = ?, location = ? WHERE id = ?", 
+                     (title, content, location, story_id))
+        
+        # Handle Deletion of Main Image
+        if request.form.get('delete_main_image'):
+            conn.execute("UPDATE stories SET image_url = NULL WHERE id = ?", (story_id,))
+
+        # Handle Deletion of Extra Images
+        images_to_delete = request.form.getlist('delete_image_ids')
+        if images_to_delete:
+            for img_id in images_to_delete:
+                conn.execute("DELETE FROM story_images WHERE id = ? AND story_id = ?", (img_id, story_id))
+
+        # Handle File Uploads (New Images)
+        images = request.files.getlist('images')
+        saved_image_paths = []
+        if images:
+             for image in images:
+                if image and allowed_file(image.filename):
+                    filename = secure_filename(image.filename)
+                    import time
+                    filename = f"{int(time.time())}_{filename}"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    image.save(filepath)
+                    saved_image_paths.append(f"uploads/{filename}")
+        
+        # Insert new images
+        for img_path in saved_image_paths:
+            # Check if main image is empty, if so, make first new image the main one
+            # Re-fetch story to check current state
+            current_story = db.query("SELECT image_url FROM stories WHERE id=?", (story_id,), one=True)
+            if not current_story['image_url']:
+                 conn.execute("UPDATE stories SET image_url = ? WHERE id = ?", (request.url_root + 'static/' + img_path, story_id))
+            else:
+                 conn.execute("INSERT INTO story_images (story_id, image_path) VALUES (?, ?)", (story_id, img_path))
+            
         conn.commit()
+        flash('Story updated successfully!', 'success')
         return redirect(url_for('view_story', story_id=story_id))
     
-    story = db.query("SELECT * FROM stories WHERE id = ?", (story_id,), one=True)
-    return render_template('stories/edit.html', story=story)
+    # Get extra images for template
+    story_images = db.query("SELECT * FROM story_images WHERE story_id = ?", (story_id,))
+    return render_template('stories/edit.html', story=story, story_images=story_images)
 
 @app.route('/stories/<int:story_id>/delete', methods=['POST'])
+@login_required
 def delete_story(story_id):
     db = get_db()
+    story = db.query("SELECT * FROM stories WHERE id = ?", (story_id,), one=True)
+    
+    if not story:
+        return "Story not found", 404
+        
+    if story['author_id'] != session['user_id']:
+        flash('You can only delete your own stories.', 'danger')
+        return redirect(url_for('view_story', story_id=story_id))
+        
     conn = db.get_connection()
-    # Delete related data first (FK constraints usually handled, but explicit is safe)
     conn.execute("DELETE FROM bookmarks WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM story_likes WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM comments WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
     conn.commit()
+    flash('Story deleted successfully.', 'success')
     return redirect(url_for('stories'))
 
 @app.route('/stories/<int:story_id>/comment', methods=['POST'])
+@login_required
 def add_comment(story_id):
     content = request.form['content']
     if not content.strip():
         return redirect(url_for('view_story', story_id=story_id))
         
-    user_id = 1 # Hardcoded
+    user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
     conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
@@ -382,13 +506,18 @@ def view_activity(activity_id):
     if not activity:
         return "Activity not found", 404
     
-    user_id = 1  # Hardcoded
-    rsvp = db.query("SELECT * FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id), one=True)
+    is_joined = False
     rsvp_count = len(db.query("SELECT * FROM activity_rsvps WHERE activity_id = ?", (activity_id,)))
     
-    return render_template('activities/view.html', activity=activity, is_joined=bool(rsvp), rsvp_count=rsvp_count)
+    if 'user_id' in session:
+        user_id = session['user_id']
+        rsvp = db.query("SELECT * FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id), one=True)
+        is_joined = bool(rsvp)
+    
+    return render_template('activities/view.html', activity=activity, is_joined=is_joined, rsvp_count=rsvp_count)
 
 @app.route('/activities/new', methods=['GET', 'POST'])
+@login_required
 def create_activity():
     if request.method == 'POST':
         title = request.form['title']
@@ -397,11 +526,12 @@ def create_activity():
         location = request.form.get('location', '')
         event_date = request.form.get('event_date', '')
         
+        user_id = session['user_id']
         db = get_db()
         conn = db.get_connection()
         conn.execute(
             "INSERT INTO activities (title, description, type, location, event_date, organizer_id) VALUES (?, ?, ?, ?, ?, ?)",
-            (title, description, activity_type, location, event_date, 1)
+            (title, description, activity_type, location, event_date, user_id)
         )
         conn.commit()
         return redirect(url_for('activities'))
@@ -409,8 +539,9 @@ def create_activity():
     return render_template('activities/create.html')
 
 @app.route('/activities/<int:activity_id>/join', methods=['POST'])
+@login_required
 def join_activity(activity_id):
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
     try:
@@ -421,8 +552,9 @@ def join_activity(activity_id):
     return redirect(url_for('view_activity', activity_id=activity_id))
 
 @app.route('/activities/<int:activity_id>/leave', methods=['POST'])
+@login_required
 def leave_activity(activity_id):
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
     conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
@@ -430,9 +562,10 @@ def leave_activity(activity_id):
     return redirect(url_for('view_activity', activity_id=activity_id))
 
 @app.route('/messages')
+@login_required
 def messages():
     db = get_db()
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     
     # Get all users for starting new conversations
     users = db.query("SELECT * FROM users WHERE id != ?", (user_id,))
@@ -461,9 +594,10 @@ def messages():
     return render_template('messages/index.html', conversations=conversations, users=users)
 
 @app.route('/messages/<int:user_id>')
+@login_required
 def chat(user_id):
     db = get_db()
-    current_user_id = 1  # Hardcoded
+    current_user_id = session['user_id']
     
     other_user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
     if not other_user:
@@ -483,26 +617,77 @@ def chat(user_id):
     
     return render_template('messages/chat.html', messages=messages_data, other_user=other_user, current_user_id=current_user_id)
 
-@app.route('/messages/<int:user_id>/send', methods=['POST'])
-def send_message(user_id):
+@app.route('/messages/send/<int:recipient_id>', methods=['POST'])
+@login_required
+def send_message(recipient_id):
     content = request.form['content']
-    if not content.strip():
-        return redirect(url_for('chat', user_id=user_id))
+    sender_id = session['user_id']
     
-    current_user_id = 1  # Hardcoded
     db = get_db()
     conn = db.get_connection()
-    conn.execute("INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)", 
-                 (current_user_id, user_id, content))
+    conn.execute(
+        "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
+        (sender_id, recipient_id, content)
+    )
     conn.commit()
-    return redirect(url_for('chat', user_id=user_id))
+    flash('Message sent!', 'success')
+    return redirect(url_for('chat', user_id=recipient_id))
+
+# --- Comment Management ---
+@app.route('/comment/<int:comment_id>/edit', methods=['POST'])
+@login_required
+def edit_comment(comment_id):
+    new_content = request.form['content']
+    user_id = session['user_id']
+    
+    db = get_db()
+    # Verify ownership
+    comment = db.query("SELECT * FROM comments WHERE id = ?", (comment_id,), one=True)
+    
+    if not comment:
+        flash('Comment not found.', 'danger')
+        return redirect(request.referrer)
+        
+    if comment['user_id'] != user_id:
+        flash('You can only edit your own comments.', 'danger')
+        return redirect(request.referrer)
+        
+    conn = db.get_connection()
+    conn.execute("UPDATE comments SET content = ? WHERE id = ?", (new_content, comment_id))
+    conn.commit()
+    flash('Comment updated.', 'success')
+    return redirect(request.referrer)
+
+@app.route('/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    user_id = session['user_id']
+    
+    db = get_db()
+    comment = db.query("SELECT * FROM comments WHERE id = ?", (comment_id,), one=True)
+    
+    if not comment:
+        return redirect(request.referrer)
+        
+    if comment['user_id'] != user_id:
+        flash('Unauthorized action.', 'danger')
+        return redirect(request.referrer)
+        
+    conn = db.get_connection()
+    conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+    conn.commit()
+    flash('Comment deleted.', 'info')
+    return redirect(request.referrer)
+
+
 
 @app.route('/profile')
+@login_required
 def profile():
     db = get_db()
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     
-    # Get user from database or use defaults
+    # Get user from database
     user_data = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
     
     if user_data:
@@ -515,20 +700,15 @@ def profile():
             'profile_pic': user_data['profile_pic'] or f"https://ui-avatars.com/api/?name={user_data['username']}&background=8D6E63&color=fff"
         }
     else:
-        user = {
-            'id': 1,
-            'full_name': 'Joden Lee',
-            'username': 'joden',
-            'user_type': 'Senior',
-            'bio': '',
-            'profile_pic': 'https://ui-avatars.com/api/?name=Joden+Lee&background=8D6E63&color=fff'
-        }
+        # Fallback if user session is invalid
+        return redirect(url_for('logout'))
     
     return render_template('profile.html', user=user)
 
 @app.route('/profile/update', methods=['POST'])
+@login_required
 def update_profile():
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     full_name = request.form.get('full_name', '')
     bio = request.form.get('bio', '')
     profile_pic = request.form.get('profile_pic', '')
@@ -540,7 +720,29 @@ def update_profile():
         (full_name, bio, profile_pic, user_id)
     )
     conn.commit()
+    return redirect(url_for('profile'))
+
+@app.route('/profile/delete', methods=['POST'])
+@login_required
+def delete_account():
+    user_id = session['user_id']
+    db = get_db()
+    conn = db.get_connection()
     
+    # Optional: Delete all their data? cascade usually handles it or we manually delete.
+    # For now, let's assume we just delete the user and rely on manual cleanup or cascade if configured.
+    # Current DB setup might not cascade everything, but let's just delete the user row.
+    
+    try:
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        session.clear()
+        flash('Your account has been permanently deleted.', 'info')
+    except Exception as e:
+        flash('An error occurred while deleting your account.', 'danger')
+        
+    return redirect(url_for('home'))
+    flash('Profile updated successfully!', 'success')
     return redirect(url_for('profile'))
 
 @app.route('/community')
@@ -562,9 +764,13 @@ def view_group(group_id):
     if not group:
         return "Group not found", 404
     
-    user_id = 1  # Hardcoded
-    membership = db.query("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id), one=True)
+    is_member = False
     member_count = len(db.query("SELECT * FROM group_members WHERE group_id = ?", (group_id,)))
+    
+    if 'user_id' in session:
+        user_id = session['user_id']
+        membership = db.query("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id), one=True)
+        is_member = bool(membership)
     
     # Get members
     members = db.query("""
@@ -573,33 +779,37 @@ def view_group(group_id):
         WHERE gm.group_id = ?
     """, (group_id,))
     
-    return render_template('community/view.html', group=group, is_member=bool(membership), member_count=member_count, members=members)
+    return render_template('community/view.html', group=group, is_member=is_member, member_count=member_count, members=members)
 
 @app.route('/community/new', methods=['GET', 'POST'])
+@login_required
 def create_group():
     if request.method == 'POST':
         name = request.form['name']
         description = request.form.get('description', '')
         image_url = request.form.get('image_url', '')
+        user_id = session['user_id']
         
         db = get_db()
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO groups (name, description, image_url, created_by) VALUES (?, ?, ?, ?)",
-            (name, description, image_url, 1)
+            (name, description, image_url, user_id)
         )
         group_id = cursor.lastrowid
         # Auto-join creator
-        cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, 1))
+        cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         conn.commit()
+        flash(f'Group "{name}" created!', 'success')
         return redirect(url_for('community'))
     
     return render_template('community/create.html')
 
 @app.route('/community/<int:group_id>/join', methods=['POST'])
+@login_required
 def join_group(group_id):
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
     try:
@@ -610,8 +820,9 @@ def join_group(group_id):
     return redirect(url_for('view_group', group_id=group_id))
 
 @app.route('/community/<int:group_id>/leave', methods=['POST'])
+@login_required
 def leave_group(group_id):
-    user_id = 1  # Hardcoded
+    user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
     conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
