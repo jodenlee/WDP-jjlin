@@ -1,74 +1,104 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<section class="hero">
+<section class="hero text-center py-5">
     <div class="hero-content">
-        <h1>Welcome to TogetherSG</h1>
-        <p>Your space to connect, share, and grow together.</p>
+        <h1 class="display-4 fw-bold">Welcome to TogetherSG</h1>
+        <p class="lead text-muted">Your space to connect, share, and grow together.</p>
     </div>
 </section>
 
 <!-- Main Feature Navigation Grid -->
-<div class="feature-grid">
-    <a href="{{ url_for('stories') }}" class="feature-card story-card">
-        <div class="icon">📖</div>
-        <h2>Stories</h2>
-        <p>Read & Share</p>
-    </a>
+<div class="row justify-content-center mb-5">
+    <div class="col-6 col-md-4 col-lg-2 mb-4">
+        <a href="{{ url_for('stories') }}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm border-0 text-center hover-card">
+                <div class="card-body py-4">
+                    <div class="display-4 mb-3">📖</div>
+                    <h5 class="card-title fw-bold">Stories</h5>
+                    <p class="card-text text-muted small">Read & Share</p>
+                </div>
+            </div>
+        </a>
+    </div>
 
-    <a href="{{ url_for('community') }}" class="feature-card community-card">
-        <div class="icon">🤝</div>
-        <h2>Community</h2>
-        <p>Find your group</p>
-    </a>
+    <div class="col-6 col-md-4 col-lg-2 mb-4">
+        <a href="{{ url_for('community') }}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm border-0 text-center hover-card">
+                <div class="card-body py-4">
+                    <div class="display-4 mb-3">🤝</div>
+                    <h5 class="card-title fw-bold">Community</h5>
+                    <p class="card-text text-muted small">Find your group</p>
+                </div>
+            </div>
+        </a>
+    </div>
 
-    <a href="{{ url_for('activities') }}" class="feature-card activity-card">
-        <div class="icon">📅</div>
-        <h2>Activities</h2>
-        <p>Join events & workshops</p>
-    </a>
+    <div class="col-6 col-md-4 col-lg-2 mb-4">
+        <a href="{{ url_for('activities') }}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm border-0 text-center hover-card">
+                <div class="card-body py-4">
+                    <div class="display-4 mb-3">📅</div>
+                    <h5 class="card-title fw-bold">Activities</h5>
+                    <p class="card-text text-muted small">Events & Workshops</p>
+                </div>
+            </div>
+        </a>
+    </div>
 
-    <a href="{{ url_for('messages') }}" class="feature-card message-card">
-        <div class="icon">💬</div>
-        <h2>Messages</h2>
-        <p>Chat with friends</p>
-    </a>
+    <div class="col-6 col-md-4 col-lg-2 mb-4">
+        <a href="{{ url_for('messages') }}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm border-0 text-center hover-card">
+                <div class="card-body py-4">
+                    <div class="display-4 mb-3">💬</div>
+                    <h5 class="card-title fw-bold">Messages</h5>
+                    <p class="card-text text-muted small">Chat with friends</p>
+                </div>
+            </div>
+        </a>
+    </div>
 
-    <a href="{{ url_for('profile') }}" class="feature-card profile-card">
-        <div class="icon">👤</div>
-        <h2>Profile</h2>
-        <p>Manage your account</p>
-    </a>
+    <div class="col-6 col-md-4 col-lg-2 mb-4">
+        <a href="{{ url_for('profile') }}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm border-0 text-center hover-card">
+                <div class="card-body py-4">
+                    <div class="display-4 mb-3">👤</div>
+                    <h5 class="card-title fw-bold">Profile</h5>
+                    <p class="card-text text-muted small">Manage account</p>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Preview Sections below for engagement -->
-<div class="dashboard-preview">
-    <section class="preview-section">
-        <h3>Newest Stories</h3>
-        <div class="mini-list">
+<div class="row g-4 pt-4 border-top">
+    <section class="col-md-6">
+        <h3 class="h4 mb-3 fw-bold">Newest Stories</h3>
+        <div class="list-group list-group-flush">
             {% if stories %}
             {% for story in stories %}
-            <div class="mini-item">
+            <div class="list-group-item bg-transparent px-0">
                 <strong>{{ story['title'] }}</strong>
             </div>
             {% endfor %}
             {% else %}
-            <p>Start sharing today!</p>
+            <p class="text-muted">Start sharing today!</p>
             {% endif %}
         </div>
     </section>
 
-    <section class="preview-section">
-        <h3>Upcoming</h3>
-        <div class="mini-list">
+    <section class="col-md-6">
+        <h3 class="h4 mb-3 fw-bold">Upcoming</h3>
+        <div class="list-group list-group-flush">
             {% if activities %}
             {% for activity in activities %}
-            <div class="mini-item">
+            <div class="list-group-item bg-transparent px-0">
                 <strong>{{ activity['title'] }}</strong>
             </div>
             {% endfor %}
             {% else %}
-            <p>Check out what's on.</p>
+            <p class="text-muted">Check out what's on.</p>
             {% endif %}
         </div>
     </section>

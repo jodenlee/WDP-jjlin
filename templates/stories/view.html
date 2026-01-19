@@ -1,110 +1,123 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="story-detail-container">
+{% extends 'base.html' %}
 
-    <!-- Image Carousel (Mocked with single image for now, arrows for visual) -->
-    <div class="detail-carousel">
-        <button class="nav-arrow left-arrow">‹</button>
-        <img src="{{ story['image_url'] | safe }}" alt="{{ story['title'] }}" class="detail-image">
-        <button class="nav-arrow right-arrow">›</button>
-        <div class="carousel-dots">
-            <span class="dot active"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-        </div>
-    </div>
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
-    <!-- Header Section -->
-    <div class="detail-header">
-        <div class="header-content">
-            <h1>{{ story['title'] }}</h1>
-            <div class="header-actions">
-                <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST" style="display:inline;">
-                    <button type="submit" class="like-btn-large">
-                        {% if is_liked %}♥{% else %}♡{% endif %}
-                        <span class="count">{{ story['likes'] }}</span>
-                    </button>
-                </form>
+            <!-- Image Carousel -->
+            <div class="detail-carousel position-relative bg-light" style="height: 400px;">
+                <button
+                    class="nav-arrow left-arrow position-absolute start-0 top-50 translate-middle-y btn btn-link text-white fs-1 z-2 text-decoration-none">‹</button>
+                <img src="{{ story['image_url'] | safe }}" alt="{{ story['title'] }}"
+                    class="detail-image w-100 h-100 object-fit-cover">
+                <button
+                    class="nav-arrow right-arrow position-absolute end-0 top-50 translate-middle-y btn btn-link text-white fs-1 z-2 text-decoration-none">›</button>
+                <div class="carousel-dots position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex gap-2">
+                    <span class="dot active bg-primary rounded-circle" style="width: 10px; height: 10px;"></span>
+                    <span class="dot bg-secondary rounded-circle" style="width: 10px; height: 10px;"></span>
+                    <span class="dot bg-secondary rounded-circle" style="width: 10px; height: 10px;"></span>
+                </div>
             </div>
-        </div>
-        <p class="story-desc">{{ story['content'] }}</p>
 
-        <div class="tags-row">
-            <span class="pill-tag">PLACES</span>
+            <div class="card-body p-4 p-md-5">
+                <!-- Header Section -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
+                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
+                        <button type="submit"
+                            class="btn btn-outline-danger btn-lg d-flex align-items-center gap-2 rounded-pill px-4">
+                            {% if is_liked %}♥{% else %}♡{% endif %}
+                            <span class="fw-bold">{{ story['likes'] }}</span>
+                        </button>
+                    </form>
+                </div>
 
-            {% if story['author_id'] == 1 %} <!-- Simulate Owner -->
-            <div class="owner-actions">
-                <a href="{{ url_for('edit_story', story_id=story['id']) }}" class="text-link">Edit</a>
-                <span class="separator">|</span>
-                <form action="{{ url_for('delete_story', story_id=story['id']) }}" method="POST" style="display:inline;"
-                    onsubmit="return confirm('Are you sure?');">
-                    <button type="submit" class="text-danger-link">Delete</button>
-                </form>
-            </div>
-            {% else %}
-            <a href="#" class="report-link">Report</a>
-            {% endif %}
-        </div>
-    </div>
+                <p class="lead text-dark mb-4">{{ story['content'] }}</p>
 
-    <hr class="divider">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <span class="badge bg-secondary rounded-pill px-3 py-2 fs-6">PLACES</span>
 
-    <!-- Author Section -->
-    <div class="author-section">
-        <div class="author-info">
-            <span class="posted-by">Posted by: {{ story['author_name'] }}</span>
-            <div class="author-avatar placeholder-avatar"></div>
-        </div>
-        <button class="chat-btn">CHAT</button>
-    </div>
-
-    <hr class="divider">
-
-    <!-- Comments Section -->
-    <div class="comments-section">
-        <div class="comments-header">
-            <h2>Comments <span class="comment-count">{{ comments|length }}</span></h2>
-        </div>
-
-        <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="comment-form">
-            <textarea name="content" placeholder="Leave a comment!" required></textarea>
-            <div class="form-footer">
-                <span class="validation-msg">* No Blank Comment</span>
-                <button type="submit" class="post-btn">Post</button>
-            </div>
-        </form>
-
-        <div class="comments-list">
-            {% for comment in comments %}
-            <div class="comment-item">
-                <div class="comment-user-row">
-                    <strong>{{ comment['username'] or 'User' }}</strong>
-                    {% if comment['role'] == 'youth' %}
-                    <span class="pill-tag cyan">YOUTH</span>
+                    {% if story['author_id'] == 1 %} <!-- Simulate Owner -->
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('edit_story', story_id=story['id']) }}"
+                            class="btn btn-sm btn-outline-primary">Edit</a>
+                        <form action="{{ url_for('delete_story', story_id=story['id']) }}" method="POST"
+                            onsubmit="return confirm('Are you sure?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </div>
                     {% else %}
-                    <span class="pill-tag orange">SENIOR</span>
+                    <a href="#" class="text-danger fw-bold text-decoration-none">Report</a>
                     {% endif %}
                 </div>
-                <p class="comment-text">{{ comment['content'] }}</p>
+
+                <hr class="my-4 text-muted">
+
+                <!-- Author Section -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center"
+                            style="width: 50px; height: 50px;">
+                            <span class="fs-4">👤</span>
+                        </div>
+                        <span class="fw-bold fs-5">Posted by: {{ story['author_name'] }}</span>
+                    </div>
+                    <button class="btn btn-outline-primary fw-bold px-4">CHAT</button>
+                </div>
+
+                <hr class="my-4 text-muted">
+
+                <!-- Comments Section -->
+                <div class="mb-5">
+                    <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
+                            comments|length }}</span></h2>
+
+                    <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="mb-4">
+                        <textarea name="content" class="form-control mb-2" rows="3" placeholder="Leave a comment!"
+                            required></textarea>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-danger">* No Blank Comment</small>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Post</button>
+                        </div>
+                    </form>
+
+                    <div class="comments-list">
+                        {% for comment in comments %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-dark">{{ comment['username'] or 'User' }}</strong>
+                                {% if comment['role'] == 'youth' %}
+                                <span class="badge bg-info text-white">YOUTH</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">SENIOR</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted mb-2">{{ comment['content'] }}</p>
+                            <hr class="text-light">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Location Section -->
+                <div>
+                    <h2 class="h4 fw-bold mb-3">Location</h2>
+                    <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
+                        style="height: 150px; background-image: url('https://img.freepik.com/free-vector/city-map-background-concept_23-2148599187.jpg'); background-size: cover;">
+                        <span class="fs-1">📍</span>
+                    </div>
+                    <div>
+                        <h3 class="h5 fw-bold mb-1">{{ story['location'] or 'Unknown' }}</h3>
+                        <p class="text-muted mb-0">Nostalgic Hawker Center in Singapore</p>
+                    </div>
+                </div>
+
             </div>
-            <hr class="comment-divider">
-            {% endfor %}
         </div>
     </div>
-
-    <!-- Location Section -->
-    <div class="location-section">
-        <h2>Location</h2>
-        <div class="map-placeholder">
-            <!-- Static map image or iframe placeholder -->
-            <div class="map-pin">📍</div>
-        </div>
-        <div class="location-info">
-            <h3>{{ story['location'] or 'Unknown' }}</h3>
-            <p>Nostalgic Hawker Center in Singapore</p> <!-- Hardcoded desc for now or add field later -->
-        </div>
-    </div>
-
 </div>
 {% endblock %}

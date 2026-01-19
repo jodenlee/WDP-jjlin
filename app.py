@@ -23,11 +23,25 @@ def dashboard():
     db = get_db()
     
     # Fetch some sample data to display
-    # This is where we would fetch latest stories and activities
     recent_stories = db.query("SELECT * FROM stories ORDER BY created_at DESC LIMIT 3")
     upcoming_activities = db.query("SELECT * FROM activities ORDER BY created_at DESC LIMIT 3")
     
-    return render_template('index.html', stories=recent_stories, activities=upcoming_activities)
+    # Mock User Data (Simulation of logged-in user)
+    user = {
+        'full_name': 'Joden Lee',
+        'user_type': 'Senior',
+        'profile_pic': 'https://ui-avatars.com/api/?name=Joden+Lee&background=D35400&color=fff'
+    }
+    
+    # Mock Stats (or we could count simple queries)
+    stats = {
+        'stories': len(db.query("SELECT id FROM stories")),
+        'activities': len(db.query("SELECT id FROM activities")),
+        'messages': 3, # Mock
+        'groups': 5    # Mock
+    }
+    
+    return render_template('dashboard.html', recent_stories=recent_stories, upcoming_activities=upcoming_activities, user=user, stats=stats)
 
 @app.route('/stories')
 def stories():

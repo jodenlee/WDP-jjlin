@@ -1,63 +1,65 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<section class="stories-header">
-    <div class="header-top-row"
-        style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 2rem;">
-        <a href="{{ url_for('stories') }}" class="btn btn-secondary" style="position: absolute; left: 0;">← Back to
-            Stories</a>
-        <h1 style="margin: 0;">My Favourites</h1>
+<section class="mb-5 position-relative text-center">
+    <div class="d-flex align-items-center justify-content-center position-relative">
+        <a href="{{ url_for('stories') }}" class="btn btn-outline-secondary position-absolute start-0">← Back</a>
+        <h1 class="fw-bold mb-0">My Favourites</h1>
     </div>
 </section>
 
-<div class="stories-grid">
+<!-- Stories Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% if stories %}
     {% for story in stories %}
     {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
 
-    <div class="feed-story-card">
-        <!-- Card Link Overlay -->
-        <a href="{{ url_for('view_story', story_id=story['id']) }}" class="card-link-overlay"></a>
-
-        <div class="story-header" style="background-image: url('{{ bg_image | safe }}');">
-            <div class="header-overlay">
-                <!-- Bookmark Form (High Z-Index) -->
-                <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST" class="fav-form">
-                    <button type="submit" class="btn-icon star-icon" title="Remove Favourite">
-                        <!-- Always filled star on favourites page -->
-                        ★
-                    </button>
-                </form>
-                <span class="category-tag">YOUTH</span>
+    <div class="col">
+        <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
+            <!-- Story Header / Image -->
+            <div class="position-relative"
+                style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
+                <div
+                    class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-between align-items-start header-overlay-gradient">
+                    <!-- Bookmark Form -->
+                    <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        class="position-relative z-2">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning"
+                            title="Remove Favourite">★</button>
+                    </form>
+                    <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
+                </div>
             </div>
-        </div>
 
-        <div class="story-content">
-            <h3>{{ story['title'] }}</h3>
-            <p>{{ story['content'][:80] }}...</p>
-            <div class="story-footer">
-                <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST" class="like-form"
-                    style="display:inline;">
-                    <button type="submit" class="btn-icon like-btn" title="Like">
-                        {% if story['id'] in liked_story_ids %}
-                        ♥
-                        {% else %}
-                        ♡
-                        {% endif %}
-                    </button>
-                </form>
-                <span class="like-count">{{ story['likes'] }}</span>
+            <!-- Content -->
+            <div class="card-body position-relative">
+                <h5 class="card-title fw-bold text-dark">{{ story['title'] }}</h5>
+                <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
+                <a href="{{ url_for('view_story', story_id=story['id']) }}" class="stretched-link"></a>
+            </div>
 
-                <span class="footer-location" style="margin-left: auto;">📍 {{ story['location'] or 'SG' }}</span>
+            <!-- Footer -->
+            <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2 position-relative z-2">
+                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
+                            {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
+                        </button>
+                    </form>
+                    <span class="fw-bold text-dark">{{ story['likes'] }}</span>
+                </div>
+
+                <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
+                    📍 {{ story['location'] or 'SG' }}
+                </div>
             </div>
         </div>
     </div>
-
     {% endfor %}
     {% else %}
-    <div style="text-align: center; grid-column: 1/-1;">
-        <p>No favourites yet. Go explore and star some stories!</p>
-        <a href="{{ url_for('stories') }}" class="btn btn-primary" style="margin-top: 1rem;">Browse Stories</a>
+    <div class="col-12 text-center py-5">
+        <p class="lead text-muted mb-4">No favourites yet. Go explore and star some stories!</p>
+        <a href="{{ url_for('stories') }}" class="btn btn-primary btn-lg">Browse Stories</a>
     </div>
     {% endif %}
 </div>
