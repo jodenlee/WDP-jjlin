@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('community') }}" class="btn btn-link text-muted px-0">
+        <i class="fas fa-arrow-left me-1"></i> Back to Groups
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="card nav-card-minimal">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h4 class="fw-bold"><i class="fas fa-users me-2" style="color: var(--primary-color);"></i> Create Group
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('create_group') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label fw-bold">Group Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required
+                            placeholder="Name your group">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4"
+                            placeholder="What is this group about?"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="image_url" class="form-label fw-bold">Group Image URL (optional)</label>
+                        <input type="url" class="form-control" id="image_url" name="image_url"
+                            placeholder="https://example.com/image.jpg">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Create Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

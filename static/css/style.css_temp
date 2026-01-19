@@ -1,0 +1,42 @@
+
+/* Minimalist Theme Utilities */
+.bg-beige {
+    background-color: var(--bg-color) !important;
+}
+
+.card {
+    border: none;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.welcome-banner-minimal {
+    background-color: transparent;
+    color: var(--text-color);
+    padding: 3rem 0;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.nav-card-minimal {
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.03);
+    transition: all 0.3s ease;
+}
+
+.nav-card-minimal:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(141, 110, 99, 0.1) !important;
+    border-color: var(--accent-color);
+}
+
+.nav-card-icon {
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+}
+
+.nav-card-minimal:hover .nav-card-icon {
+    color: var(--primary-color);
+}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('messages') }}" class="btn btn-link text-muted px-0">
+        <i class="fas fa-arrow-left me-1"></i> Back to Messages
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card nav-card-minimal">
+            <!-- Chat Header -->
+            <div class="card-header bg-transparent border-bottom p-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
+                        style="width: 45px; height: 45px; background-color: var(--accent-color);">
+                        <i class="fas fa-user" style="color: var(--primary-color);"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">{{ other_user['username'] }}</h5>
+                        <small class="text-muted">{{ other_user['role'] }}</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Container -->
+            <div class="card-body p-3" style="height: 400px; overflow-y: auto;" id="messages-container">
+                {% if messages %}
+                {% for msg in messages %}
+                <div class="d-flex mb-3 {% if msg['sender_id'] == current_user_id %}justify-content-end{% endif %}">
+                    <div class="{% if msg['sender_id'] == current_user_id %}bg-primary text-white{% else %}bg-light{% endif %} rounded-3 p-3"
+                        style="max-width: 70%;">
+                        <p class="mb-1">{{ msg['content'] }}</p>
+                        <small
+                            class="{% if msg['sender_id'] == current_user_id %}text-white-50{% else %}text-muted{% endif %}">{{
+                            msg['created_at'] }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No messages yet. Say hello!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Message Input -->
+            <div class="card-footer bg-transparent border-top p-3">
+                <form action="{{ url_for('send_message', user_id=other_user['id']) }}" method="POST">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="content" placeholder="Type a message..." required
+                            autofocus>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Scroll to bottom of messages
+    document.addEventListener('DOMContentLoaded', function () {
+        var container = document.getElementById('messages-container');
+        container.scrollTop = container.scrollHeight;
+    });
+</script>
+{% endblock %}

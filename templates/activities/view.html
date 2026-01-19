@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('activities') }}" class="btn btn-link text-muted px-0">
+        <i class="fas fa-arrow-left me-1"></i> Back to Activities
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card nav-card-minimal">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <span class="badge bg-secondary rounded-pill">{{ activity['type'] or 'Event' }}</span>
+                    {% if is_joined %}
+                    <span class="badge bg-success"><i class="fas fa-check me-1"></i> Joined</span>
+                    {% endif %}
+                </div>
+
+                <h2 class="fw-bold mb-3">{{ activity['title'] }}</h2>
+
+                <!-- Details -->
+                <div class="mb-4">
+                    {% if activity['event_date'] %}
+                    <p class="mb-2"><i class="fas fa-calendar me-2 text-muted"></i> {{ activity['event_date'] }}</p>
+                    {% endif %}
+                    {% if activity['location'] %}
+                    <p class="mb-2"><i class="fas fa-map-marker-alt me-2 text-muted"></i> {{ activity['location'] }}</p>
+                    {% endif %}
+                    <p class="mb-2"><i class="fas fa-users me-2 text-muted"></i> {{ rsvp_count }} attending</p>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <h5 class="fw-bold">About this Activity</h5>
+                    <p class="text-muted">{{ activity['description'] }}</p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    {% if is_joined %}
+                    <form action="{{ url_for('leave_activity', activity_id=activity['id']) }}" method="POST">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fas fa-times me-1"></i> Leave
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('join_activity', activity_id=activity['id']) }}" method="POST">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check me-1"></i> Join Activity
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
