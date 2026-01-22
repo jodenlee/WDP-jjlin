@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Report Content</h4>
+            </div>
+            <div class="card-body">
+                <p>You are reporting a <strong>{{ target_type }}</strong>.</p>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason for reporting</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="4" required
+                            placeholder="Describe why this content is inappropriate..."></textarea>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger">Submit Report</button>
+                        <a href="{{ request.referrer or url_for('home') }}" class="btn btn-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

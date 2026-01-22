@@ -53,6 +53,10 @@
                         </button>
                     </form>
                     {% endif %}
+                    <a href="{{ url_for('report_item', target_type='activity', target_id=activity['id']) }}"
+                        class="btn btn-outline-secondary">
+                        <i class="fas fa-flag me-1"></i> Report
+                    </a>
                 </div>
             </div>
         </div>

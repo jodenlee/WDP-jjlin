@@ -73,8 +73,8 @@
                             <button type="submit" class="btn btn-danger px-4 fw-bold">Delete</button>
                         </form>
                         {% endif %}
-
-
+                        <a href="{{ url_for('report_item', target_type='story', target_id=story['id']) }}"
+                            class="btn btn-outline-secondary px-4 fw-bold">Report</a>
                     </div>
                 </div>
 

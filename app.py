@@ -59,8 +59,22 @@ def close_db(error):
         # so we might not need to strictly close the object itself if it doesn't hold a persistent connection
         # But for good practice if we changed implementation:
         pass
-
-# Authentication Routes
+# Admin Check Decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        
+        db = get_db()
+        user = db.query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
+        
+        if not user or not user['is_admin']:
+            flash('Admin access required.', 'danger')
+            return redirect(url_for('home'))
+            
+        return f(*args, **kwargs)
+    return decorated_function
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
@@ -84,6 +98,11 @@ def login():
                 session['username'] = user['username']
 
                 flash('Welcome back!', 'success')
+                
+                # Redirect to admin dashboard if user is admin
+                if user['is_admin']:
+                    return redirect(url_for('admin_dashboard'))
+                    
                 return redirect(url_for('home'))
             else:
                 error = 'Invalid email or password.'
@@ -828,6 +847,205 @@ def leave_group(group_id):
     conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
     conn.commit()
     return redirect(url_for('view_group', group_id=group_id))
+
+
+# --- Admin Dashboard & Reporting ---
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    db = get_db()
+    role_filter = request.args.get('role')
+    
+    query = "SELECT * FROM users"
+    args = []
+    
+    if role_filter:
+        query += " WHERE role = ?"
+        args.append(role_filter)
+        
+    all_users = db.query(query, args)
+    
+    # Separate admins and regular users for display
+    # Note: If filtering by role (youth/senior), admins might be hidden if they have 'senior' role but we want to show them if they match?
+    # Actually, let's just show what's requested. 
+    # But fundamentally, the user wants "Admins" vs "Normal".
+    
+    admins = []
+    normal_users = []
+    
+    for u in all_users:
+        if u['is_admin']:
+            admins.append(u)
+        else:
+            normal_users.append(u)
+            
+    return render_template('admin/users.html', admins=admins, users=normal_users, current_filter=role_filter)
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    db = get_db()
+    
+    # Stats
+    total_users = db.query("SELECT COUNT(*) as count FROM users")[0]['count']
+    youth_count = db.query("SELECT COUNT(*) as count FROM users WHERE role = 'youth'")[0]['count']
+    senior_count = db.query("SELECT COUNT(*) as count FROM users WHERE role = 'senior'")[0]['count']
+    
+    stats = {
+        'total_users': total_users,
+        'youth_count': youth_count,
+        'senior_count': senior_count
+    }
+    
+    # Reports
+    reports = db.query("""
+        SELECT r.*, u.username as reporter_name 
+        FROM reports r 
+        LEFT JOIN users u ON r.reporter_id = u.id 
+        ORDER BY r.created_at DESC
+    """)
+    
+    return render_template('admin/dashboard.html', stats=stats, reports=reports)
+
+@app.route('/report/<target_type>/<int:target_id>', methods=['GET', 'POST'])
+@login_required
+def report_item(target_type, target_id):
+    if target_type not in ['story', 'group', 'activity', 'comment']:
+        abort(400)
+        
+    if request.method == 'POST':
+        reason = request.form['reason']
+        reporter_id = session['user_id']
+        
+        db = get_db()
+        conn = db.get_connection()
+        conn.execute(
+            "INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)",
+            (reporter_id, target_type, target_id, reason)
+        )
+        conn.commit()
+        
+        flash('Thank you for your report. Administrators will review it shortly.', 'success')
+        return redirect(url_for('home')) # Redirect home or back
+        
+    return render_template('report.html', target_type=target_type, target_id=target_id)
+
+@app.route('/admin/view_reported/<target_type>/<int:target_id>')
+@admin_required
+def view_reported_item(target_type, target_id):
+    if target_type == 'story':
+        return redirect(url_for('view_story', story_id=target_id))
+    elif target_type == 'activity':
+        return redirect(url_for('view_activity', activity_id=target_id))
+    elif target_type == 'group':
+        return redirect(url_for('view_group', group_id=target_id))
+    elif target_type == 'comment':
+        # Comments don't have a standalone view, so we redirect to the story they belong to
+        # We need to find the story_id for the comment
+        db = get_db()
+        comment = db.query("SELECT story_id FROM comments WHERE id = ?", (target_id,), one=True)
+        if comment:
+            return redirect(url_for('view_story', story_id=comment['story_id']))
+        else:
+            flash('Comment not found (maybe already deleted).', 'warning')
+            return redirect(url_for('admin_dashboard'))
+    else:
+        flash('Unknown content type.', 'warning')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/report/<int:report_id>/delete_content', methods=['POST'])
+@admin_required
+def delete_reported_item(report_id):
+    db = get_db()
+    report = db.query("SELECT * FROM reports WHERE id = ?", (report_id,), one=True)
+    
+    if not report:
+        flash('Report not found.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+        
+    target_type = report['target_type']
+    target_id = report['target_id']
+    conn = db.get_connection()
+    
+    try:
+        if target_type == 'story':
+             # Use existing logic or manual delete
+             conn.execute("DELETE FROM bookmarks WHERE story_id = ?", (target_id,))
+             conn.execute("DELETE FROM story_likes WHERE story_id = ?", (target_id,))
+             conn.execute("DELETE FROM comments WHERE story_id = ?", (target_id,))
+             conn.execute("DELETE FROM story_images WHERE story_id = ?", (target_id,))
+             conn.execute("DELETE FROM stories WHERE id = ?", (target_id,))
+        elif target_type == 'activity':
+             conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ?", (target_id,))
+             conn.execute("DELETE FROM activities WHERE id = ?", (target_id,))
+        elif target_type == 'group':
+             conn.execute("DELETE FROM group_members WHERE group_id = ?", (target_id,))
+             conn.execute("DELETE FROM groups WHERE id = ?", (target_id,))
+        elif target_type == 'comment':
+             conn.execute("DELETE FROM comments WHERE id = ?", (target_id,))
+        
+        # Update report status
+        conn.execute("UPDATE reports SET status = 'resolved_deleted' WHERE id = ?", (report_id,))
+        conn.commit()
+        flash('Content deleted successfully.', 'success')
+    except Exception as e:
+        print(e)
+        flash('Error deleting content.', 'danger')
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/report/<int:report_id>/dismiss', methods=['POST'])
+@admin_required
+def dismiss_report(report_id):
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE reports SET status = 'dismissed' WHERE id = ?", (report_id,))
+    conn.commit()
+    flash('Report dismissed.', 'info')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/setup_admin_emergency')
+def setup_admin_emergency():
+    db = get_db()
+    conn = db.get_connection()
+    email = 'admin@gmail.com'
+    password = 'admin123'
+    
+    # Check if exists
+    user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+    msg = ""
+    
+    try:
+        if user:
+            # Force update password and admin status
+            hashed = generate_password_hash(password)
+            conn.execute("UPDATE users SET password_hash = ?, is_admin = 1, role = 'senior' WHERE email = ?", (hashed, email))
+            msg = f"UPDATED existing user {email}. Password reset to {password}. Admin access ENABLED."
+        else:
+            # Create new
+            hashed = generate_password_hash(password)
+            conn.execute('''
+                INSERT INTO users (username, full_name, email, password_hash, role, is_admin, bio)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('admin_user', 'System Administrator', email, hashed, 'senior', 1, 'Emergency Created Admin'))
+            msg = f"CREATED new user {email}. Password is {password}. Admin access ENABLED."
+            
+        conn.commit()
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+        
+    return f"SUCCESS: {msg} <br><a href='/login'>Go to Login</a>"
+
+@app.route('/debug_users')
+def debug_users():
+    db = get_db()
+    users = db.query("SELECT id, username, email, role, is_admin FROM users")
+    html = "<h1>User List Debug</h1><table border='1'><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Is Admin</th></tr>"
+    for u in users:
+        html += f"<tr><td>{u['id']}</td><td>{u['username']}</td><td>{u['email']}</td><td>{u['role']}</td><td>{u['is_admin']}</td></tr>"
+    html += "</table>"
+    return html
 
 if __name__ == '__main__':
     app.run(debug=True)
