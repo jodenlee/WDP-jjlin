@@ -2,6 +2,15 @@
 
 {% block content %}
 <section class="mb-5">
+    <!-- Header Actions -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold text-dark mb-3 mb-md-0">Stories Feed</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-outline-secondary btn-lg">My Favourites</a>
+            <a href="{{ url_for('create_story') }}" class="btn btn-primary btn-lg">Post Story</a>
+        </div>
+    </div>
+
     <!-- Search & Filters -->
     <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
         <form action="{{ url_for('stories') }}" method="get" class="row g-2 align-items-center">
@@ -29,15 +38,6 @@
             </div>
         </form>
     </div>
-
-    <!-- Header Actions -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold text-dark mb-3 mb-md-0">Stories Feed</h1>
-        <div class="d-flex gap-2">
-            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-outline-secondary">My Favourites</a>
-            <a href="{{ url_for('create_story') }}" class="btn btn-primary">Post Story</a>
-        </div>
-    </div>
 </section>
 
 <!-- Stories Grid -->
@@ -64,13 +64,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
                     <!-- Bookmark Form - Top Right of Text Section -->
-                    <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST"
-                        class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning"
-                            title="Favourite">
-                            {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
-                        </button>
-                    </form>
+
                 </div>
                 <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
                 <!-- Stretched Link for Card Click -->
@@ -78,22 +72,34 @@
             </div>
 
             <!-- Footer -->
+            <!-- Footer -->
             <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2 position-relative z-2">
                     <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-danger lh-1">
                             {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
                         </button>
                     </form>
-                    <span class="fw-bold text-dark">{{ story['likes'] }}</span>
+                    <span class="fw-bold text-dark fs-5">{{ story['likes'] }}</span>
                 </div>
 
-                <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
-                    📍 {{ story['location'] or 'SG' }}
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Bookmark Larger -->
+                    <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        class="position-relative z-2">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning"
+                            title="Favourite">
+                            {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
+                        </button>
+                    </form>
+                    <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
+                        📍 {{ story['location'] or 'SG' }}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
     {% endfor %}
     {% else %}
     <div class="col-12 text-center py-5">
@@ -101,4 +107,51 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Pagination -->
+{% if total_pages is defined and total_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-5">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <!-- Prev Button -->
+        <a class="btn btn-outline-primary {% if page <= 1 %}disabled{% endif %}"
+            href="{{ url_for('stories', page=page-1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort')) }}">
+            &larr; Previous
+        </a>
+
+        <!-- Page List & Input -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group">
+                {% for p in range(1, total_pages + 1) %}
+                {% if p <= 3 or p> total_pages - 3 or (p >= page - 1 and p <= page + 1) %} <a
+                        href="{{ url_for('stories', page=p) }}"
+                        class="btn btn-{{ 'primary' if p == page else 'outline-secondary' }}">
+                        {{ p }}
+                        </a>
+                        {% elif p == 4 and total_pages > 6 %}
+                        <span class="btn btn-outline-secondary disabled">...</span>
+                        {% endif %}
+                        {% endfor %}
+            </div>
+
+            <form action="{{ url_for('stories') }}" method="get" class="d-flex align-items-center gap-2 ms-3">
+                <input type="number" name="page" class="form-control" style="width: 70px;" min="1"
+                    max="{{ total_pages }}" placeholder="#">
+                <button type="submit" class="btn btn-secondary">Go</button>
+                <!-- Preserve params -->
+                {% for key, val in request.args.items() %}
+                {% if key != 'page' %}
+                <input type="hidden" name="{{ key }}" value="{{ val }}">
+                {% endif %}
+                {% endfor %}
+            </form>
+        </div>
+
+        <!-- Next Button -->
+        <a class="btn btn-outline-primary {% if page >= total_pages %}disabled{% endif %}"
+            href="{{ url_for('stories', page=page+1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort')) }}">
+            Next &rarr;
+        </a>
+    </div>
+</nav>
+{% endif %}
 {% endblock %}

@@ -211,6 +211,21 @@ def stories():
     else:
         query += " ORDER BY created_at DESC"
         
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 6
+    offset = (page - 1) * per_page
+    
+    # Get Total Count first
+    count_query = query.replace("SELECT *", "SELECT COUNT(*)")
+    total_stories = db.query(count_query, args, one=True)['COUNT(*)']
+    import math
+    total_pages = math.ceil(total_stories / per_page)
+    
+    # Apply Limit/Offset to main query
+    query += " LIMIT ? OFFSET ?"
+    args.extend([per_page, offset])
+    
     stories_data = db.query(query, args)
     
     # Get user's bookmarks and likes if logged in
@@ -225,7 +240,7 @@ def stories():
         liked_rows = db.query("SELECT story_id FROM story_likes WHERE user_id = ?", (user_id,))
         liked_story_ids = [l['story_id'] for l in liked_rows]
     
-    return render_template('stories/index.html', stories=stories_data, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
+    return render_template('stories/index.html', stories=stories_data, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
 
 @app.route('/stories/new', methods=['GET', 'POST'])
 @login_required
@@ -249,6 +264,21 @@ def create_story():
                 image.save(filepath)
                 # Store relative path for DB
                 saved_image_paths.append(f"uploads/{filename}")
+        
+        # Validation
+        if len(title) < 3 or len(title) > 100:
+            flash('Title must be between 3 and 100 characters.', 'danger')
+            return render_template('stories/create.html', form=request.form)
+            
+        if len(content) < 10:
+            flash('Content must be at least 10 characters long.', 'danger')
+            return render_template('stories/create.html', form=request.form)
+
+        if not saved_image_paths and not request.form.get('image_url'):
+            # Check if user tried to upload invalid files? Or just force at least one image?
+            # User requirement: "at least 2 fields". Optional image is fine, but let's encourage it.
+            # Actually, let's keep it optional but valid if provided.
+            pass
         
         # Fallback to URL if provided (legacy support or alternative)
         image_url = request.form.get('image_url')
@@ -406,6 +436,16 @@ def edit_story(story_id):
         content = request.form['content']
         location = request.form['location']
         
+        # Validation
+        if len(title) < 3 or len(title) > 100:
+            flash('Title must be between 3 and 100 characters.', 'danger')
+            return redirect(url_for('edit_story', story_id=story_id)) # Redirect preserves nothing but is safer for edit state? Or render?
+            # Ideally render, but edit uses `story` object. I can update `story` dict with form data and render.
+            
+        if len(content) < 10:
+             flash('Content must be at least 10 characters long.', 'danger')
+             return redirect(url_for('edit_story', story_id=story_id))
+
         conn = db.get_connection()
         conn.execute("UPDATE stories SET title = ?, content = ?, location = ? WHERE id = ?", 
                      (title, content, location, story_id))

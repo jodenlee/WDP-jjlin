@@ -48,13 +48,21 @@
                 <!-- Header Section -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
-                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
-                        <button type="submit"
-                            class="btn {{ 'btn-danger' if is_liked else 'btn-outline-danger' }} btn-lg d-flex align-items-center gap-2 rounded-pill px-4">
-                            {% if is_liked %}♥{% else %}♡{% endif %}
-                            <span class="fw-bold">{{ story['likes'] }}</span>
-                        </button>
-                    </form>
+                    <div class="d-flex align-items-center gap-3">
+                        <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST">
+                            <button type="submit"
+                                class="btn p-0 border-0 bg-transparent text-warning d-flex justify-content-center align-items-center">
+                                <i class="{{ 'fas' if is_bookmarked else 'far' }} fa-star fa-2x"></i>
+                            </button>
+                        </form>
+                        <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
+                            <button type="submit"
+                                class="btn {{ 'btn-danger' if is_liked else 'btn-outline-danger' }} btn-lg d-flex justify-content-center align-items-center gap-2 rounded-pill px-4">
+                                <i class="{{ 'fas' if is_liked else 'far' }} fa-heart"></i>
+                                <span class="fw-bold">{{ story['likes'] }}</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 <p class="lead text-dark mb-4">{{ story['content'] }}</p>
@@ -99,14 +107,34 @@
                     <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
                             comments|length }}</span></h2>
 
-                    <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="mb-4">
-                        <textarea name="content" class="form-control mb-2" rows="3" placeholder="Leave a comment!"
-                            required></textarea>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-danger">* No Blank Comment</small>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Post</button>
+                    <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="mb-4"
+                        id="commentForm" novalidate>
+                        <textarea name="content" id="commentContent" class="form-control mb-2" rows="3"
+                            placeholder="Leave a comment!" required></textarea>
+                        <div class="d-flex align-items-center">
+                            <small class="text-danger d-none" id="commentError">* No Blank Comment</small>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold ms-auto">Post</button>
                         </div>
                     </form>
+                    <script>
+                        document.getElementById('commentForm').addEventListener('submit', function (e) {
+                            const content = document.getElementById('commentContent').value.trim();
+                            const error = document.getElementById('commentError');
+                            if (!content) {
+                                e.preventDefault();
+                                error.classList.remove('d-none');
+                            } else {
+                                error.classList.add('d-none');
+                            }
+                        });
+                        // Clear error on typing
+                        document.getElementById('commentContent').addEventListener('input', function () {
+                            const error = document.getElementById('commentError');
+                            if (this.value.trim()) {
+                                error.classList.add('d-none');
+                            }
+                        });
+                    </script>
 
                     <div class="comments-list">
                         {% for comment in comments %}
