@@ -791,7 +791,32 @@ def view_group(group_id):
     if 'user_id' in session:
         is_owner = (group['created_by'] == session['user_id'])
     
-    return render_template('community/view.html', group=group, is_member=is_member, is_owner=is_owner, member_count=member_count, members=members)
+    # Fetch posts
+    posts_query = """
+        SELECT p.*, u.username, u.profile_pic, u.role
+        FROM group_posts p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.group_id = ?
+        ORDER BY p.created_at DESC
+    """
+    posts = db.query(posts_query, (group_id,))
+    
+    # Organize posts with their comments
+    posts_data = []
+    for post in posts:
+        comments_query = """
+            SELECT c.*, u.username, u.profile_pic
+            FROM group_post_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = ?
+            ORDER BY c.created_at ASC
+        """
+        comments = db.query(comments_query, (post['id'],))
+        post_dict = dict(post)
+        post_dict['comments'] = comments
+        posts_data.append(post_dict)
+    
+    return render_template('community/view.html', group=group, is_member=is_member, is_owner=is_owner, member_count=member_count, members=members, posts=posts_data)
 
 # Route to create a new community group
 @app.route('/community/new', methods=['GET', 'POST'])
@@ -829,7 +854,7 @@ def create_group():
         # Automatically add the creator as a member of the group
         cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         conn.commit()
-        flash(f'Group "{name}" created!', 'success')
+        flash('Group created!', 'success')
         return redirect(url_for('community'))
     
     return render_template('community/create.html')
@@ -965,6 +990,67 @@ def update_group(group_id):
     
     flash('Group updated successfully.', 'success')
     return redirect(url_for('view_group', group_id=group_id))
+
+# Route to create a new post in a group
+@app.route('/community/<int:group_id>/post', methods=['POST'])
+@login_required
+def create_group_post(group_id):
+    """
+    Creates a new post within a specific community group.
+    
+    Args:
+        group_id (int): The ID of the group where the post will be created.
+        
+    Form Data:
+        content (str): The text content of the post.
+    """
+    user_id = session['user_id']
+    content = request.form['content']
+    
+    # Image upload removed as per user request
+    image_url = None
+
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute(
+        "INSERT INTO group_posts (group_id, user_id, content, image_url) VALUES (?, ?, ?, ?)",
+        (group_id, user_id, content, image_url)
+    )
+    conn.commit()
+    flash('Post created!', 'success')
+    return redirect(url_for('view_group', group_id=group_id))
+
+# Route to add a comment to a group post
+@app.route('/community/post/<int:post_id>/comment', methods=['POST'])
+@login_required
+def create_group_post_comment(post_id):
+    """
+    Adds a comment to an existing group post.
+    
+    Args:
+        post_id (int): The ID of the post to comment on.
+        
+    Form Data:
+        content (str): The text content of the comment.
+    """
+    user_id = session['user_id']
+    content = request.form['content']
+    
+    db = get_db()
+    conn = db.get_connection()
+    # verify post exists first
+    post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
+    if post:
+        conn.execute(
+            "INSERT INTO group_post_comments (post_id, user_id, content) VALUES (?, ?, ?)",
+            (post_id, user_id, content)
+        )
+        conn.commit()
+    
+    if post:
+        return redirect(url_for('view_group', group_id=post['group_id']))
+    else:
+        return redirect(url_for('community'))
 
 if __name__ == '__main__':
     app.run(debug=True)

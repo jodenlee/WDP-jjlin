@@ -210,6 +210,33 @@ class Database:
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
         
+        # Group Posts Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                image_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (group_id) REFERENCES groups (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Group Post Comments Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
         conn.commit()
         conn.close()
 
