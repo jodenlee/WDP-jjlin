@@ -233,7 +233,7 @@
                     <div class="rounded-3 overflow-hidden mb-3" style="height: 200px;">
                         <iframe width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen
                             referrerpolicy="no-referrer-when-downgrade"
-                            src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAB4das3DuEVzHQcjS7MNeTpPICxi4APR0&q={{ story['location'] | urlencode }},Singapore">
+                            src="https://www.google.com/maps/embed/v1/place?key={{ GOOGLE_MAPS_API_KEY }}&q={{ story['location'] | urlencode }},Singapore">
                         </iframe>
                     </div>
                     {% else %}

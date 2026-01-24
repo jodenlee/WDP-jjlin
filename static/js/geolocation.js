@@ -3,7 +3,8 @@
  * Uses Browser Geolocation API and Google Geocoding API
  */
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAB4das3DuEVzHQcjS7MNeTpPICxi4APR0';
+// API key is injected via the base template
+const GOOGLE_MAPS_API_KEY = window.GOOGLE_MAPS_API_KEY || '';
 
 // Known Singapore locations (from partials/locations.html)
 const SINGAPORE_LOCATIONS = [
@@ -54,12 +55,30 @@ function getCurrentLocation() {
  * @returns {Promise<string>} The formatted address or locality.
  */
 async function reverseGeocode(lat, lng) {
+    // Debug: Check if API key is available
+    if (!GOOGLE_MAPS_API_KEY) {
+        console.error('GOOGLE_MAPS_API_KEY is not set!');
+        throw new Error('Google Maps API key is not configured. Please check your setup.');
+    }
+
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
 
+    // Debug: Log the full response
+    console.log('Geocoding API response:', data);
+
     if (data.status !== 'OK' || !data.results.length) {
-        throw new Error('Could not determine your address from location.');
+        // Provide more specific error messages based on API response
+        const errorMessages = {
+            'REQUEST_DENIED': 'API key is invalid or Geocoding API is not enabled in Google Cloud Console.',
+            'OVER_QUERY_LIMIT': 'API quota exceeded. Please check your Google Cloud billing.',
+            'ZERO_RESULTS': 'No address found for this location.',
+            'INVALID_REQUEST': 'Invalid coordinates provided.'
+        };
+        const msg = errorMessages[data.status] || `Geocoding failed: ${data.status}`;
+        console.error('Geocoding error:', data.status, data.error_message || '');
+        throw new Error(msg);
     }
 
     // Extract locality or sublocality from address components

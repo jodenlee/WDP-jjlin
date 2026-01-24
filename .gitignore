@@ -1,0 +1,32 @@
+# TogetherSG .gitignore
+
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (optional - uncomment if you don't want to track uploads)
+# static/uploads/
+
+# Database (if using SQLite locally)
+*.db
+*.sqlite3
