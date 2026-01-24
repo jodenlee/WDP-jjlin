@@ -7,7 +7,7 @@
         <form action="{{ url_for('stories') }}" method="get" class="row g-2 align-items-center">
             <div class="col-12 col-md-6">
                 <input type="text" name="search" class="form-control form-control-lg" placeholder="Search stories..."
-                    value="{{ request.args.get('search', '') }}">
+                    data-i18n-placeholder="search_stories" value="{{ request.args.get('search', '') }}">
             </div>
 
             <div class="col-6 col-md-2">
@@ -25,17 +25,18 @@
             </div>
 
             <div class="col-12 col-md-2 d-grid">
-                <button type="submit" class="btn btn-primary btn-lg">Search</button>
+                <button type="submit" class="btn btn-primary btn-lg" data-i18n="search">Search</button>
             </div>
         </form>
     </div>
 
     <!-- Header Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold text-dark mb-3 mb-md-0">Stories Feed</h1>
+        <h1 class="fw-bold text-dark mb-3 mb-md-0" data-i18n="stories_feed">Stories Feed</h1>
         <div class="d-flex gap-2">
-            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-outline-secondary">My Favourites</a>
-            <a href="{{ url_for('create_story') }}" class="btn btn-primary">Post Story</a>
+            <a href="{{ url_for('my_bookmarks') }}" class="btn btn-outline-secondary" data-i18n="my_favourites">My
+                Favourites</a>
+            <a href="{{ url_for('create_story') }}" class="btn btn-primary" data-i18n="post_story">Post Story</a>
         </div>
     </div>
 </section>
@@ -97,7 +98,7 @@
     {% endfor %}
     {% else %}
     <div class="col-12 text-center py-5">
-        <p class="leads text-muted">No stories found. Be the first to share!</p>
+        <p class="leads text-muted" data-i18n="no_stories_found">No stories found. Be the first to share!</p>
     </div>
     {% endif %}
 </div>

@@ -209,6 +209,21 @@ class Database:
             cursor.execute("SELECT is_admin FROM users LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+
+        # Add notification preference columns if not exists
+        try:
+            cursor.execute("SELECT notify_messages FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_messages INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_activities INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_stories INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_groups INTEGER DEFAULT 1")
+
+        # Add language preference column if not exists
+        try:
+            cursor.execute("SELECT language FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
         
         conn.commit()
         conn.close()

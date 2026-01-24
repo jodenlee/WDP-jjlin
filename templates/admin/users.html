@@ -79,7 +79,8 @@
                     <tbody>
                         {% if users %}
                         {% for user in users %}
-                        <tr>
+                        <tr onclick="window.location='{{ url_for('admin_view_user', user_id=user.id) }}'"
+                            style="cursor: pointer;">
                             <td>#{{ user.id }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
@@ -104,8 +105,11 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('chat', user_id=user.id) }}"
-                                    class="btn btn-sm btn-outline-primary"><i class="fas fa-envelope"></i> Message</a>
+                                <a href="{{ url_for('admin_view_user', user_id=user.id) }}"
+                                    class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation();"><i
+                                        class="fas fa-eye"></i> View</a>
+                                <a href="{{ url_for('chat', user_id=user.id) }}" class="btn btn-sm btn-outline-primary"
+                                    onclick="event.stopPropagation();"><i class="fas fa-envelope"></i> Message</a>
                             </td>
                         </tr>
                         {% endfor %}

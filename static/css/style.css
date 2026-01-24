@@ -21,8 +21,61 @@ body {
     background-color: var(--bg-color);
     line-height: 1.6;
     font-size: 1.1rem;
-    /* Slightly larger base */
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Custom Dark Theme - Background Only */
+body.dark-theme {
+    --bg-color: #000000;
+    /* Pure Black background */
+    --text-color: #f8f9fa;
+    /* Light text for body context */
+}
+
+/* Navbar in Dark Mode */
+body.dark-theme .navbar {
+    background-color: #111111 !important;
+    /* Dark Navbar */
+    border-bottom: 1px solid #333;
+}
+
+body.dark-theme .navbar-brand {
+    color: #f8f9fa !important;
+}
+
+/* Ensure cards and containers stay light in dark theme */
+body.dark-theme .card,
+body.dark-theme .dropdown-menu,
+body.dark-theme .modal-content,
+body.dark-theme .form-control {
+    background-color: #ffffff;
+    color: #4E4E4E;
+    /* Force dark text inside content boxes */
+}
+
+/* Fix for links inside white cards in dark mode (e.g. Profile Sidebar) */
+body.dark-theme .card .nav-link {
+    color: #4E4E4E !important;
+}
+
+body.dark-theme .card .nav-link:hover {
+    color: var(--primary-color) !important;
+}
+
+/* Top Navbar links should stay light in dark mode */
+body.dark-theme .navbar .nav-link {
+    color: #f8f9fa !important;
+}
+
+body.dark-theme .navbar .nav-link:hover {
+    color: var(--primary-color) !important;
+}
+
+body.dark-theme .list-group-item {
+    background-color: #ffffff;
+    color: #4E4E4E;
+}
+
 
 h1,
 h2,

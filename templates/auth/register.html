@@ -57,8 +57,14 @@
                     <div class="mb-3">
                         <label for="password" class="form-label fw-bold">Password <span
                                 class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="password" name="password"
-                            placeholder="Create a password" required minlength="6">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password"
+                                placeholder="Create a password" required minlength="6">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="togglePassword('password', this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                         <div class="form-text">At least 6 characters.</div>
                         <div class="invalid-feedback">Password must be at least 6 characters.</div>
                     </div>
@@ -66,8 +72,14 @@
                     <div class="mb-3">
                         <label for="confirm_password" class="form-label fw-bold">Confirm Password <span
                                 class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
-                            placeholder="Confirm password" required>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                placeholder="Confirm password" required>
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="togglePassword('confirm_password', this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                         <div class="invalid-feedback">Passwords do not match.</div>
                     </div>
 

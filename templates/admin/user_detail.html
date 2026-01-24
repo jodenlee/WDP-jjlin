@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user-circle text-primary me-2"></i>User Details</h2>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Users
+        </a>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white py-3">
+            <h4 class="mb-0"><i class="fas fa-id-card me-2"></i>Profile Information</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 text-center mb-3">
+                    {% if user.profile_pic %}
+                    <img src="{{ user.profile_pic }}" alt="Profile" class="rounded-circle mb-3"
+                        style="width: 120px; height: 120px; object-fit: cover;">
+                    {% else %}
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-light"
+                        style="width: 120px; height: 120px;">
+                        <i class="fas fa-user fa-3x text-secondary"></i>
+                    </div>
+                    {% endif %}
+                    <h5 class="fw-bold">{{ user.full_name or user.username }}</h5>
+                    <span class="badge bg-{{ 'info' if user.role == 'youth' else 'warning' }}">{{ user.role|capitalize
+                        }}</span>
+                    {% if user.is_admin %}
+                    <span class="badge bg-danger">ADMIN</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-9">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th style="width: 150px;">User ID</th>
+                            <td>#{{ user.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Username</th>
+                            <td>{{ user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email</th>
+                            <td>{{ user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Password Hash</th>
+                            <td><code class="text-break">{{ user.password_hash }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Bio</th>
+                            <td>{{ user.bio or 'No bio provided.' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created At</th>
+                            <td>{{ user.created_at }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-success text-white text-center py-3">
+                <h1 class="display-4 fw-bold">{{ stats.groups_count }}</h1>
+                <p class="mb-0">Groups Joined</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white text-center py-3">
+                <h1 class="display-4 fw-bold">{{ stats.activities_count }}</h1>
+                <p class="mb-0">Activities Joined</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white text-center py-3">
+                <h1 class="display-4 fw-bold">{{ stats.stories_count }}</h1>
+                <p class="mb-0">Stories Posted</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Groups -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white py-3">
+            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Groups ({{ stats.groups_count }})</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if groups %}
+            <ul class="list-group list-group-flush">
+                {% for group in groups %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>{{ group.name }}</span>
+                    <a href="{{ url_for('view_group', group_id=group.id) }}"
+                        class="btn btn-sm btn-outline-success">View</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-center text-muted py-3 mb-0">User has not joined any groups.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Activities -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white py-3">
+            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Activities ({{ stats.activities_count }})</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if activities %}
+            <ul class="list-group list-group-flush">
+                {% for activity in activities %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>{{ activity.title }}</span>
+                    <a href="{{ url_for('view_activity', activity_id=activity.id) }}"
+                        class="btn btn-sm btn-outline-info">View</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-center text-muted py-3 mb-0">User has not joined any activities.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stories -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0"><i class="fas fa-book me-2"></i>Stories ({{ stats.stories_count }})</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if stories %}
+            <ul class="list-group list-group-flush">
+                {% for story in stories %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>{{ story.title }}</span>
+                    <a href="{{ url_for('view_story', story_id=story.id) }}"
+                        class="btn btn-sm btn-outline-primary">View</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-center text-muted py-3 mb-0">User has not posted any stories.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

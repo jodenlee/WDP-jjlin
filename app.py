@@ -6,8 +6,41 @@ from database import Database
 import re
 import os
 
+try:
+    from flask_babel import Babel, _
+except ImportError:
+    # Fallback if flask-babel not installed
+    Babel = None
+    def _(text): return text
+
 app = Flask(__name__)
 app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
+
+# Babel Configuration for Internationalization
+SUPPORTED_LANGUAGES = ['en', 'zh', 'ms', 'ta', 'ko', 'ja']
+app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+
+if Babel:
+    babel = Babel(app)
+    
+    @babel.localeselector
+    def get_locale():
+        # 1. Check session for language preference
+        if 'language' in session:
+            return session['language']
+        # 2. Check user preference from database
+        if 'user_id' in session:
+            try:
+                from database import Database
+                db = Database()
+                user = db.query("SELECT language FROM users WHERE id = ?", (session['user_id'],), one=True)
+                if user and user['language']:
+                    return user['language']
+            except:
+                pass
+        # 3. Fall back to browser preference
+        return request.accept_languages.best_match(SUPPORTED_LANGUAGES)
 
 # Upload Configuration
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -60,6 +93,17 @@ def close_db(error):
         # But for good practice if we changed implementation:
         pass
 # Admin Check Decorator
+@app.context_processor
+def inject_notifications():
+    if 'user_id' in session:
+        db = get_db()
+        try:
+            notifications = db.query("SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC", (session['user_id'],))
+            return {'notifications': notifications, 'unread_count': len(notifications)}
+        except:
+             return {'notifications': [], 'unread_count': 0}
+    return {'notifications': [], 'unread_count': 0}
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -96,6 +140,12 @@ def login():
             if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
                 session['user_id'] = user['id']
                 session['username'] = user['username']
+                # Set language preference from database
+                try:
+                    if user['language']:
+                        session['language'] = user['language']
+                except (KeyError, IndexError):
+                    pass
 
                 flash('Welcome back!', 'success')
                 
@@ -402,6 +452,18 @@ def toggle_like(story_id):
         conn.execute("INSERT INTO story_likes (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
         conn.execute("UPDATE stories SET likes = likes + 1 WHERE id = ?", (story_id,))
         
+        # Notify Author
+        story_owner = db.query("SELECT author_id FROM stories WHERE id = ?", (story_id,), one=True)
+        if story_owner:
+            owner_id = story_owner['author_id']
+            # Check preference
+            owner_prefs = db.query("SELECT notify_stories FROM users WHERE id = ?", (owner_id,), one=True)
+            if owner_id != user_id and owner_prefs and owner_prefs['notify_stories']:
+                 conn.execute(
+                    "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                    (owner_id, 'Story Like', f'{session.get("username", "Someone")} liked your story.', url_for('view_story', story_id=story_id))
+                 )
+        
     conn.commit()
     
     return redirect(request.referrer or url_for('stories'))
@@ -503,6 +565,18 @@ def add_comment(story_id):
     db = get_db()
     conn = db.get_connection()
     conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
+    
+    # Notify Author
+    story_owner = db.query("SELECT author_id FROM stories WHERE id = ?", (story_id,), one=True)
+    if story_owner:
+        owner_id = story_owner['author_id']
+        owner_prefs = db.query("SELECT notify_stories FROM users WHERE id = ?", (owner_id,), one=True)
+        if owner_id != user_id and owner_prefs and owner_prefs['notify_stories']:
+             conn.execute(
+                "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                (owner_id, 'Comment', f'{session.get("username", "Someone")} commented on your story.', url_for('view_story', story_id=story_id))
+             )
+
     conn.commit()
     return redirect(url_for('view_story', story_id=story_id))
 
@@ -565,6 +639,17 @@ def join_activity(activity_id):
     conn = db.get_connection()
     try:
         conn.execute("INSERT INTO activity_rsvps (activity_id, user_id) VALUES (?, ?)", (activity_id, user_id))
+        
+        # Notify Organizer? Or User? User requested "Reminders for activities you've joined" (implies self)
+        # But immediate notification is also good.
+        user_prefs = db.query("SELECT notify_activities FROM users WHERE id = ?", (user_id,), one=True)
+        if user_prefs and user_prefs['notify_activities']:
+             activity = db.query("SELECT title FROM activities WHERE id = ?", (activity_id,), one=True)
+             conn.execute(
+                "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                (user_id, 'Activity', f'You successfully joined "{activity["title"]}".', url_for('view_activity', activity_id=activity_id))
+             )
+        
         conn.commit()
     except:
         pass  # Already joined
@@ -648,8 +733,17 @@ def send_message(recipient_id):
         "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
         (sender_id, recipient_id, content)
     )
+    
+    # Notify Receiver
+    recipient_prefs = db.query("SELECT notify_messages FROM users WHERE id = ?", (recipient_id,), one=True)
+    if recipient_prefs and recipient_prefs['notify_messages']:
+         conn.execute(
+            "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+            (recipient_id, 'New Message', f'{session.get("username", "Someone")} sent you a message.', url_for('chat', user_id=sender_id))
+         )
+
     conn.commit()
-    flash('Message sent!', 'success')
+    # flash('Message sent!', 'success') # Optional: remove flash here too if desired, but user only mentioned profile.
     return redirect(url_for('chat', user_id=recipient_id))
 
 # --- Comment Management ---
@@ -710,13 +804,27 @@ def profile():
     user_data = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
     
     if user_data:
+        # Set session language based on user preference
+        try:
+            if user_data['language']:
+                session['language'] = user_data['language']
+        except (KeyError, IndexError):
+            pass
+        
+        # Get language safely
+        try:
+            user_language = user_data['language'] or 'en'
+        except (KeyError, IndexError):
+            user_language = 'en'
+        
         user = {
             'id': user_data['id'],
             'full_name': user_data['full_name'] or user_data['username'],
             'username': user_data['username'],
             'user_type': user_data['role'].capitalize(),
             'bio': user_data['bio'],
-            'profile_pic': user_data['profile_pic'] or f"https://ui-avatars.com/api/?name={user_data['username']}&background=8D6E63&color=fff"
+            'profile_pic': user_data['profile_pic'] or f"https://ui-avatars.com/api/?name={user_data['username']}&background=8D6E63&color=fff",
+            'language': user_language
         }
     else:
         # Fallback if user session is invalid
@@ -730,16 +838,87 @@ def update_profile():
     user_id = session['user_id']
     full_name = request.form.get('full_name', '')
     bio = request.form.get('bio', '')
-    profile_pic = request.form.get('profile_pic', '')
     
+    # Handle Profile Pic Upload
+    profile_pic = request.files.get('profile_pic')
+    profile_pic_path = None
+    
+    if profile_pic and allowed_file(profile_pic.filename):
+        filename = secure_filename(profile_pic.filename)
+        import time
+        filename = f"profile_{user_id}_{int(time.time())}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'profile_pics')
+        os.makedirs(filepath, exist_ok=True) # Ensure dir exists
+        full_path = os.path.join(filepath, filename)
+        profile_pic.save(full_path)
+        profile_pic_path = f"uploads/profile_pics/{filename}"
+    
+    # Notification Settings
+    notify_messages = 1 if 'notify_messages' in request.form else 0
+    notify_activities = 1 if 'notify_activities' in request.form else 0
+    notify_stories = 1 if 'notify_stories' in request.form else 0
+    notify_groups = 1 if 'notify_groups' in request.form else 0
+
     db = get_db()
     conn = db.get_connection()
-    conn.execute(
-        "UPDATE users SET full_name = ?, bio = ?, profile_pic = ? WHERE id = ?",
-        (full_name, bio, profile_pic, user_id)
-    )
+    
+    # Construct update query dynamically to handle profile pic only if changed
+    query = "UPDATE users SET full_name = ?, bio = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
+    params = [full_name, bio, notify_messages, notify_activities, notify_stories, notify_groups]
+    
+    if profile_pic_path:
+        query += ", profile_pic = ?"
+        params.append(request.url_root + 'static/' + profile_pic_path)
+    # else keep existing
+        
+    query += " WHERE id = ?"
+    params.append(user_id)
+    
+    conn.execute(query, params)
     conn.commit()
+    
+    # flash('Profile updated successfully!', 'success')  <-- REMOVED as requested
     return redirect(url_for('profile'))
+
+@app.route('/profile/language', methods=['POST'])
+@login_required
+def update_language():
+    """Update user's language preference and refresh the page"""
+    language = request.form.get('language', 'en')
+    
+    # Validate language
+    if language not in SUPPORTED_LANGUAGES:
+        language = 'en'
+    
+    # Update session immediately
+    session['language'] = language
+    
+    # Update database
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, session['user_id']))
+    conn.commit()
+    
+    # Redirect back to profile page (will refresh with new language)
+    return redirect(url_for('profile'))
+
+@app.route('/notifications/mark_read/<int:notif_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notif_id):
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?", (notif_id, session['user_id']))
+    conn.commit()
+    return "OK", 200
+
+@app.route('/notifications/clear_all', methods=['POST'])
+@login_required
+def clear_all_notifications():
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (session['user_id'],))
+    conn.commit()
+    return redirect(request.referrer)
 
 @app.route('/profile/delete', methods=['POST'])
 @login_required
@@ -995,6 +1174,43 @@ def delete_reported_item(report_id):
         
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/users/<int:user_id>')
+@admin_required
+def admin_view_user(user_id):
+    db = get_db()
+    
+    # Get user info
+    user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin_users'))
+    
+    # Get groups joined
+    groups = db.query("""
+        SELECT g.* FROM groups g
+        JOIN group_members gm ON g.id = gm.group_id
+        WHERE gm.user_id = ?
+    """, (user_id,))
+    
+    # Get activities joined
+    activities = db.query("""
+        SELECT a.* FROM activities a
+        JOIN activity_rsvps ar ON a.id = ar.activity_id
+        WHERE ar.user_id = ?
+    """, (user_id,))
+    
+    # Get stories posted
+    stories = db.query("SELECT * FROM stories WHERE author_id = ?", (user_id,))
+    
+    # Counts
+    stats = {
+        'groups_count': len(groups),
+        'activities_count': len(activities),
+        'stories_count': len(stories)
+    }
+    
+    return render_template('admin/user_detail.html', user=user, groups=groups, activities=activities, stories=stories, stats=stats)
+
 @app.route('/admin/report/<int:report_id>/dismiss', methods=['POST'])
 @admin_required
 def dismiss_report(report_id):
@@ -1040,12 +1256,53 @@ def setup_admin_emergency():
 @app.route('/debug_users')
 def debug_users():
     db = get_db()
-    users = db.query("SELECT id, username, email, role, is_admin FROM users")
-    html = "<h1>User List Debug</h1><table border='1'><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Is Admin</th></tr>"
+    users = db.query("SELECT * FROM users")
+    # Get columns
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(users)")
+    cols = [r[1] for r in cursor.fetchall()]
+    
+    html = f"<h3>User Table Columns: {cols}</h3>"
+    html += "<table border='1'><tr>"
+    for c in cols:
+        html += f"<th>{c}</th>"
+    html += "</tr>"
+    
     for u in users:
-        html += f"<tr><td>{u['id']}</td><td>{u['username']}</td><td>{u['email']}</td><td>{u['role']}</td><td>{u['is_admin']}</td></tr>"
+        html += "<tr>"
+        for c in cols:
+            html += f"<td>{u[c]}</td>"
+        html += "</tr>"
     html += "</table>"
+    html += "<br><a href='/fix_schema' class='btn btn-danger'>Force Fix Schema</a>"
     return html
+
+@app.route('/fix_schema')
+def fix_schema_route():
+    db = get_db()
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    
+    required = ['notify_messages', 'notify_activities', 'notify_stories', 'notify_groups', 'profile_pic', 'full_name', 'bio']
+    log = []
+    
+    cursor.execute("PRAGMA table_info(users)")
+    existing = [r[1] for r in cursor.fetchall()]
+    
+    for col in required:
+        if col not in existing:
+            try:
+                col_type = 'TEXT' if col in ['profile_pic', 'full_name', 'bio'] else 'INTEGER DEFAULT 1'
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+                log.append(f"ADDED {col}")
+            except Exception as e:
+                log.append(f"ERROR adding {col}: {str(e)}")
+        else:
+            log.append(f"EXISTS {col}")
+            
+    conn.commit()
+    return "<br>".join(log) + "<br><a href='/debug_users'>Back to Debug</a>"
 
 if __name__ == '__main__':
     app.run(debug=True)
