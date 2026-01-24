@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="mb-4">
-    <a href="{{ url_for('activities') }}" class="btn btn-link text-muted px-0">
+    <a href="{{ url_for('activities.activities_list') }}" class="btn btn-link text-muted px-0">
         <i class="fas fa-arrow-left me-1"></i> Back to Activities
     </a>
 </div>
@@ -41,13 +41,13 @@
                 <!-- Action Buttons -->
                 <div class="d-flex gap-2">
                     {% if is_joined %}
-                    <form action="{{ url_for('leave_activity', activity_id=activity['id']) }}" method="POST">
+                    <form action="{{ url_for('activities.leave_activity', activity_id=activity['id']) }}" method="POST">
                         <button type="submit" class="btn btn-outline-danger">
                             <i class="fas fa-times me-1"></i> Leave
                         </button>
                     </form>
                     {% else %}
-                    <form action="{{ url_for('join_activity', activity_id=activity['id']) }}" method="POST">
+                    <form action="{{ url_for('activities.join_activity', activity_id=activity['id']) }}" method="POST">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-check me-1"></i> Join Activity
                         </button>

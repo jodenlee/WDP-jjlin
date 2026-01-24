@@ -4,13 +4,13 @@
 <section class="mb-5">
     <div class="d-flex flex-column gap-3">
         <div class="d-flex align-items-center position-relative">
-            <a href="{{ url_for('stories') }}" class="btn btn-primary btn-lg me-3">← Back</a>
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg me-3">← Back</a>
             <h1 class="fw-bold mb-0">My Favourites</h1>
         </div>
 
         <!-- Search & Filters -->
         <div class="card border-0 shadow-sm p-3 bg-light">
-            <form action="{{ url_for('my_bookmarks') }}" method="get" class="row g-2 align-items-center">
+            <form action="{{ url_for('stories.my_bookmarks') }}" method="get" class="row g-2 align-items-center">
                 <div class="col-12 col-md-6">
                     <input type="text" name="search" class="form-control form-control-lg"
                         placeholder="Search your favourites..." value="{{ request.args.get('search', '') }}">
@@ -57,13 +57,13 @@
     <div class="col">
         <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
             <!-- Story Header / Image -->
-            <a href="{{ url_for('view_story', story_id=story['id']) }}" class="text-decoration-none">
+            <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="text-decoration-none">
                 <div class="position-relative"
                     style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
                     <div
                         class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-between align-items-start header-overlay-gradient">
                         <!-- Bookmark Form -->
-                        <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
                             class="position-relative z-2">
                             <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning"
                                 title="Remove Favourite">★</button>
@@ -77,13 +77,13 @@
             <div class="card-body position-relative">
                 <h5 class="card-title fw-bold text-dark">{{ story['title'] }}</h5>
                 <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
-                <a href="{{ url_for('view_story', story_id=story['id']) }}" class="stretched-link"></a>
+                <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="stretched-link"></a>
             </div>
 
             <!-- Footer -->
             <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2 position-relative z-2">
-                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
+                    <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
                         <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
                             {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
                         </button>
@@ -101,7 +101,7 @@
     {% else %}
     <div class="col-12 text-center py-5">
         <p class="lead text-muted mb-4">No favourites yet. Go explore and star some stories!</p>
-        <a href="{{ url_for('stories') }}" class="btn btn-primary btn-lg">Browse Stories</a>
+        <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg">Browse Stories</a>
     </div>
     {% endif %}
 </div>

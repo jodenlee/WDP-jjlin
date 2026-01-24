@@ -104,7 +104,7 @@
                 <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
 
                 <div class="d-flex gap-2 justify-content-end">
-                    <a href="{{ url_for('view_story', story_id=story['id']) }}"
+                    <a href="{{ url_for('stories.view_story', story_id=story['id']) }}"
                         class="btn btn-lg btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-lg btn-primary">Update Story</button>
                 </div>

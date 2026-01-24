@@ -4,7 +4,7 @@
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
         <div class="mb-3">
-            <a href="{{ url_for('stories') }}" class="btn btn-outline-secondary">← Back to Stories</a>
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-outline-secondary">← Back to Stories</a>
         </div>
         <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
@@ -52,13 +52,13 @@
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
                     <div class="d-flex align-items-center gap-3">
-                        <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST">
+                        <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST">
                             <button type="submit"
                                 class="btn p-0 border-0 bg-transparent text-warning d-flex justify-content-center align-items-center">
                                 <i class="{{ 'fas' if is_bookmarked else 'far' }} fa-star fa-2x"></i>
                             </button>
                         </form>
-                        <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
+                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
                             <button type="submit"
                                 class="btn {{ 'btn-danger' if is_liked else 'btn-outline-danger' }} btn-lg d-flex justify-content-center align-items-center gap-2 rounded-pill px-4">
                                 <i class="{{ 'fas' if is_liked else 'far' }} fa-heart"></i>
@@ -77,9 +77,9 @@
                         <!-- Edit/Delete for Author OR Admin (Delete only for Admin usually, but let's allow both if requested "make all show") -->
                         <!-- Actually, giving admin edit rights is fine for fixing typos -->
                         {% if session.get('user_id') == story['author_id'] %}
-                        <a href="{{ url_for('edit_story', story_id=story['id']) }}"
+                        <a href="{{ url_for('stories.edit_story', story_id=story['id']) }}"
                             class="btn btn-primary px-4 fw-bold">Edit</a>
-                        <form action="{{ url_for('delete_story', story_id=story['id']) }}" method="POST"
+                        <form action="{{ url_for('stories.delete_story', story_id=story['id']) }}" method="POST"
                             onsubmit="return confirm('Are you sure you want to delete this story?');">
                             <button type="submit" class="btn btn-danger px-4 fw-bold">Delete</button>
                         </form>
@@ -110,7 +110,7 @@
                     <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
                             comments|length }}</span></h2>
 
-                    <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="mb-4"
+                    <form action="{{ url_for('stories.add_comment', story_id=story['id']) }}" method="POST" class="mb-4"
                         id="commentForm" novalidate>
                         <textarea name="content" id="commentContent" class="form-control mb-2" rows="3"
                             placeholder="Leave a comment!" required></textarea>
@@ -172,7 +172,7 @@
                                                 </li>
                                                 <li>
                                                     <form
-                                                        action="{{ url_for('delete_comment', comment_id=comment['id']) }}"
+                                                        action="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
                                                         method="POST"
                                                         onsubmit="return confirm('Delete this comment?');">
                                                         <button type="submit"
@@ -188,7 +188,7 @@
 
                                 <!-- Edit Form (Hidden by default) -->
                                 <div class="collapse mt-2" id="editComment{{ comment['id'] }}">
-                                    <form action="{{ url_for('edit_comment', comment_id=comment['id']) }}"
+                                    <form action="{{ url_for('stories.edit_comment', comment_id=comment['id']) }}"
                                         method="POST">
                                         <textarea name="content" class="form-control mb-2"
                                             rows="2">{{ comment['content'] }}</textarea>

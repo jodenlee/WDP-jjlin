@@ -22,7 +22,7 @@
                 </div>
                 {% endif %}
 
-                <form action="{{ url_for('login') }}" method="POST" novalidate>
+                <form action="{{ url_for('auth.login') }}" method="POST" novalidate>
                     <div class="mb-3">
                         <label for="email" class="form-label fw-bold">Email Address</label>
                         <div class="input-group">
@@ -65,7 +65,7 @@
 
                 <div class="text-center">
                     <p class="text-muted mb-0">Don't have an account?</p>
-                    <a href="{{ url_for('register') }}" class="fw-bold text-decoration-none"
+                    <a href="{{ url_for('auth.register') }}" class="fw-bold text-decoration-none"
                         style="color: var(--primary-color);">
                         Create Account <i class="fas fa-arrow-right ms-1"></i>
                     </a>
