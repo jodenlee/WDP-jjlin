@@ -13,10 +13,17 @@
 
         <div class="mb-3">
             <label for="location" class="form-label fw-bold">Location (Singapore)</label>
-            <input type="text" id="location" name="location" list="singapore-locations" class="form-control"
-                maxlength="100" value="{{ story['location'] }}" placeholder="e.g. Toa Payoh Public Library">
+            <div class="input-group">
+                <input type="text" id="location" name="location" list="singapore-locations" class="form-control"
+                    maxlength="100" value="{{ story['location'] }}" placeholder="e.g. Toa Payoh Public Library">
+                <button type="button" id="use-location-btn" class="btn btn-outline-secondary"
+                    onclick="populateLocationField('location', 'use-location-btn')">
+                    <i class="fas fa-crosshairs"></i> Use My Location
+                </button>
+            </div>
             {% include 'partials/locations.html' %}
         </div>
+        <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
 
         <div class="mb-3">
             <label class="form-label fw-bold">Manage Images</label>

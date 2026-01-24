@@ -365,12 +365,32 @@ def view_story(story_id):
 def my_bookmarks():
     db = get_db()
     user_id = session['user_id']
+    search_query = request.args.get('search', '').strip()
+    location_filter = request.args.get('location', '').strip()
+    sort_option = request.args.get('sort', 'newest')
+    
     query = """
         SELECT s.* FROM stories s
         JOIN bookmarks b ON s.id = b.story_id
         WHERE b.user_id = ?
     """
-    bookmarks = db.query(query, (user_id,))
+    params = [user_id]
+    
+    if search_query:
+        query += " AND (s.title LIKE ? OR s.content LIKE ?)"
+        params.extend([f"%{search_query}%", f"%{search_query}%"])
+        
+    if location_filter:
+        query += " AND s.location LIKE ?"
+        params.append(f"%{location_filter}%")
+        
+    # Sort logic
+    if sort_option == 'likes':
+        query += " ORDER BY s.likes DESC"
+    else: # newest
+        query += " ORDER BY b.id DESC" # Use ID for ordering since created_at missing
+    
+    bookmarks = db.query(query, tuple(params))
     
     bookmarked_story_ids = [b['id'] for b in bookmarks]
 
