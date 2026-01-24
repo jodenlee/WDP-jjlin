@@ -38,6 +38,21 @@
                     <p class="text-muted">{{ activity['description'] }}</p>
                 </div>
 
+                <!-- ✅ Attachment (if uploaded) -->
+                {% if activity['attachment'] %}
+                <div class="mb-4">
+                    <h5 class="fw-bold">Attachment</h5>
+                    <a class="btn btn-outline-primary btn-sm"
+                       href="{{ url_for('static', filename='uploads/' ~ activity['attachment']) }}"
+                       target="_blank" rel="noopener">
+                        <i class="fas fa-paperclip me-1"></i> View / Download
+                    </a>
+                    <div class="form-text mt-2">
+                        This file contains additional details about the activity (e.g., schedule, materials, or instructions).
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Action Buttons -->
                 <div class="d-flex gap-2">
                     {% if is_joined %}
@@ -50,6 +65,16 @@
                     <form action="{{ url_for('join_activity', activity_id=activity['id']) }}" method="POST">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-check me-1"></i> Join Activity
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if 'user_id' in session and activity['organizer_id'] == session['user_id'] %}
+                    <form action="{{ url_for('delete_activity', activity_id=activity['id']) }}"
+                        method="POST"
+                        onsubmit="return confirm('Delete this activity? This cannot be undone.');"
+                        class="d-inline">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i> Delete
                         </button>
                     </form>
                     {% endif %}

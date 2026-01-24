@@ -96,3 +96,8 @@ h6 {
 .detail-carousel .nav-arrow:hover {
     background: rgba(0, 0, 0, 0.6);
 }
+.activities-bg{
+  background: #f3eadf;   
+  min-height: 100vh;
+  padding: 24px 0;
+}

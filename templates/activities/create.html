@@ -1,63 +1,172 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="mb-4">
-    <a href="{{ url_for('activities') }}" class="btn btn-link text-muted px-0">
+
+<!-- ✅ Activities module full-width light-brown background (only this page) -->
+<div style="background:#f3eadf; min-height:100vh; width:100vw; margin-left:calc(50% - 50vw); padding:24px 0;">
+  <div class="container">
+
+    <div class="mb-4">
+      <a href="{{ url_for('activities') }}" class="btn btn-link text-muted px-0">
         <i class="fas fa-arrow-left me-1"></i> Back to Activities
-    </a>
-</div>
-
-<div class="row">
-    <div class="col-lg-6 mx-auto">
-        <div class="card nav-card-minimal">
-            <div class="card-header bg-transparent border-0 pt-4 px-4">
-                <h4 class="fw-bold"><i class="fas fa-plus-circle me-2" style="color: var(--primary-color);"></i> Create
-                    Activity</h4>
-            </div>
-            <div class="card-body p-4">
-                <form action="{{ url_for('create_activity') }}" method="POST">
-                    <div class="mb-3">
-                        <label for="title" class="form-label fw-bold">Title</label>
-                        <input type="text" class="form-control" id="title" name="title" required
-                            placeholder="Activity name">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label fw-bold">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="4" required
-                            placeholder="What's this activity about?"></textarea>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="type" class="form-label fw-bold">Type</label>
-                            <select class="form-select" id="type" name="type">
-                                <option value="Workshop">Workshop</option>
-                                <option value="Social">Social Gathering</option>
-                                <option value="Exercise">Exercise</option>
-                                <option value="Learning">Learning</option>
-                                <option value="Community">Community Service</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="event_date" class="form-label fw-bold">Date</label>
-                            <input type="date" class="form-control" id="event_date" name="event_date">
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="location" class="form-label fw-bold">Location</label>
-                        <input type="text" class="form-control" id="location" name="location"
-                            placeholder="Where will this take place?">
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Create Activity</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+      </a>
     </div>
+
+    <div class="row">
+      <div class="col-lg-6 mx-auto">
+        <div class="card nav-card-minimal">
+          <div class="card-header bg-transparent border-0 pt-4 px-4">
+            <h4 class="fw-bold mb-0">
+              <i class="fas fa-plus-circle me-2" style="color: var(--primary-color);"></i>
+              Create Activity
+            </h4>
+          </div>
+
+          <div class="card-body p-4">
+            <form id="create-activity-form"
+                  action="{{ url_for('create_activity') }}"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  novalidate>
+
+              <!-- Title -->
+              <div class="mb-3">
+                <label for="title" class="form-label fw-bold">Title <span class="text-danger">*</span></label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="title"
+                  name="title"
+                  maxlength="120"
+                  placeholder="Activity name"
+                  value="{{ request.form.get('title', '') }}"
+                >
+                <div class="invalid-feedback">Title cannot be empty.</div>
+              </div>
+
+              <!-- Description -->
+              <div class="mb-3">
+                <label for="description" class="form-label fw-bold">Description</label>
+                <textarea
+                  class="form-control"
+                  id="description"
+                  name="description"
+                  rows="4"
+                  required
+                  placeholder="What's this activity about?"
+                >{{ request.form.get('description', '') }}</textarea>
+              </div>
+
+              <!-- ✅ Attachment upload (optional) -->
+              <div class="mb-3">
+                <label for="attachment" class="form-label fw-bold">Attachment (optional)</label>
+                <input
+                  type="file"
+                  class="form-control"
+                  id="attachment"
+                  name="attachment"
+                  accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx"
+                >
+                <div class="form-text">Allowed: JPG/PNG/GIF/PDF/DOC/DOCX (max 5MB).</div>
+                <div class="form-text">
+                  You may upload an attachment with additional details about this activity (e.g., schedule, materials, or instructions).
+                </div>
+              </div>
+
+              <div class="row">
+                <!-- Type -->
+                <div class="col-md-6 mb-3">
+                  <label for="type" class="form-label fw-bold">Type <span class="text-danger">*</span></label>
+                  <select class="form-select" id="type" name="type">
+                    {% set t = request.form.get('type', '') %}
+                    <option value="" {{ 'selected' if t=='' else '' }} disabled>Select type...</option>
+                    <option value="Workshop" {{ 'selected' if t=='Workshop' else '' }}>Workshop</option>
+                    <option value="Social" {{ 'selected' if t=='Social' else '' }}>Social Gathering</option>
+                    <option value="Exercise" {{ 'selected' if t=='Exercise' else '' }}>Exercise</option>
+                    <option value="Learning" {{ 'selected' if t=='Learning' else '' }}>Learning</option>
+                    <option value="Community" {{ 'selected' if t=='Community' else '' }}>Community Service</option>
+                    <option value="Other" {{ 'selected' if t=='Other' else '' }}>Other</option>
+                  </select>
+                  <div class="invalid-feedback">Type must be selected.</div>
+                </div>
+
+                <!-- Date -->
+                <div class="col-md-6 mb-3">
+                  <label for="event_date" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="event_date"
+                    name="event_date"
+                    value="{{ request.form.get('event_date', '') }}"
+                  >
+                  <div class="invalid-feedback">Date cannot be empty.</div>
+                </div>
+              </div>
+
+              <!-- Location -->
+              <div class="mb-4">
+                <label for="location" class="form-label fw-bold">Location <span class="text-danger">*</span></label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="location"
+                  name="location"
+                  maxlength="120"
+                  placeholder="Where will this take place?"
+                  value="{{ request.form.get('location', '') }}"
+                >
+                <div class="invalid-feedback">Location cannot be empty.</div>
+              </div>
+
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg">Create Activity</button>
+              </div>
+            </form>
+
+            <small class="text-muted d-block mt-3">
+              Fields marked with <span class="text-danger">*</span> are required.
+            </small>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
+
+<script>
+  (function () {
+    const form = document.getElementById('create-activity-form');
+    if (!form) return;
+
+    const title = document.getElementById('title');
+    const date = document.getElementById('event_date');
+    const location = document.getElementById('location');
+    const type = document.getElementById('type');
+
+    function setInvalid(el, yes) {
+      if (yes) el.classList.add('is-invalid');
+      else el.classList.remove('is-invalid');
+    }
+
+    form.addEventListener('submit', function (e) {
+      const t = (title.value || '').trim();
+      const d = (date.value || '').trim();
+      const l = (location.value || '').trim();
+      const ty = (type.value || '').trim();
+
+      let ok = true;
+
+      if (!t) { setInvalid(title, true); ok = false; } else setInvalid(title, false);
+      if (!ty) { setInvalid(type, true); ok = false; } else setInvalid(type, false);
+      if (!d) { setInvalid(date, true); ok = false; } else setInvalid(date, false);
+      if (!l) { setInvalid(location, true); ok = false; } else setInvalid(location, false);
+
+      if (!ok) e.preventDefault();
+    });
+  })();
+</script>
+
 {% endblock %}

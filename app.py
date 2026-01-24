@@ -5,21 +5,93 @@ from functools import wraps
 from database import Database
 import re
 import os
+import uuid
+import sqlite3
 
 app = Flask(__name__)
+# ===== Activities password gate (no extra software) =====
+DB_PATH = os.path.join(app.root_path, "app.db")
+
+def ensure_settings_table():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def get_setting(key: str):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def set_setting(key: str, value: str):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO settings(key, value) VALUES(?, ?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value
+    """, (key, value))
+    conn.commit()
+    conn.close()
+
+def ensure_activity_password():
+    """Create default password hash if not set yet."""
+    ensure_settings_table()
+    if not get_setting("activities_password_hash"):
+        default_pwd = "activity123" 
+        set_setting("activities_password_hash", generate_password_hash(default_pwd))
+
+def activities_unlocked() -> bool:
+    return bool(session.get("activities_unlocked", False))
+
+ensure_activity_password()
+
+# --- DB auto-migration: ensure activities.attachment exists ---
+DB_PATH = os.path.join(app.root_path, "app.db")
+
+def ensure_activities_attachment_column():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    # check table exists
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activities'")
+    if not cur.fetchone():
+        conn.close()
+        return
+
+    # check column exists
+    cur.execute("PRAGMA table_info(activities)")
+    cols = [row[1] for row in cur.fetchall()]  # row[1] = column name
+
+    if "attachment" not in cols:
+        cur.execute("ALTER TABLE activities ADD COLUMN attachment TEXT")
+        conn.commit()
+
+    conn.close()
+
+ensure_activities_attachment_column()
+# --- end migration ---
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "pdf", "doc", "docx"}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
 
-# Upload Configuration
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Database Helper to get db connection per request
 def get_db():
@@ -487,17 +559,48 @@ def add_comment(story_id):
     conn.commit()
     return redirect(url_for('view_story', story_id=story_id))
 
+from flask import request
+
 @app.route('/activities')
+@login_required
 def activities():
+    q = (request.args.get('q') or '').strip()
+    loc = (request.args.get('location') or '').strip()
+    sort = (request.args.get('sort') or 'newest').strip()
+
+    where = []
+    params = []
+
+    if q:
+        where.append("(a.title LIKE ? OR a.description LIKE ?)")
+        like = f"%{q}%"
+        params.extend([like, like])
+
+    if loc:
+        where.append("(a.location LIKE ?)")
+        params.append(f"%{loc}%")
+
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+
+    if sort == "oldest":
+        order_sql = "ORDER BY a.event_date ASC, a.created_at ASC"
+    elif sort == "upcoming":
+        order_sql = "ORDER BY a.event_date ASC, a.created_at DESC"
+    else:
+        order_sql = "ORDER BY a.event_date DESC, a.created_at DESC"
+
     db = get_db()
-    # Get activities with RSVP counts
-    activities_data = db.query("""
-        SELECT a.*, 
-               (SELECT COUNT(*) FROM activity_rsvps WHERE activity_id = a.id) as rsvp_count
+    activities_data = db.query(f"""
+        SELECT a.*,
+               (SELECT COUNT(*) FROM activity_rsvps WHERE activity_id = a.id) AS rsvp_count
         FROM activities a
-        ORDER BY a.event_date DESC, a.created_at DESC
-    """)
+        {where_sql}
+        {order_sql}
+    """, tuple(params))
+
     return render_template('activities/index.html', activities=activities_data)
+
+
 
 @app.route('/activities/<int:activity_id>')
 def view_activity(activity_id):
@@ -516,9 +619,28 @@ def view_activity(activity_id):
     
     return render_template('activities/view.html', activity=activity, is_joined=is_joined, rsvp_count=rsvp_count)
 
+@app.route("/activities/unlock", methods=["GET", "POST"])
+@login_required
+def activities_unlock():
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        pwd_hash = get_setting("activities_password_hash")
+
+        if pwd_hash and check_password_hash(pwd_hash, pwd):
+            session["activities_unlocked"] = True
+            flash("Activities unlocked.", "success")
+            return redirect(url_for("create_activity"))
+        else:
+            flash("Wrong password.", "danger")
+
+    return render_template("activities/unlock.html")
+
 @app.route('/activities/new', methods=['GET', 'POST'])
 @login_required
 def create_activity():
+    if not activities_unlocked():
+        return redirect(url_for("activities_unlock"))
+
     if request.method == 'POST':
         title = request.form['title']
         description = request.form['description']
@@ -526,14 +648,32 @@ def create_activity():
         location = request.form.get('location', '')
         event_date = request.form.get('event_date', '')
         
+        attachment_filename = None
+        file = request.files.get('attachment')
+
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash('Invalid file type. Allowed: JPG/PNG/GIF/PDF/DOC/DOCX', 'danger')
+                return redirect(request.url)
+
+            original = secure_filename(file.filename)
+            ext = original.rsplit('.', 1)[1].lower()
+            new_name = f"{uuid.uuid4().hex}.{ext}"
+
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], new_name)
+            file.save(save_path)
+
+            attachment_filename = new_name
+
         user_id = session['user_id']
         db = get_db()
         conn = db.get_connection()
         conn.execute(
-            "INSERT INTO activities (title, description, type, location, event_date, organizer_id) VALUES (?, ?, ?, ?, ?, ?)",
-            (title, description, activity_type, location, event_date, user_id)
+            "INSERT INTO activities (title, description, type, location, event_date, organizer_id, attachment) VALUES (?, ?, ?, ?, ?, ?,?)",
+            (title, description, activity_type, location, event_date, user_id, attachment_filename)
         )
         conn.commit()
+        session.pop("activities_unlocked", None)
         return redirect(url_for('activities'))
     
     return render_template('activities/create.html')
@@ -560,6 +700,41 @@ def leave_activity(activity_id):
     conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
     conn.commit()
     return redirect(url_for('view_activity', activity_id=activity_id))
+
+@app.route("/activities/<int:activity_id>/delete", methods=["GET", "POST"])
+@login_required
+def delete_activity(activity_id):
+    db = get_db()
+    conn = db.get_connection()
+
+    activity = conn.execute(
+        "SELECT * FROM activities WHERE id = ?",
+        (activity_id,)
+    ).fetchone()
+
+    if not activity:
+        return "Activity not found", 404
+
+    user_id = session.get("user_id")
+    if int(activity["organizer_id"]) != int(user_id):
+        return "Forbidden", 403
+
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        pwd_hash = get_setting("activities_password_hash")
+
+        if pwd_hash and check_password_hash(pwd_hash, pwd):
+            conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ?", (activity_id,))
+            conn.execute("DELETE FROM activities WHERE id = ?", (activity_id,))
+            conn.commit()
+            flash("Activity deleted.", "success")
+            return redirect(url_for("activities"))
+        else:
+            flash("Wrong password.", "danger")
+
+   
+    return render_template("activities/delete_confirm.html", activity=activity)
+
 
 @app.route('/messages')
 @login_required
