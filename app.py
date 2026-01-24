@@ -11,7 +11,7 @@ app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in 
 
 # Upload Configuration
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Ensure upload directory exists
@@ -745,10 +745,13 @@ def delete_account():
     flash('Profile updated successfully!', 'success')
     return redirect(url_for('profile'))
 
+# --- Community Routes ---
+
+# Route to display the list of all community groups
 @app.route('/community')
 def community():
     db = get_db()
-    # Get groups with member counts
+    # Query to fetch all groups along with their member count
     groups = db.query("""
         SELECT g.*, 
                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
@@ -757,48 +760,73 @@ def community():
     """)
     return render_template('community/index.html', groups=groups)
 
+# Route to view a specific group's details
 @app.route('/community/<int:group_id>')
 def view_group(group_id):
     db = get_db()
+    # Fetch group details by ID
     group = db.query("SELECT * FROM groups WHERE id = ?", (group_id,), one=True)
     if not group:
         return "Group not found", 404
     
     is_member = False
+    # Calculate total members in the group
     member_count = len(db.query("SELECT * FROM group_members WHERE group_id = ?", (group_id,)))
     
+    # Check if the current user is a member of the group
     if 'user_id' in session:
         user_id = session['user_id']
         membership = db.query("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id), one=True)
         is_member = bool(membership)
     
-    # Get members
+    # Fetch all members of the group to display in the view
     members = db.query("""
         SELECT u.* FROM users u
         JOIN group_members gm ON u.id = gm.user_id
         WHERE gm.group_id = ?
     """, (group_id,))
     
-    return render_template('community/view.html', group=group, is_member=is_member, member_count=member_count, members=members)
+    # Check if the current user is the owner (creator) of the group
+    is_owner = False
+    if 'user_id' in session:
+        is_owner = (group['created_by'] == session['user_id'])
+    
+    return render_template('community/view.html', group=group, is_member=is_member, is_owner=is_owner, member_count=member_count, members=members)
 
+# Route to create a new community group
 @app.route('/community/new', methods=['GET', 'POST'])
 @login_required
 def create_group():
     if request.method == 'POST':
         name = request.form['name']
         description = request.form.get('description', '')
-        image_url = request.form.get('image_url', '')
         user_id = session['user_id']
         
+        # Handle group image upload
+        image_url = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    flash('Files with images only', 'danger')
+                    return render_template('community/create.html')
+                filename = secure_filename(file.filename)
+                import time
+                filename = f"group_{int(time.time())}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image_url = f"uploads/{filename}"
+
         db = get_db()
         conn = db.get_connection()
         cursor = conn.cursor()
+        # Insert the new group into the database
         cursor.execute(
             "INSERT INTO groups (name, description, image_url, created_by) VALUES (?, ?, ?, ?)",
             (name, description, image_url, user_id)
         )
         group_id = cursor.lastrowid
-        # Auto-join creator
+        # Automatically add the creator as a member of the group
         cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         conn.commit()
         flash(f'Group "{name}" created!', 'success')
@@ -806,6 +834,7 @@ def create_group():
     
     return render_template('community/create.html')
 
+# Route for a user to join a group
 @app.route('/community/<int:group_id>/join', methods=['POST'])
 @login_required
 def join_group(group_id):
@@ -813,20 +842,128 @@ def join_group(group_id):
     db = get_db()
     conn = db.get_connection()
     try:
+        # Add the user to the group_members table
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         conn.commit()
     except:
-        pass  # Already a member
+        pass  # User is already a member, ignore duplicate insertion
     return redirect(url_for('view_group', group_id=group_id))
 
+# Route for a user to leave a group
 @app.route('/community/<int:group_id>/leave', methods=['POST'])
 @login_required
 def leave_group(group_id):
     user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
+    # Remove the user from the group_members table
     conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
+    
+    # Check if the group has any remaining members
+    cursor = conn.execute("SELECT COUNT(*) FROM group_members WHERE group_id = ?", (group_id,))
+    count = cursor.fetchone()[0]
+    
+    # If the group is empty, delete the group entirely
+    if count == 0:
+        conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+        conn.commit()
+        flash('Group deleted as it has no members.', 'info')
+        return redirect(url_for('community'))
+        
     conn.commit()
+    return redirect(url_for('view_group', group_id=group_id))
+
+# Route for the group owner to delete the group
+@app.route('/community/<int:group_id>/delete', methods=['POST'])
+@login_required
+def delete_group(group_id):
+    user_id = session['user_id']
+    db = get_db()
+    
+    group = db.query("SELECT * FROM groups WHERE id = ?", (group_id,), one=True)
+    if not group:
+         return "Group not found", 404
+
+    # Ensure only the creator can delete the group
+    if group['created_by'] != user_id:
+        flash('Only the group creator can delete the group.', 'danger')
+        return redirect(url_for('view_group', group_id=group_id))
+
+    conn = db.get_connection()
+    # Delete all members associated with the group
+    conn.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
+    # Delete the group itself
+    conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+    conn.commit()
+    
+    flash('Group deleted successfully.', 'success')
+    return redirect(url_for('community'))
+
+# Route for the group owner to update the group details
+@app.route('/community/<int:group_id>/update', methods=['POST'])
+@login_required
+def update_group(group_id):
+    user_id = session['user_id']
+    db = get_db()
+    
+    group = db.query("SELECT * FROM groups WHERE id = ?", (group_id,), one=True)
+    if not group:
+         return "Group not found", 404
+
+    # Ensure only the creator can update the group
+    if group['created_by'] != user_id:
+        flash('Only the group creator can update the group.', 'danger')
+        return redirect(url_for('view_group', group_id=group_id))
+
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Group name is required.', 'danger')
+        return redirect(url_for('view_group', group_id=group_id))
+
+    description = request.form.get('description', '')
+    
+    conn = db.get_connection()
+    
+    # Handle group image upload
+    # Check if an image file was included in the form submission
+    if 'image' in request.files:
+        file = request.files['image']
+        # Check if a file was selected
+        if file and file.filename:
+            # Validate that the file has an allowed extension (png, jpg, jpeg, gif, webp, avif)
+            if not allowed_file(file.filename):
+                flash('Files with images only', 'danger')
+                return redirect(url_for('view_group', group_id=group_id))
+            
+            # Delete old image if it exists to prevent orphaned files
+            # This ensures the old profile picture is removed when replaced with a new one
+            if group['image_url']:
+                old_image_path = os.path.join('static', group['image_url'])
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+            
+            # Sanitize the filename to prevent directory traversal attacks
+            filename = secure_filename(file.filename)
+            # Add timestamp prefix to ensure unique filenames and prevent overwrites
+            import time
+            filename = f"group_{int(time.time())}_{filename}"
+            # Save the new image to the uploads folder
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            # Store relative path in database for use in templates
+            image_url = f"uploads/{filename}"
+            # Update group with new name, description, and image
+            conn.execute("UPDATE groups SET name = ?, description = ?, image_url = ? WHERE id = ?", (name, description, image_url, group_id))
+        else:
+            # No valid image file uploaded - update only name and description, keep existing image
+            conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
+    else:
+        # No image field in form - update only name and description
+         conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
+
+    conn.commit()
+    
+    flash('Group updated successfully.', 'success')
     return redirect(url_for('view_group', group_id=group_id))
 
 if __name__ == '__main__':

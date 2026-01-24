@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<!-- Back to group buttons -->
 <div class="mb-4">
     <a href="{{ url_for('community') }}" class="btn btn-link text-muted px-0">
         <i class="fas fa-arrow-left me-1"></i> Back to Groups
@@ -10,37 +11,30 @@
 <div class="row">
     <div class="col-lg-8 mx-auto">
         <div class="card nav-card-minimal">
-            <div class="card-body p-4">
-                <!-- Group Header -->
-                <div class="text-center mb-4">
-                    {% if group['image_url'] %}
-                    <img src="{{ group['image_url'] }}" class="rounded-circle mb-3"
-                        style="width: 100px; height: 100px; object-fit: cover;">
-                    {% else %}
-                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
-                        style="width: 100px; height: 100px; background-color: var(--accent-color);">
-                        <i class="fas fa-users fa-3x" style="color: var(--primary-color);"></i>
-                    </div>
-                    {% endif %}
-                    <h2 class="fw-bold">{{ group['name'] }}</h2>
-                    <p class="text-muted"><i class="fas fa-user-friends me-1"></i> {{ member_count }} members</p>
-                </div>
+            <div class="card-body p-4 position-relative">
+                <!-- Action Buttons: Positioned absolutely at the top-right -->
+                <div class="position-absolute top-0 end-0 m-4 d-flex flex-column gap-2">
+                    {% if is_owner %}
+                    <!-- Owner Action: Delete Group -->
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                        data-bs-target="#deleteGroupModal">
+                        <i class="fas fa-trash-alt me-1"></i> Delete Group
+                    </button>
+                    <!-- Owner Action: Update Group -->
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                        data-bs-target="#updateGroupModal">
+                        <i class="fas fa-edit me-1"></i> Update Group
+                    </button>
 
-                <!-- Description -->
-                <div class="mb-4">
-                    <h5 class="fw-bold">About</h5>
-                    <p class="text-muted">{{ group['description'] or 'No description provided.' }}</p>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="text-center mb-4">
-                    {% if is_member %}
-                    <form action="{{ url_for('leave_group', group_id=group['id']) }}" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="fas fa-sign-out-alt me-1"></i> Leave Group
-                        </button>
-                    </form>
+                    {% elif is_member %}
+                    <!-- Member Action: Leave Group (Deleting membership) -->
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                        data-bs-target="#leaveGroupModal">
+                        <i class="fas fa-trash-alt me-1"></i> Delete Group
+                    </button>
                     {% else %}
+
+                    <!-- Non-Member Action: Join Group -->
                     <form action="{{ url_for('join_group', group_id=group['id']) }}" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-sign-in-alt me-1"></i> Join Group
@@ -49,17 +43,44 @@
                     {% endif %}
                 </div>
 
-                <!-- Members List -->
+                <!-- Group Information Section -->
+                <div class="text-center mb-4">
+                    {% if group['image_url'] %}
+                    <!-- Group Image -->
+                    <img src="{{ url_for('static', filename=group['image_url']) }}" class="rounded-circle mb-3"
+                        style="width: 100px; height: 100px; object-fit: cover;">
+                    {% else %}
+                    <!-- Placeholder Image if none exists -->
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 100px; height: 100px; background-color: var(--accent-color);">
+                        <i class="fas fa-users fa-3x" style="color: var(--primary-color);"></i>
+                    </div>
+                    {% endif %}
+                    <!--Show group name-->
+                    <h2 class="fw-bold">{{ group['name'] }}</h2>
+                    <!--Show member count-->
+                    <p class="text-muted"><i class="fas fa-user-friends me-1"></i> {{ member_count }} members</p>
+                </div>
+
+                <!-- Group Description -->
+                <div class="mb-4">
+                    <h5 class="fw-bold">About</h5>
+                    <p class="text-muted">{{ group['description'] or 'No description provided.' }}</p>
+                </div>
+
+                <!-- Members List Section -->
                 <div>
                     <h5 class="fw-bold mb-3">Members</h5>
                     {% if members %}
                     <div class="list-group list-group-flush">
                         {% for member in members %}
                         <div class="list-group-item bg-transparent px-0 d-flex align-items-center">
+                            <!-- Member Avatar -->
                             <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
                                 style="width: 40px; height: 40px; background-color: var(--accent-color);">
                                 <i class="fas fa-user" style="color: var(--primary-color);"></i>
                             </div>
+                            <!-- Member Details -->
                             <div>
                                 <span class="fw-bold">{{ member['username'] }}</span>
                                 <span class="badge bg-light text-dark ms-2">{{ member['role'] }}</span>
@@ -68,6 +89,7 @@
                         {% endfor %}
                     </div>
                     {% else %}
+                    <!-- Empty State for Members -->
                     <p class="text-muted">No members yet.</p>
                     {% endif %}
                 </div>
@@ -75,4 +97,124 @@
         </div>
     </div>
 </div>
+<!-- Delete Group Modal -->
+<div class="modal fade" id="deleteGroupModal" tabindex="-1" aria-labelledby="deleteGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteGroupModalLabel">Confirm delete?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this group? This action cannot be undone and all members will be
+                    removed.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_group', group_id=group['id']) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Group Modal -->
+<div class="modal fade" id="leaveGroupModal" tabindex="-1" aria-labelledby="leaveGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="leaveGroupModalLabel">Confirm delete?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this group?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('leave_group', group_id=group['id']) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Group Edit Modal -->
+<div class="modal fade" id="updateGroupModal" tabindex="-1" aria-labelledby="updateGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateGroupModalLabel">Update Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateGroupForm" action="{{ url_for('update_group', group_id=group['id']) }}" method="POST"
+                    enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="name" class="form-label fw-bold">Group Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ group['name'] }}"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" id="description" name="description"
+                            rows="4">{{ group['description'] }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label fw-bold">Group Image (optional)</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <!-- Trigger Validation via JS -->
+                <button type="button" class="btn btn-primary" onclick="validateAndUpdate()">Update Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Update Modal -->
+<div class="modal fade" id="confirmUpdateModal" tabindex="-1" aria-labelledby="confirmUpdateModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmUpdateModalLabel">Confirm update group?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to update the group details?</p>
+            </div>
+            <div class="modal-footer">
+                <!-- Back to Edit Modal -->
+                <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                    data-bs-target="#updateGroupModal" data-bs-dismiss="modal">Cancel</button>
+                <!-- Actual Submit (Remote Submit using JS) -->
+                <button type="button" class="btn btn-primary"
+                    onclick="document.getElementById('updateGroupForm').submit();">Confirm Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function validateAndUpdate() {
+        var form = document.getElementById('updateGroupForm');
+        if (form.checkValidity()) {
+            // Hide edit modal
+            var updateModalEl = document.getElementById('updateGroupModal');
+            var updateModal = bootstrap.Modal.getInstance(updateModalEl);
+            updateModal.hide();
+
+            // Show confirmation modal
+            var confirmModal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
+            confirmModal.show();
+        } else {
+            form.reportValidity();
+        }
+    }
+</script>
 {% endblock %}
