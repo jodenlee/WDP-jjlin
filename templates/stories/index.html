@@ -165,6 +165,18 @@
                         </div>
                     </div>
                 </div>
+                <div class="mt-3 text-muted d-flex align-items-center gap-3">
+                    {% if story.profile_pic %}
+                    <img src="{{ url_for('static', filename=story.profile_pic) }}" alt="Profile"
+                        class="rounded-circle object-fit-cover" style="width: 35px; height: 35px;">
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 35px; height: 35px; background-color: var(--accent-color);">
+                        <i class="fas fa-user" style="color: var(--primary-color); font-size: 1rem;"></i>
+                    </div>
+                    {% endif %}
+                    <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
+                </div>
             </div>
         </div>
     </div>

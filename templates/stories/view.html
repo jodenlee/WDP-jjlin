@@ -9,9 +9,11 @@
         <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
             <!-- Image Carousel -->
+            {% if story['image_url'] or story_images %}
             <div id="storyCarousel" class="carousel slide bg-light" data-bs-ride="carousel" style="height: 350px;">
                 <div class="carousel-inner h-100">
                     <!-- Main Image -->
+                    {% if story['image_url'] %}
                     <div class="carousel-item h-100 active bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
                             <img src="{{ story['image_url'] | safe }}"
@@ -19,10 +21,12 @@
                                 alt="{{ story['title'] }}" onclick="openLightbox(this.src)">
                         </div>
                     </div>
+                    {% endif %}
+
                     <!-- Additional Images -->
-                    {% if story_images %}
                     {% for img_path in story_images %}
-                    <div class="carousel-item h-100 bg-black">
+                    <div
+                        class="carousel-item h-100 {% if not story['image_url'] and loop.first %}active{% endif %} bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
                             <img src="{{ url_for('static', filename=img_path) }}"
                                 class="d-block mw-100 mh-100 object-fit-contain cursor-pointer" alt="Story Image"
@@ -30,22 +34,26 @@
                         </div>
                     </div>
                     {% endfor %}
-                    {% endif %}
                 </div>
 
-                {% if story_images %}
+                {% if (story['image_url'] and story_images) or (story_images|length > 1) %}
                 <button class="carousel-control-prev" type="button" data-bs-target="#storyCarousel"
                     data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="nav-arrow" aria-hidden="true">
+                        <i class="fas fa-chevron-left text-white"></i>
+                    </span>
                     <span class="visually-hidden">Previous</span>
                 </button>
                 <button class="carousel-control-next" type="button" data-bs-target="#storyCarousel"
                     data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="nav-arrow" aria-hidden="true">
+                        <i class="fas fa-chevron-right text-white"></i>
+                    </span>
                     <span class="visually-hidden">Next</span>
                 </button>
                 {% endif %}
             </div>
+            {% endif %}
 
             <div class="card-body p-4 p-md-5">
                 <!-- Header Section -->
