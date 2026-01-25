@@ -7,6 +7,7 @@ import math
 
 stories_bp = Blueprint('stories', __name__)
 
+# FETCH STORIES FROM DATABASE: This function retrieves all stories, with optional filtering and sorting
 @stories_bp.route('/stories')
 def stories_list():
     db = get_db()
@@ -15,23 +16,32 @@ def stories_list():
     search = request.args.get('search', '')
     sort = request.args.get('sort', 'newest')
     location_filter = request.args.get('location', '')
+    tags_filter = request.args.getlist('tags')  # Multiple tags can be selected
     
     # Build Query
-    query = "SELECT * FROM stories WHERE 1=1"
+    query = "SELECT DISTINCT s.* FROM stories s"
     args = []
     
+    # FILTER BY TAGS: Join with story_tags if tags filter is applied
+    if tags_filter:
+        placeholders = ','.join(['?' for _ in tags_filter])
+        query += f" INNER JOIN story_tags st ON s.id = st.story_id AND st.tag IN ({placeholders})"
+        args.extend(tags_filter)
+    
+    query += " WHERE 1=1"
+    
     if search:
-        query += " AND (title LIKE ? OR content LIKE ?)"
+        query += " AND (s.title LIKE ? OR s.content LIKE ?)"
         args.extend([f'%{search}%', f'%{search}%'])
         
     if location_filter:
-        query += " AND location LIKE ?"
+        query += " AND s.location LIKE ?"
         args.append(f'%{location_filter}%')
         
     if sort == 'likes':
-        query += " ORDER BY likes DESC"
+        query += " ORDER BY s.likes DESC"
     else:
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY s.created_at DESC"
         
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -39,8 +49,8 @@ def stories_list():
     offset = (page - 1) * per_page
     
     # Get Total Count first
-    count_query = query.replace("SELECT *", "SELECT COUNT(*)")
-    total_stories = db.query(count_query, args, one=True)['COUNT(*)']
+    count_query = query.replace("SELECT DISTINCT s.*", "SELECT COUNT(DISTINCT s.id)")
+    total_stories = db.query(count_query, args, one=True)['COUNT(DISTINCT s.id)']
     total_pages = math.ceil(total_stories / per_page)
     
     # Apply Limit/Offset to main query
@@ -61,8 +71,13 @@ def stories_list():
         liked_rows = db.query("SELECT story_id FROM story_likes WHERE user_id = ?", (user_id,))
         liked_story_ids = [l['story_id'] for l in liked_rows]
     
-    return render_template('stories/index.html', stories=stories_data, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
+    # GET ALL AVAILABLE TAGS: For the filter dropdown
+    all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
+    all_tags = [row['tag'] for row in all_tags_rows]
+    
+    return render_template('stories/index.html', stories=stories_data, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
 
+# ADD STORY TO DATABASE: This function handles the creation of a new story, including image uploads
 @stories_bp.route('/stories/new', methods=['GET', 'POST'])
 @login_required
 def create_story():
@@ -122,6 +137,12 @@ def create_story():
                 "INSERT INTO story_images (story_id, image_path) VALUES (?, ?)",
                 (story_id, full_url)
             )
+        
+        # SAVE TAGS TO DATABASE: Handle tags input (comma-separated, max 5)
+        tags_input = request.form.get('tags', '')
+        tags = [tag.strip() for tag in tags_input.split(',') if tag.strip()][:5]  # Limit to 5 tags
+        for tag in tags:
+            cursor.execute("INSERT INTO story_tags (story_id, tag) VALUES (?, ?)", (story_id, tag))
             
         conn.commit()
         flash('Story created successfully!', 'success')
@@ -129,6 +150,7 @@ def create_story():
         
     return render_template('stories/create.html')
 
+# GET STORY DETAILS FROM DATABASE: Fetches a single story by its ID, including author and comments
 @stories_bp.route('/stories/<int:story_id>')
 def view_story(story_id):
     db = get_db()
@@ -165,9 +187,14 @@ def view_story(story_id):
         ORDER BY c.created_at DESC
     """
     comments = db.query(comments_query, (story_id,))
+    
+    # FETCH TAGS FROM DATABASE: Get all tags associated with this story
+    tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story_id,))
+    story_tags = [row['tag'] for row in tags_rows]
         
-    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images)
+    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images, story_tags=story_tags)
 
+# FETCH BOOKMARKED STORIES FROM DATABASE: Retrieves stories that the current user has saved
 @stories_bp.route('/stories/bookmarks')
 @login_required
 def my_bookmarks():
@@ -176,13 +203,22 @@ def my_bookmarks():
     search_query = request.args.get('search', '').strip()
     location_filter = request.args.get('location', '').strip()
     sort_option = request.args.get('sort', 'newest')
+    tags_filter = request.args.getlist('tags')  # Multiple tags can be selected
     
     query = """
-        SELECT s.* FROM stories s
+        SELECT DISTINCT s.* FROM stories s
         JOIN bookmarks b ON s.id = b.story_id
-        WHERE b.user_id = ?
     """
-    params = [user_id]
+    params = []
+    
+    # FILTER BY TAGS: Join with story_tags if tags filter is applied
+    if tags_filter:
+        placeholders = ','.join(['?' for _ in tags_filter])
+        query += f" INNER JOIN story_tags st ON s.id = st.story_id AND st.tag IN ({placeholders})"
+        params.extend(tags_filter)
+    
+    query += " WHERE b.user_id = ?"
+    params.append(user_id)
     
     if search_query:
         query += " AND (s.title LIKE ? OR s.content LIKE ?)"
@@ -204,8 +240,13 @@ def my_bookmarks():
     liked_rows = db.query(likes_query, (user_id,))
     liked_story_ids = [l['story_id'] for l in liked_rows]
     
-    return render_template('stories/favourites.html', stories=bookmarks, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids)
+    # GET ALL AVAILABLE TAGS: For the filter dropdown
+    all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
+    all_tags = [row['tag'] for row in all_tags_rows]
+    
+    return render_template('stories/favourites.html', stories=bookmarks, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
 
+# SAVE BOOKMARK TO DATABASE / REMOVE BOOKMARK FROM DATABASE: Toggles a story in the user's favourites
 @stories_bp.route('/stories/<int:story_id>/bookmark', methods=['POST'])
 @login_required
 def toggle_bookmark(story_id):
@@ -222,6 +263,7 @@ def toggle_bookmark(story_id):
     conn.commit()
     return redirect(request.referrer or url_for('stories.view_story', story_id=story_id))
 
+# UPDATE LIKES IN DATABASE / SAVE LIKE TO DATABASE: Toggles a like on a story and updates the count
 @stories_bp.route('/stories/<int:story_id>/like', methods=['POST'])
 @login_required
 def toggle_like(story_id):
@@ -241,6 +283,7 @@ def toggle_like(story_id):
     conn.commit()
     return redirect(request.referrer or url_for('stories.stories_list'))
 
+# UPDATE STORY IN DATABASE / MODIFY STORY: Handles editing of an existing story and its images
 @stories_bp.route('/stories/<int:story_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_story(story_id):
@@ -300,14 +343,27 @@ def edit_story(story_id):
                  conn.execute("UPDATE stories SET image_url = ? WHERE id = ?", (request.url_root + 'static/' + img_path, story_id))
             else:
                  conn.execute("INSERT INTO story_images (story_id, image_path) VALUES (?, ?)", (story_id, img_path))
+        
+        # UPDATE TAGS IN DATABASE: Delete old tags and insert new ones
+        conn.execute("DELETE FROM story_tags WHERE story_id = ?", (story_id,))
+        tags_input = request.form.get('tags', '')
+        tags = [tag.strip() for tag in tags_input.split(',') if tag.strip()][:5]
+        for tag in tags:
+            conn.execute("INSERT INTO story_tags (story_id, tag) VALUES (?, ?)", (story_id, tag))
             
         conn.commit()
         flash('Story updated successfully!', 'success')
         return redirect(url_for('stories.view_story', story_id=story_id))
     
     story_images = db.query("SELECT * FROM story_images WHERE story_id = ?", (story_id,))
-    return render_template('stories/edit.html', story=story, story_images=story_images)
+    
+    # Fetch existing tags for the form
+    existing_tags = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story_id,))
+    story_tags = ','.join([t['tag'] for t in existing_tags])
+    
+    return render_template('stories/edit.html', story=story, story_images=story_images, story_tags=story_tags)
 
+# REMOVE STORY FROM DATABASE / DELETE STORY: Permanently deletes a story and all associated data
 @stories_bp.route('/stories/<int:story_id>/delete', methods=['POST'])
 @login_required
 def delete_story(story_id):
@@ -330,6 +386,7 @@ def delete_story(story_id):
     flash('Story deleted successfully.', 'success')
     return redirect(url_for('stories.stories_list'))
 
+# ADD COMMENT TO DATABASE / SAVE COMMENT: Posts a new comment on a specific story
 @stories_bp.route('/stories/<int:story_id>/comment', methods=['POST'])
 @login_required
 def add_comment(story_id):
@@ -345,6 +402,7 @@ def add_comment(story_id):
     return redirect(url_for('stories.view_story', story_id=story_id))
 
 # Comment Management inside stories blueprint
+# UPDATE COMMENT IN DATABASE: Modifies the text of an existing comment
 @stories_bp.route('/comment/<int:comment_id>/edit', methods=['POST'])
 @login_required
 def edit_comment(comment_id):
@@ -368,6 +426,7 @@ def edit_comment(comment_id):
     flash('Comment updated.', 'success')
     return redirect(request.referrer)
 
+# REMOVE COMMENT FROM DATABASE / DELETE COMMENT: Deletes a comment by its ID
 @stories_bp.route('/comment/<int:comment_id>/delete', methods=['POST'])
 @login_required
 def delete_comment(comment_id):

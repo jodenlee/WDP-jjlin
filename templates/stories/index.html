@@ -20,13 +20,51 @@
 
     <!-- Search & Filters -->
     <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
-        <form action="{{ url_for('stories.stories_list') }}" method="get" class="row g-2 align-items-center">
-            <div class="col-12 col-md-6">
+        <form action="{{ url_for('stories.stories_list') }}" method="get" class="row g-2 align-items-center"
+            id="search-form">
+            <!-- Search -->
+            <div class="col-12 col-md-5">
                 <input type="text" name="search" class="form-control form-control-lg" placeholder="Search stories..."
                     value="{{ request.args.get('search', '') }}">
             </div>
 
-            <div class="col-6 col-md-2">
+            <!-- Tags Filter (Custom Dropdown) -->
+            <div class="col-4 col-md-2 position-relative">
+                <div class="dropdown">
+                    <button class="form-select form-select-lg w-100 text-start" type="button" id="tagsDropdown"
+                        data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                        <span class="tags-display text-truncate d-block">{% if selected_tags %}{{ selected_tags |
+                            join(', ')
+                            }}{% else %}Tags{% endif %}</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" style="min-width: 200px; max-height: 400px; overflow-y: auto;"
+                        aria-labelledby="tagsDropdown">
+                        {% for tag in all_tags %}
+                        <li>
+                            <label class="dropdown-item d-flex align-items-center gap-2 py-2">
+                                <input type="checkbox" name="tags" value="{{ tag }}" class="form-check-input m-0" {% if
+                                    tag in selected_tags %}checked{% endif %} onchange="updateTagsDisplay()">
+                                <span>{{ tag }}</span>
+                            </label>
+                        </li>
+                        {% else %}
+                        <li class="dropdown-item text-muted">No tags available</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Sorting -->
+            <div class="col-4 col-md-2">
+                <select name="sort" class="form-select form-select-lg">
+                    <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest
+                    </option>
+                    <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Popular</option>
+                </select>
+            </div>
+
+            <!-- Location -->
+            <div class="col-4 col-md-2">
                 <div class="input-group">
                     <input type="text" id="location-filter" name="location" list="singapore-locations"
                         class="form-control form-control-lg" placeholder="Location"
@@ -39,19 +77,24 @@
                 {% include 'partials/locations.html' %}
             </div>
 
-            <div class="col-6 col-md-2">
-                <select name="sort" class="form-select form-select-lg">
-                    <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest
-                    </option>
-                    <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Popular</option>
-                </select>
-            </div>
-
-            <div class="col-12 col-md-2 d-grid">
-                <button type="submit" class="btn btn-primary btn-lg">Search</button>
+            <!-- Search Button -->
+            <div class="col-12 col-md-1 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i></button>
             </div>
         </form>
         <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
+        <script>
+            function updateTagsDisplay() {
+                const checkboxes = document.querySelectorAll('#tagsDropdown + .dropdown-menu input[type="checkbox"]:checked');
+                const display = document.querySelector('.tags-display');
+                if (checkboxes.length === 0) {
+                    display.textContent = 'Tags';
+                } else {
+                    const tags = Array.from(checkboxes).map(cb => cb.value);
+                    display.textContent = tags.join(', ');
+                }
+            }
+        </script>
     </div>
 </section>
 
@@ -78,8 +121,14 @@
             <div class="card-body position-relative">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
-                    <!-- Bookmark Form - Top Right of Text Section -->
-
+                    <!-- Bookmark Form -->
+                    <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        class="position-relative z-2">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning lh-1"
+                            title="Favourite">
+                            {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
+                        </button>
+                    </form>
                 </div>
                 <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
                 <!-- Stretched Link for Card Click -->
@@ -99,14 +148,6 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
-                    <!-- Bookmark Larger -->
-                    <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
-                        class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning"
-                            title="Favourite">
-                            {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
-                        </button>
-                    </form>
                     <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
                         📍 {{ story['location'] or 'SG' }}
                     </div>
