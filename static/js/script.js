@@ -1,21 +1,24 @@
+/**
+ * CORE INTERFACE LOGIC: Handles general UI enhancements, greetings, and mobile navigation
+ */
 document.addEventListener('DOMContentLoaded', () => {
+    // INITIALIZE UI: Setup greeting and general listeners
     console.log("GenerationsConnect dashboard loaded.");
 
-    // Simple interaction to greet user (simulating personalization)
+    // GREETING LOGIC: Generate a time-based greeting for the hero section
     const hours = new Date().getHours();
     let greeting = "Welcome";
     if (hours < 12) greeting = "Good Morning";
     else if (hours < 18) greeting = "Good Afternoon";
     else greeting = "Good Evening";
 
-    // You could inject this greeting into the DOM if an element existed, 
-    // for now we just log it or we could update the hero title.
+    // HERO SECTION UPDATE: Update the main title with the personalized greeting
     const heroTitle = document.querySelector('.hero h1');
     if (heroTitle) {
         heroTitle.innerText = `${greeting}! ` + heroTitle.innerText;
     }
 
-    // Toggle Navbar
+    // MOBILE NAVIGATION TOGGLE: Handles the hamburger menu for small screens
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
 

@@ -3,7 +3,7 @@ from utils import get_db
 
 main_bp = Blueprint('main', __name__)
 
-# FETCH DASHBOARD CONTENT FROM DATABASE / GET RECENT STORIES / GET UPCOMING ACTIVITIES: Loads data for the main landing page
+# MAIN HOME ROUTE: Fetches recent stories and upcoming activities for the landing page
 @main_bp.route('/')
 def home():
     db = get_db()

@@ -1,9 +1,8 @@
 /**
- * Geolocation Utilities for TogetherSG
- * Uses Browser Geolocation API and Google Geocoding API
+ * GEOLOCATION UTILITIES: Handles browser-to-address conversion using Google Maps API
  */
 
-// API key is injected via the base template
+// API KEY INJECTION: Injected from base.html window object
 const GOOGLE_MAPS_API_KEY = window.GOOGLE_MAPS_API_KEY || '';
 
 // Known Singapore locations (from partials/locations.html)
@@ -20,7 +19,7 @@ const SINGAPORE_LOCATIONS = [
 ];
 
 /**
- * Gets the user's current location using the browser's Geolocation API.
+ * GET BROWSER LOCATION: Uses the HTML5 Geolocation API to fetch coordinates
  * @returns {Promise<{lat: number, lng: number}>}
  */
 function getCurrentLocation() {
@@ -49,10 +48,10 @@ function getCurrentLocation() {
 }
 
 /**
- * Reverse geocodes coordinates to a human-readable address using Google Geocoding API.
+ * REVERSE GEOCODE COORDINATES: Converts lat/lng into a street address via Google Maps API
  * @param {number} lat
  * @param {number} lng
- * @returns {Promise<string>} The formatted address or locality.
+ * @returns {Promise<string>}
  */
 async function reverseGeocode(lat, lng) {
     // Debug: Check if API key is available
@@ -95,9 +94,9 @@ async function reverseGeocode(lat, lng) {
 }
 
 /**
- * Matches a geocoded address to the closest known Singapore location.
+ * CATEGORIZE ADDRESS: Matches a raw address to the closest predefined Singapore location
  * @param {string} address
- * @returns {string} The best matching known location, or the original address.
+ * @returns {string}
  */
 function categorizeToSingaporeLocation(address) {
     const lowerAddress = address.toLowerCase();
@@ -111,9 +110,9 @@ function categorizeToSingaporeLocation(address) {
 }
 
 /**
- * Main function to populate a location input field with the user's current location.
- * @param {string} inputId - The ID of the input element to populate.
- * @param {string} [buttonId] - Optional ID of the button to show a loading state.
+ * POPULATE INPUT FIELD: Triggers the location flow and sets the value of a specific input
+ * @param {string} inputId
+ * @param {string} [buttonId]
  */
 async function populateLocationField(inputId, buttonId) {
     const inputElement = document.getElementById(inputId);

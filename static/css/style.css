@@ -1,27 +1,26 @@
+/* 
+ * DESIGN TOKENS & ROOT VARIABLES: Defines the color palette and typography scale
+ */
 :root {
     /* Minimalist Beige Palette */
     --primary-color: #8D6E63;
-    /* Warm Brown */
     --secondary-color: #A1887F;
-    /* Soft Brown */
     --accent-color: #D7CCC8;
-    /* Beige Accent */
     --bg-color: #FAF9F6;
-    /* Off-White Background */
     --text-color: #4E4E4E;
-    /* Soft Charcoal */
     --text-light: #757575;
-    /* Muted Gray */
     --card-bg: #FFFFFF;
 }
 
+/* 
+ * BASE TYPOGRAPHY & LAYOUT: Resets and foundational element styling
+ */
 body {
     font-family: 'Fredoka', sans-serif;
     color: var(--text-color);
     background-color: var(--bg-color);
     line-height: 1.6;
     font-size: 1.1rem;
-    /* Slightly larger base */
 }
 
 h1,
@@ -34,7 +33,9 @@ h6 {
     font-weight: 700;
 }
 
-/* Bootstrap Overrides */
+/* 
+ * BOOTSTRAP OVERRIDES: Customizing standard utility classes to fit the theme
+ */
 .text-primary {
     color: var(--primary-color) !important;
 }
@@ -68,7 +69,9 @@ h6 {
     color: var(--primary-color) !important;
 }
 
-/* Custom Utilities */
+/* 
+ * INTERACTIVE CARD STYLES: Hover effects and animations for grid items 
+ */
 .hover-card {
     transition: all 0.3s ease;
     border: 2px solid transparent !important;
@@ -85,15 +88,19 @@ h6 {
     transition: transform 0.3s ease;
 }
 
-/* Interactive List Items */
+/* 
+ * LIST ITEM ANIMATIONS: Styles for dashboard lists (stories/activities)
+ */
 .hover-list-item {
     transition: all 0.2s ease;
+    border: 1px solid #dee2e6 !important;
     border-left: 4px solid transparent !important;
 }
 
 .hover-list-item:hover {
     transform: translateX(5px);
     background-color: #fff !important;
+    border-color: #dee2e6 !important;
     border-left-color: var(--primary-color) !important;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
@@ -108,6 +115,9 @@ h6 {
     transform: translateX(0);
 }
 
+/* 
+ * VISUAL ENHANCERS: Gradients, placeholders, and UI polish
+ */
 .header-overlay-gradient {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 40%);
 }
@@ -122,7 +132,9 @@ h6 {
     background-size: cover;
 }
 
-/* Carousel Custom Nav */
+/* 
+ * STORY COMPONENT STYLES: Carousel and specific story-view elements
+ */
 .detail-carousel .nav-arrow {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 50%;

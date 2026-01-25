@@ -7,7 +7,7 @@ import math
 
 stories_bp = Blueprint('stories', __name__)
 
-# FETCH STORIES FROM DATABASE: This function retrieves all stories, with optional filtering and sorting
+# STORY LIST VIEW: Retrieves all stories with optional filtering (search, location, tags) and sorting (newest, popular)
 @stories_bp.route('/stories')
 def stories_list():
     db = get_db()
@@ -75,9 +75,17 @@ def stories_list():
     all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
     all_tags = [row['tag'] for row in all_tags_rows]
     
-    return render_template('stories/index.html', stories=stories_data, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
+    # Fetch tags for each story
+    stories_with_tags = []
+    for story in stories_data:
+        story_dict = dict(story)
+        tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story['id'],))
+        story_dict['tags'] = [t['tag'] for t in tags_rows]
+        stories_with_tags.append(story_dict)
+    
+    return render_template('stories/index.html', stories=stories_with_tags, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
 
-# ADD STORY TO DATABASE: This function handles the creation of a new story, including image uploads
+# CREATE STORY ROUTE: Handles new story submission, including image uploads and tag associations
 @stories_bp.route('/stories/new', methods=['GET', 'POST'])
 @login_required
 def create_story():
@@ -150,7 +158,7 @@ def create_story():
         
     return render_template('stories/create.html')
 
-# GET STORY DETAILS FROM DATABASE: Fetches a single story by its ID, including author and comments
+# STORY DETAIL VIEW: Displays a single story with its gallery, tags, and comment thread
 @stories_bp.route('/stories/<int:story_id>')
 def view_story(story_id):
     db = get_db()
@@ -180,7 +188,9 @@ def view_story(story_id):
     story_images = [img['image_path'] for img in additional_images]
     
     comments_query = """
-        SELECT c.*, u.username, u.role, u.profile_pic 
+        SELECT c.id, c.story_id, c.user_id, c.content, 
+               datetime(c.created_at, '+8 hours') as created_at,
+               u.username, u.role, u.profile_pic 
         FROM comments c 
         JOIN users u ON c.user_id = u.id 
         WHERE c.story_id = ? 
@@ -194,7 +204,7 @@ def view_story(story_id):
         
     return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images, story_tags=story_tags)
 
-# FETCH BOOKMARKED STORIES FROM DATABASE: Retrieves stories that the current user has saved
+# MY FAVOURITES VIEW: Displays stories bookmarked by the logged-in user with filter support
 @stories_bp.route('/stories/bookmarks')
 @login_required
 def my_bookmarks():
@@ -244,9 +254,17 @@ def my_bookmarks():
     all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
     all_tags = [row['tag'] for row in all_tags_rows]
     
-    return render_template('stories/favourites.html', stories=bookmarks, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
+    # Fetch tags for each story
+    stories_with_tags = []
+    for story in bookmarks:
+        story_dict = dict(story)
+        tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story['id'],))
+        story_dict['tags'] = [t['tag'] for t in tags_rows]
+        stories_with_tags.append(story_dict)
+    
+    return render_template('stories/favourites.html', stories=stories_with_tags, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
 
-# SAVE BOOKMARK TO DATABASE / REMOVE BOOKMARK FROM DATABASE: Toggles a story in the user's favourites
+# TOGGLE BOOKMARK ACTION: Saves or removes a story from the user's favourites list
 @stories_bp.route('/stories/<int:story_id>/bookmark', methods=['POST'])
 @login_required
 def toggle_bookmark(story_id):
@@ -263,7 +281,7 @@ def toggle_bookmark(story_id):
     conn.commit()
     return redirect(request.referrer or url_for('stories.view_story', story_id=story_id))
 
-# UPDATE LIKES IN DATABASE / SAVE LIKE TO DATABASE: Toggles a like on a story and updates the count
+# TOGGLE LIKE ACTION: Increments or decrements story like count and tracks user interaction
 @stories_bp.route('/stories/<int:story_id>/like', methods=['POST'])
 @login_required
 def toggle_like(story_id):
@@ -283,7 +301,7 @@ def toggle_like(story_id):
     conn.commit()
     return redirect(request.referrer or url_for('stories.stories_list'))
 
-# UPDATE STORY IN DATABASE / MODIFY STORY: Handles editing of an existing story and its images
+# EDIT STORY ROUTE: Allows authors to modify story text, images, and tags
 @stories_bp.route('/stories/<int:story_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_story(story_id):
@@ -363,7 +381,7 @@ def edit_story(story_id):
     
     return render_template('stories/edit.html', story=story, story_images=story_images, story_tags=story_tags)
 
-# REMOVE STORY FROM DATABASE / DELETE STORY: Permanently deletes a story and all associated data
+# DELETE STORY ACTION: Permanently removes a story and its related data (likes, bookmarks, images)
 @stories_bp.route('/stories/<int:story_id>/delete', methods=['POST'])
 @login_required
 def delete_story(story_id):
@@ -386,7 +404,7 @@ def delete_story(story_id):
     flash('Story deleted successfully.', 'success')
     return redirect(url_for('stories.stories_list'))
 
-# ADD COMMENT TO DATABASE / SAVE COMMENT: Posts a new comment on a specific story
+# ADD COMMENT ACTION: Appends a new user comment to a story thread
 @stories_bp.route('/stories/<int:story_id>/comment', methods=['POST'])
 @login_required
 def add_comment(story_id):
@@ -402,7 +420,7 @@ def add_comment(story_id):
     return redirect(url_for('stories.view_story', story_id=story_id))
 
 # Comment Management inside stories blueprint
-# UPDATE COMMENT IN DATABASE: Modifies the text of an existing comment
+# EDIT COMMENT ACTION: Updates the content of an existing user comment
 @stories_bp.route('/comment/<int:comment_id>/edit', methods=['POST'])
 @login_required
 def edit_comment(comment_id):
@@ -426,7 +444,7 @@ def edit_comment(comment_id):
     flash('Comment updated.', 'success')
     return redirect(request.referrer)
 
-# REMOVE COMMENT FROM DATABASE / DELETE COMMENT: Deletes a comment by its ID
+# DELETE COMMENT ACTION: Removes a user comment from a story thread
 @stories_bp.route('/comment/<int:comment_id>/delete', methods=['POST'])
 @login_required
 def delete_comment(comment_id):

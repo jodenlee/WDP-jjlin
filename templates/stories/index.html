@@ -10,9 +10,9 @@
             <a href="{{ url_for('stories.create_story') }}" class="btn btn-primary btn-lg">Post Story</a>
         </div>
     </div>
-    {% if request.args.get('search') or request.args.get('location') %}
+    {% if request.args.get('search') or request.args.get('location') or request.args.get('tags') %}
     <div class="mb-4">
-        <a href="{{ url_for('stories.stories_list') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary">
             <i class="fas fa-arrow-left me-2"></i>Back to All Stories
         </a>
     </div>
@@ -137,19 +137,32 @@
 
             <!-- Footer -->
             <!-- Footer -->
-            <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2 position-relative z-2">
-                    <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-danger lh-1">
-                            {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
-                        </button>
-                    </form>
-                    <span class="fw-bold text-dark fs-5">{{ story['likes'] }}</span>
+            <div class="card-footer bg-white border-0 py-3">
+                <!-- Tags Row -->
+                {% if story.tags %}
+                <div class="d-flex flex-wrap gap-1 mb-2 position-relative z-2">
+                    {% for tag in story.tags %}
+                    <a href="{{ url_for('stories.stories_list', tags=tag) }}"
+                        class="badge bg-secondary text-white text-decoration-none rounded-pill px-2 py-1 small">{{ tag
+                        }}</a>
+                    {% endfor %}
                 </div>
+                {% endif %}
 
-                <div class="d-flex align-items-center gap-3">
-                    <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
-                        📍 {{ story['location'] or 'SG' }}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 position-relative z-2">
+                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
+                            <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-danger lh-1">
+                                {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
+                            </button>
+                        </form>
+                        <span class="fw-bold text-dark fs-5">{{ story['likes'] }}</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
+                            📍 {{ story['location'] or 'SG' }}
+                        </div>
                     </div>
                 </div>
             </div>
