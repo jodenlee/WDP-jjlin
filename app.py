@@ -43,12 +43,14 @@ def create_app():
     from routes.activities import activities_bp
     from routes.messages import messages_bp
     from routes.main import main_bp
+    from routes.community import community_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(stories_bp)
     app.register_blueprint(activities_bp)
     app.register_blueprint(messages_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(community_bp)
 
     return app
 

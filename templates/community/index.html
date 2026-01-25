@@ -4,7 +4,7 @@
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-users me-2"></i> Community Groups</h2>
-    <a href="{{ url_for('create_group') }}" class="btn btn-primary">
+    <a href="{{ url_for('community.create_group') }}" class="btn btn-primary">
         <i class="fas fa-plus me-1"></i> New Group
     </a>
 </div>
@@ -33,7 +33,8 @@
                 <p class="text-muted small mb-3">
                     <i class="fas fa-user-friends me-1"></i> {{ group['member_count'] or 0 }} members
                 </p>
-                <a href="{{ url_for('view_group', group_id=group['id']) }}" class="btn btn-sm btn-outline-primary">View
+                <a href="{{ url_for('community.view_group', group_id=group['id']) }}"
+                    class="btn btn-sm btn-outline-primary">View
                     Group</a>
             </div>
         </div>
@@ -43,7 +44,7 @@
     <div class="col-12 text-center py-5">
         <i class="fas fa-users fa-3x text-muted mb-3"></i>
         <p class="text-muted">No groups yet. Start a community!</p>
-        <a href="{{ url_for('create_group') }}" class="btn btn-primary">Create Group</a>
+        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary">Create Group</a>
     </div>
     {% endif %}
 </div>

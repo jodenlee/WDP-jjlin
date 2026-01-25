@@ -124,7 +124,7 @@
                     <!-- Bookmark Form -->
                     <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
                         class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning lh-1"
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1"
                             title="Favourite">
                             {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
                         </button>

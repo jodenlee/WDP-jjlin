@@ -5,7 +5,7 @@
     <div class="col-12 col-md-8 col-lg-6">
         <div class="form-container">
             <h1 class="mb-4">Edit Story</h1>
-            <form method="POST" class="story-form" enctype="multipart/form-data">
+            <form method="POST" class="story-form" enctype="multipart/form-data" novalidate>
                 <div class="mb-3">
                     <label for="title" class="form-label fw-bold fs-5">Title</label>
                     <input type="text" id="title" name="title" class="form-control form-control-lg"
@@ -120,4 +120,57 @@
         </div>
     </div>
 </div>
+
+<!-- Validation Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary fs-5 py-3">
+                <p class="mb-2">Please fix the following issues:</p>
+                <ul id="validation-errors" class="text-danger mb-0"></ul>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('.story-form');
+
+        form.addEventListener('submit', function (e) {
+            const errors = [];
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+
+            if (!title) {
+                errors.push('Title is required.');
+            } else if (title.length < 3) {
+                errors.push('Title must be at least 3 characters.');
+            } else if (title.length > 100) {
+                errors.push('Title cannot exceed 100 characters.');
+            }
+
+            if (!content) {
+                errors.push('Story content is required.');
+            } else if (content.length < 10) {
+                errors.push('Story content must be at least 10 characters.');
+            }
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                const errorList = document.getElementById('validation-errors');
+                errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+                const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                modal.show();
+            }
+        });
+    });
+</script>
 {% endblock %}

@@ -45,8 +45,19 @@ h6 {
 }
 
 .btn-primary:hover {
-    background-color: #b04600;
-    border-color: #b04600;
+    background-color: #795548;
+    border-color: #795548;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
 }
 
 .nav-link {
@@ -59,12 +70,42 @@ h6 {
 
 /* Custom Utilities */
 .hover-card {
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s ease;
+    border: 2px solid transparent !important;
 }
 
 .hover-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+    transform: translateY(-8px);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, .1) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.hover-card:hover .display-4 {
+    transform: scale(1.2) rotate(5deg);
+    transition: transform 0.3s ease;
+}
+
+/* Interactive List Items */
+.hover-list-item {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent !important;
+}
+
+.hover-list-item:hover {
+    transform: translateX(5px);
+    background-color: #fff !important;
+    border-left-color: var(--primary-color) !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.hover-list-item .icon-animate {
+    transition: all 0.2s ease;
+    transform: translateX(-10px);
+}
+
+.hover-list-item:hover .icon-animate {
+    opacity: 1 !important;
+    transform: translateX(0);
 }
 
 .header-overlay-gradient {

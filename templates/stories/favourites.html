@@ -92,8 +92,8 @@
 </section>
 
 <!-- Stories Grid -->
+{% if stories %}
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% if stories %}
     {% for story in stories %}
     {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
 
@@ -117,7 +117,7 @@
                     <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
                     <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
                         class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning lh-1"
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1"
                             title="Remove Favourite">★</button>
                     </form>
                 </div>
@@ -143,11 +143,12 @@
         </div>
     </div>
     {% endfor %}
-    {% else %}
-    <div class="col-12 text-center py-5">
-        <p class="lead text-muted mb-4">No favourites yet. Go explore and star some stories!</p>
-        <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg">Browse Stories</a>
-    </div>
-    {% endif %}
 </div>
+{% else %}
+<div class="text-center py-5">
+    <p class="lead text-muted mb-4 text-center mx-auto" style="max-width: 500px;">No favourites yet. Go explore and star
+        some stories!</p>
+    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg">Browse Stories</a>
+</div>
+{% endif %}
 {% endblock %}
