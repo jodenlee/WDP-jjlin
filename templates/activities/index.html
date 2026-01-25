@@ -4,9 +4,9 @@
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-calendar-alt me-2"></i><span
-            data-i18n="nav_activities">Activities</span></h2>
+           >Activities</span></h2>
     <a href="{{ url_for('create_activity') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i><span data-i18n="new_activity">New Activity</span>
+        <i class="fas fa-plus me-1"></i><span>New Activity</span>
     </a>
 </div>
 
@@ -33,10 +33,10 @@
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span class="text-muted small">
                         <i class="fas fa-users me-1"></i> {{ activity['rsvp_count'] or 0 }} <span
-                            data-i18n="attending">attending</span>
+                           >attending</span>
                     </span>
                     <a href="{{ url_for('view_activity', activity_id=activity['id']) }}"
-                        class="btn btn-sm btn-outline-primary" data-i18n="view">View</a>
+                        class="btn btn-sm btn-outline-primary">View</a>
                 </div>
             </div>
         </div>
@@ -45,8 +45,8 @@
     {% else %}
     <div class="col-12 text-center py-5">
         <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-        <p class="text-muted" data-i18n="no_activities_found">No activities yet. Be the first to create one!</p>
-        <a href="{{ url_for('create_activity') }}" class="btn btn-primary" data-i18n="create_activity">Create
+        <p class="text-muted">No activities yet. Be the first to create one!</p>
+        <a href="{{ url_for('create_activity') }}" class="btn btn-primary">Create
             Activity</a>
     </div>
     {% endif %}

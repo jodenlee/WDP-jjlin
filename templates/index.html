@@ -3,8 +3,8 @@
 {% block content %}
 <section class="hero text-center py-5">
     <div class="hero-content">
-        <h1 class="display-4 fw-bold" data-i18n="welcome_to_togethersg">Welcome to TogetherSG</h1>
-        <p class="lead text-muted" data-i18n="your_space_to_connect">Your space to connect, share, and grow together.
+        <h1 class="display-4 fw-bold">Welcome to TogetherSG</h1>
+        <p class="lead text-muted">Your space to connect, share, and grow together.
         </p>
     </div>
 </section>
@@ -16,8 +16,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">📖</div>
-                    <h5 class="card-title fw-bold" data-i18n="nav_stories">Stories</h5>
-                    <p class="card-text text-muted small" data-i18n="read_and_share">Read & Share</p>
+                    <h5 class="card-title fw-bold">Stories</h5>
+                    <p class="card-text text-muted small">Read & Share</p>
                 </div>
             </div>
         </a>
@@ -28,8 +28,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">🤝</div>
-                    <h5 class="card-title fw-bold" data-i18n="nav_community">Community</h5>
-                    <p class="card-text text-muted small" data-i18n="find_your_group">Find your group</p>
+                    <h5 class="card-title fw-bold">Community</h5>
+                    <p class="card-text text-muted small">Find your group</p>
                 </div>
             </div>
         </a>
@@ -40,8 +40,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">📅</div>
-                    <h5 class="card-title fw-bold" data-i18n="nav_activities">Activities</h5>
-                    <p class="card-text text-muted small" data-i18n="events_workshops">Events & Workshops</p>
+                    <h5 class="card-title fw-bold">Activities</h5>
+                    <p class="card-text text-muted small">Events & Workshops</p>
                 </div>
             </div>
         </a>
@@ -52,8 +52,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">💬</div>
-                    <h5 class="card-title fw-bold" data-i18n="messages">Messages</h5>
-                    <p class="card-text text-muted small" data-i18n="chat_with_friends">Chat with friends</p>
+                    <h5 class="card-title fw-bold">Messages</h5>
+                    <p class="card-text text-muted small">Chat with friends</p>
                 </div>
             </div>
         </a>
@@ -64,8 +64,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">👤</div>
-                    <h5 class="card-title fw-bold" data-i18n="nav_profile">Profile</h5>
-                    <p class="card-text text-muted small" data-i18n="manage_account">Manage account</p>
+                    <h5 class="card-title fw-bold">Profile</h5>
+                    <p class="card-text text-muted small">Manage account</p>
                 </div>
             </div>
         </a>
@@ -75,7 +75,7 @@
 <!-- Preview Sections below for engagement -->
 <div class="row g-4 pt-4 border-top">
     <section class="col-md-6">
-        <h3 class="h4 mb-3 fw-bold" data-i18n="newest_stories">Newest Stories</h3>
+        <h3 class="h4 mb-3 fw-bold">Newest Stories</h3>
         <div class="list-group list-group-flush">
             {% if stories %}
             {% for story in stories %}
@@ -84,13 +84,13 @@
             </div>
             {% endfor %}
             {% else %}
-            <p class="text-muted" data-i18n="start_sharing_today">Start sharing today!</p>
+            <p class="text-muted">Start sharing today!</p>
             {% endif %}
         </div>
     </section>
 
     <section class="col-md-6">
-        <h3 class="h4 mb-3 fw-bold" data-i18n="upcoming">Upcoming</h3>
+        <h3 class="h4 mb-3 fw-bold">Upcoming</h3>
         <div class="list-group list-group-flush">
             {% if activities %}
             {% for activity in activities %}
@@ -99,7 +99,7 @@
             </div>
             {% endfor %}
             {% else %}
-            <p class="text-muted" data-i18n="check_whats_on">Check out what's on.</p>
+            <p class="text-muted">Check out what's on.</p>
             {% endif %}
         </div>
     </section>

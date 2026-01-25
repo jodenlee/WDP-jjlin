@@ -3,9 +3,9 @@
 {% block content %}
 <!-- Minimalist Welcome Banner -->
 <div class="welcome-banner-minimal mb-5">
-    <h1 class="display-5 fw-bold" style="color: var(--primary-color);"><span data-i18n="hello">Hello</span>, {{
+    <h1 class="display-5 fw-bold" style="color: var(--primary-color);"><span>Hello</span>, {{
         user.full_name }}</h1>
-    <p class="fs-5 text-muted" data-i18n="what_to_do_today">What would you like to do today?</p>
+    <p class="fs-5 text-muted">What would you like to do today?</p>
 </div>
 
 <!-- Main Feature Navigation Grid -->
@@ -19,8 +19,8 @@
                     <div class="nav-card-icon">
                         <i class="fas fa-book fa-2x"></i>
                     </div>
-                    <h6 class="fw-bold mb-1" data-i18n="nav_stories">Stories</h6>
-                    <span class="small text-muted" data-i18n="read_and_share">Read & Share</span>
+                    <h6 class="fw-bold mb-1">Stories</h6>
+                    <span class="small text-muted">Read & Share</span>
                 </div>
             </div>
         </a>
@@ -34,8 +34,8 @@
                     <div class="nav-card-icon">
                         <i class="fas fa-users fa-2x"></i>
                     </div>
-                    <h6 class="fw-bold mb-1" data-i18n="nav_community">Community</h6>
-                    <span class="small text-muted" data-i18n="find_your_group">Find your group</span>
+                    <h6 class="fw-bold mb-1">Community</h6>
+                    <span class="small text-muted">Find your group</span>
                 </div>
             </div>
         </a>
@@ -49,8 +49,8 @@
                     <div class="nav-card-icon">
                         <i class="fas fa-calendar-alt fa-2x"></i>
                     </div>
-                    <h6 class="fw-bold mb-1" data-i18n="nav_activities">Activities</h6>
-                    <span class="small text-muted" data-i18n="events_workshops">Events & Workshops</span>
+                    <h6 class="fw-bold mb-1">Activities</h6>
+                    <span class="small text-muted">Events & Workshops</span>
                 </div>
             </div>
         </a>
@@ -64,8 +64,8 @@
                     <div class="nav-card-icon">
                         <i class="fas fa-comments fa-2x"></i>
                     </div>
-                    <h6 class="fw-bold mb-1" data-i18n="messages">Messages</h6>
-                    <span class="small text-muted" data-i18n="chat_with_friends">Chat with friends</span>
+                    <h6 class="fw-bold mb-1">Messages</h6>
+                    <span class="small text-muted">Chat with friends</span>
                 </div>
             </div>
         </a>
@@ -79,8 +79,8 @@
                     <div class="nav-card-icon">
                         <i class="fas fa-user-circle fa-2x"></i>
                     </div>
-                    <h6 class="fw-bold mb-1" data-i18n="nav_profile">Profile</h6>
-                    <span class="small text-muted" data-i18n="manage_account">Manage account</span>
+                    <h6 class="fw-bold mb-1">Profile</h6>
+                    <span class="small text-muted">Manage account</span>
                 </div>
             </div>
         </a>
@@ -92,9 +92,9 @@
     <!-- Recent Stories -->
     <div class="col-12 col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-muted"><i class="fas fa-book me-2"></i><span data-i18n="recent_stories">Recent
+            <h5 class="fw-bold text-muted"><i class="fas fa-book me-2"></i><span>Recent
                     Stories</span></h5>
-            <a href="{{ url_for('stories') }}" class="btn btn-sm btn-link text-muted" data-i18n="view_all">View all</a>
+            <a href="{{ url_for('stories') }}" class="btn btn-sm btn-link text-muted">View all</a>
         </div>
 
         <div class="list-group list-group-flush">
@@ -110,7 +110,7 @@
             </a>
             {% endfor %}
             {% else %}
-            <div class="text-muted small" data-i18n="no_stories_yet">No stories yet.</div>
+            <div class="text-muted small">No stories yet.</div>
             {% endif %}
         </div>
     </div>
@@ -119,8 +119,8 @@
     <div class="col-12 col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold text-muted"><i class="fas fa-calendar-check me-2"></i><span
-                    data-i18n="upcoming">Upcoming</span></h5>
-            <a href="{{ url_for('activities') }}" class="btn btn-sm btn-link text-muted" data-i18n="view_all">View
+                   >Upcoming</span></h5>
+            <a href="{{ url_for('activities') }}" class="btn btn-sm btn-link text-muted">View
                 all</a>
         </div>
 
@@ -137,7 +137,7 @@
             </div>
             {% endfor %}
             {% else %}
-            <div class="text-muted small" data-i18n="no_upcoming_activities">No upcoming activities.</div>
+            <div class="text-muted small">No upcoming activities.</div>
             {% endif %}
         </div>
     </div>

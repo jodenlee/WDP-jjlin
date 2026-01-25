@@ -194,6 +194,10 @@ def register():
             errors.append('Password is required.')
         elif len(password) < 6:
             errors.append('Password must be at least 6 characters.')
+        elif not re.search(r'[A-Z]', password):
+            errors.append('Password must contain at least one capital letter.')
+        elif not re.search(r'[0-9]', password):
+            errors.append('Password must contain at least one number.')
         
         if password != confirm_password:
             errors.append('Passwords do not match.')
@@ -229,6 +233,66 @@ def register():
                 errors.append('An error occurred. Please try again.')
     
     return render_template('auth/register.html', errors=errors, form=form)
+
+    return render_template('auth/register.html', errors=errors, form=form)
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    error = None
+    if request.method == 'POST':
+        email = request.form['email']
+        db = get_db()
+        user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+        
+        if user:
+            # Email exists - redirect directly to reset password page
+            token = f"reset_{user['id']}"
+            return redirect(url_for('reset_password', token=token, email=email))
+        else:
+            # Email not found
+            error = "Invalid email. No account found with this email address."
+            
+    return render_template('auth/forgot_password.html', error=error)
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    email = request.args.get('email')
+    
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return render_template('auth/reset_password.html', token=token, email=email)
+        
+        if not re.search(r'[A-Z]', password):
+            flash('Password must contain at least one capital letter.', 'danger')
+            return render_template('auth/reset_password.html', token=token, email=email)
+        
+        if not re.search(r'[0-9]', password):
+            flash('Password must contain at least one number.', 'danger')
+            return render_template('auth/reset_password.html', token=token, email=email)
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('auth/reset_password.html', token=token, email=email)
+            
+        # Update Password
+        if email:
+            db = get_db()
+            conn = db.get_connection()
+            new_hash = generate_password_hash(password)
+            conn.execute("UPDATE users SET password_hash = ? WHERE email = ?", (new_hash, email))
+            conn.commit()
+            
+            flash('Password has been reset successfully. Please login.', 'success')
+            return redirect(url_for('login'))
+        else:
+             flash('Invalid link.', 'danger')
+             return redirect(url_for('login'))
+             
+    return render_template('auth/reset_password.html', token=token, email=email)
 
 @app.route('/logout')
 def logout():
@@ -824,7 +888,11 @@ def profile():
             'user_type': user_data['role'].capitalize(),
             'bio': user_data['bio'],
             'profile_pic': user_data['profile_pic'] or f"https://ui-avatars.com/api/?name={user_data['username']}&background=8D6E63&color=fff",
-            'language': user_language
+            'language': user_language,
+            'notify_messages': user_data['notify_messages'],
+            'notify_activities': user_data['notify_activities'],
+            'notify_stories': user_data['notify_stories'],
+            'notify_groups': user_data['notify_groups']
         }
     else:
         # Fallback if user session is invalid
@@ -878,6 +946,29 @@ def update_profile():
     conn.commit()
     
     # flash('Profile updated successfully!', 'success')  <-- REMOVED as requested
+    return redirect(url_for('profile'))
+
+@app.route('/profile/update_notifications', methods=['POST'])
+@login_required
+def update_notifications():
+    user_id = session['user_id']
+    
+    # Notification Settings
+    notify_messages = 1 if 'notify_messages' in request.form else 0
+    notify_activities = 1 if 'notify_activities' in request.form else 0
+    notify_stories = 1 if 'notify_stories' in request.form else 0
+    notify_groups = 1 if 'notify_groups' in request.form else 0
+
+    db = get_db()
+    conn = db.get_connection()
+    
+    conn.execute("""
+        UPDATE users 
+        SET notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?
+        WHERE id = ?
+    """, (notify_messages, notify_activities, notify_stories, notify_groups, user_id))
+    conn.commit()
+    
     return redirect(url_for('profile'))
 
 @app.route('/profile/language', methods=['POST'])
@@ -1012,6 +1103,19 @@ def join_group(group_id):
     conn = db.get_connection()
     try:
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
+        
+        # Notify Group Creator
+        group = db.query("SELECT created_by, name FROM groups WHERE id = ?", (group_id,), one=True)
+        if group:
+            creator_id = group['created_by']
+            # Check preference
+            creator_prefs = db.query("SELECT notify_groups FROM users WHERE id = ?", (creator_id,), one=True)
+            if creator_id != user_id and creator_prefs and creator_prefs['notify_groups']:
+                 conn.execute(
+                    "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                    (creator_id, 'Group Join', f'{session.get("username", "Someone")} joined your group "{group["name"]}".', url_for('view_group', group_id=group_id))
+                 )
+        
         conn.commit()
     except:
         pass  # Already a member

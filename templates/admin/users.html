@@ -79,7 +79,7 @@
                     <tbody>
                         {% if users %}
                         {% for user in users %}
-                        <tr onclick="window.location='{{ url_for('admin_view_user', user_id=user.id) }}'"
+                        <tr class="clickable-row" data-href="{{ url_for('admin_view_user', user_id=user.id) }}"
                             style="cursor: pointer;">
                             <td>#{{ user.id }}</td>
                             <td>
@@ -124,4 +124,14 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.clickable-row').forEach(function (row) {
+            row.addEventListener('click', function () {
+                window.location = this.dataset.href;
+            });
+        });
+    });
+</script>
 {% endblock %}

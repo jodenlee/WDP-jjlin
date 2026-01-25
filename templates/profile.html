@@ -21,23 +21,19 @@
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link active py-3 px-4 border-bottom" href="#profile-info" data-section="profile-info">
-                        <i class="fas fa-user me-2"></i><span data-i18n="profile_info">Profile Info</span>
+                        <i class="fas fa-user me-2"></i>Profile Info
                     </a>
                     <a class="nav-link py-3 px-4 border-bottom" href="#notifications" data-section="notifications">
-                        <i class="fas fa-bell me-2"></i><span data-i18n="notifications">Notifications</span>
+                        <i class="fas fa-bell me-2"></i>Notifications
                     </a>
                     <a class="nav-link py-3 px-4 border-bottom" href="#appearance" data-section="appearance">
-                        <i class="fas fa-palette me-2"></i><span data-i18n="appearance">Appearance</span>
-                    </a>
-                    <a class="nav-link py-3 px-4 border-bottom" href="#language" data-section="language">
-                        <i class="fas fa-globe me-2"></i><span data-i18n="language">Language</span>
+                        <i class="fas fa-palette me-2"></i>Appearance
                     </a>
                     <a class="nav-link py-3 px-4 border-bottom" href="#privacy" data-section="privacy">
-                        <i class="fas fa-shield-alt me-2"></i><span data-i18n="privacy_security">Privacy &
-                            Security</span>
+                        <i class="fas fa-shield-alt me-2"></i>Privacy & Security
                     </a>
                     <a class="nav-link py-3 px-4" href="#faq" data-section="faq">
-                        <i class="fas fa-question-circle me-2"></i> FAQ
+                        <i class="fas fa-question-circle me-2"></i>FAQ
                     </a>
                 </nav>
             </div>
@@ -49,30 +45,30 @@
         <!-- Profile Info Section -->
         <div class="card nav-card-minimal mb-4" id="profile-info">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-user me-2" style="color: var(--primary-color);"></i><span
-                        data-i18n="profile_info">Profile Info</span></h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-user me-2"
+                        style="color: var(--primary-color);"></i><span>Profile Info</span></h5>
             </div>
             <div class="card-body p-4">
                 <form action="{{ url_for('update_profile') }}" method="POST" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="full_name" class="form-label fw-bold" data-i18n="full_name">Full Name</label>
+                            <label for="full_name" class="form-label fw-bold">Full Name</label>
                             <input type="text" class="form-control" id="full_name" name="full_name"
                                 value="{{ user.full_name }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="username" class="form-label fw-bold" data-i18n="username">Username</label>
+                            <label for="username" class="form-label fw-bold">Username</label>
                             <input type="text" class="form-control" id="username" name="username"
                                 value="{{ user.username }}" readonly>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="bio" class="form-label fw-bold" data-i18n="bio">Bio</label>
+                        <label for="bio" class="form-label fw-bold">Bio</label>
                         <textarea class="form-control" id="bio" name="bio" rows="3"
                             placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="profile_pic" class="form-label fw-bold" data-i18n="profile_picture">Profile
+                        <label for="profile_pic" class="form-label fw-bold">Profile
                             Picture</label>
                         <input type="file" class="form-control" id="profile_pic" name="profile_pic" accept="image/*">
                         <div class="form-text">Upload a new photo to update your profile picture.</div>
@@ -94,7 +90,7 @@
                     <!-- WAIT, the backend expects everything in one POST. -->
                     <!-- We should combine them. -->
 
-                    <button type="submit" class="btn btn-primary" data-i18n="save_changes">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
 
                     <!-- We need to include notification settings in this POST if the backend expects them. -->
                     <!-- Current backend code resets them to 0 if missing. -->
@@ -108,11 +104,11 @@
         <!-- Notifications Section -->
         <div class="card nav-card-minimal mb-4" id="notifications">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2" style="color: var(--primary-color);"></i><span
-                        data-i18n="notifications">Notifications</span></h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2"
+                        style="color: var(--primary-color);"></i><span>Notifications</span></h5>
             </div>
             <div class="card-body p-4">
-                <form action="{{ url_for('update_profile') }}" method="POST" id="notificationForm">
+                <form action="{{ url_for('update_notifications') }}" method="POST" id="notificationForm">
                     <!-- We need hidden fields for the profile info so we don't lose it if we save here? No, let's just save notifications. -->
                     <!-- Actually the backend updates ALL at once. This is tricky. -->
                     <!-- Let's just use AJAX for notifications or make them separate routes. -->
@@ -123,8 +119,8 @@
                         <input class="form-check-input" type="checkbox" id="notify_messages" name="notify_messages"
                             {{ 'checked' if user.notify_messages else '' }}>
                         <label class="form-check-label" for="notify_messages">
-                            <strong data-i18n="new_messages">New Messages</strong>
-                            <br><small class="text-muted" data-i18n="new_messages_desc">Get notified when you receive
+                            <strong>New Messages</strong>
+                            <br><small class="text-muted">Get notified when you receive
                                 new messages</small>
                         </label>
                     </div>
@@ -132,8 +128,8 @@
                         <input class="form-check-input" type="checkbox" id="notify_activities" name="notify_activities"
                             {{ 'checked' if user.notify_activities else '' }}>
                         <label class="form-check-label" for="notify_activities">
-                            <strong data-i18n="activity_reminders">Activity Reminders</strong>
-                            <br><small class="text-muted" data-i18n="activity_reminders_desc">Reminders for activities
+                            <strong>Activity Reminders</strong>
+                            <br><small class="text-muted">Reminders for activities
                                 you've joined</small>
                         </label>
                     </div>
@@ -141,8 +137,8 @@
                         <input class="form-check-input" type="checkbox" id="notify_stories" name="notify_stories"
                             {{ 'checked' if user.notify_stories else '' }}>
                         <label class="form-check-label" for="notify_stories">
-                            <strong data-i18n="story_interactions">Story Interactions</strong>
-                            <br><small class="text-muted" data-i18n="story_interactions_desc">When someone likes or
+                            <strong>Story Interactions</strong>
+                            <br><small class="text-muted">When someone likes or
                                 comments on your stories</small>
                         </label>
                     </div>
@@ -150,12 +146,12 @@
                         <input class="form-check-input" type="checkbox" id="notify_groups" name="notify_groups"
                             {{ 'checked' if user.notify_groups else '' }}>
                         <label class="form-check-label" for="notify_groups">
-                            <strong data-i18n="group_updates">Group Updates</strong>
-                            <br><small class="text-muted" data-i18n="group_updates_desc">Updates from groups you've
+                            <strong>Group Updates</strong>
+                            <br><small class="text-muted">Updates from groups you've
                                 joined</small>
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-primary mt-3" data-i18n="save_notification_settings">Save
+                    <button type="submit" class="btn btn-primary mt-3">Save
                         Notification Settings</button>
                 </form>
             </div>
@@ -164,25 +160,25 @@
         <!-- Appearance Section -->
         <div class="card nav-card-minimal mb-4" id="appearance">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-palette me-2" style="color: var(--primary-color);"></i><span
-                        data-i18n="appearance">Appearance</span></h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-palette me-2"
+                        style="color: var(--primary-color);"></i><span>Appearance</span></h5>
             </div>
             <div class="card-body p-4">
                 <div class="mb-4">
-                    <label class="form-label fw-bold" data-i18n="theme">Theme</label>
+                    <label class="form-label fw-bold">Theme</label>
                     <div class="d-flex gap-3">
                         <div class="form-check">
                             <input class="form-check-input topic-theme-btn" type="radio" name="theme" id="theme_light"
                                 value="light" onclick="setTheme('light')">
                             <label class="form-check-label" for="theme_light">
-                                <i class="fas fa-sun me-1"></i><span data-i18n="light">Light</span>
+                                <i class="fas fa-sun me-1"></i><span>Light</span>
                             </label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input topic-theme-btn" type="radio" name="theme" id="theme_dark"
                                 value="dark" onclick="setTheme('dark')">
                             <label class="form-check-label" for="theme_dark">
-                                <i class="fas fa-moon me-1"></i><span data-i18n="dark">Dark</span>
+                                <i class="fas fa-moon me-1"></i><span>Dark</span>
                             </label>
                         </div>
                     </div>
@@ -190,38 +186,11 @@
             </div>
         </div>
 
-        <!-- Language Section -->
-        <div class="card nav-card-minimal mb-4" id="language">
-            <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-globe me-2" style="color: var(--primary-color);"></i><span
-                        data-i18n="language">Language</span></h5>
-            </div>
-            <div class="card-body p-4">
-                <form action="{{ url_for('update_language') }}" method="POST" id="languageForm">
-                    <div class="mb-3">
-                        <label for="language_select" class="form-label fw-bold">Display Language</label>
-                        <select class="form-select" id="language_select" name="language" onchange="this.form.submit()">
-                            <option value="en" {{ 'selected' if user.language=='en' or not user.language else '' }}>
-                                English</option>
-                            <option value="zh" {{ 'selected' if user.language=='zh' else '' }}>中文 (Chinese)</option>
-                            <option value="ms" {{ 'selected' if user.language=='ms' else '' }}>Bahasa Melayu (Malay)
-                            </option>
-                            <option value="ta" {{ 'selected' if user.language=='ta' else '' }}>தமிழ் (Tamil)</option>
-                            <option value="ko" {{ 'selected' if user.language=='ko' else '' }}>한국어 (Korean)</option>
-                            <option value="ja" {{ 'selected' if user.language=='ja' else '' }}>日本語 (Japanese)</option>
-                        </select>
-                        <small class="text-muted">Choose your preferred language for the interface. Page will refresh
-                            automatically.</small>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <!-- Privacy & Security Section -->
         <div class="card nav-card-minimal mb-4" id="privacy">
             <div class="card-header bg-transparent border-bottom py-3">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-shield-alt me-2"
-                        style="color: var(--primary-color);"></i><span data-i18n="privacy_security">Privacy &
+                        style="color: var(--primary-color);"></i><span>Privacy &
                         Security</span></h5>
             </div>
             <div class="card-body p-4">
