@@ -73,6 +73,8 @@
                                 <span class="fw-bold">{{ story['likes'] }}</span>
                             </button>
                         </form>
+
+
                     </div>
                 </div>
 
@@ -92,14 +94,19 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <!-- Edit/Delete for Author OR Admin (Delete only for Admin usually, but let's allow both if requested "make all show") -->
-                        <!-- Actually, giving admin edit rights is fine for fixing typos -->
+                        <!-- Edit/Delete for Author -->
                         {% if session.get('user_id') == story['author_id'] %}
                         <a href="{{ url_for('stories.edit_story', story_id=story['id']) }}"
                             class="btn btn-primary px-4 fw-bold">Edit</a>
                         <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
                             data-bs-target="#deleteStoryModal">
                             Delete
+                        </button>
+                        {% else %}
+                        <!-- Report Button for Non-Authors -->
+                        <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
+                            data-bs-target="#reportStoryModal">
+                            <i class="fas fa-flag me-2"></i>Report Story
                         </button>
                         {% endif %}
                     </div>
@@ -131,6 +138,33 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Report Story Modal -->
+                <div class="modal fade" id="reportStoryModal" tabindex="-1" aria-labelledby="reportStoryModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="reportStoryModalLabel">Report Story
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <form action="{{ url_for('stories.report_story', story_id=story['id']) }}" method="POST">
+                                <div class="modal-body text-secondary fs-5 py-3">
+                                    <p class="mb-2">Why are you reporting this story?</p>
+                                    <textarea name="reason" class="form-control" rows="4"
+                                        placeholder="Please describe the issue..." required></textarea>
+                                </div>
+                                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                                    <button type="button" class="btn btn-secondary px-4 fw-bold"
+                                        data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-danger px-4 fw-bold">Submit Report</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <hr class="my-4 text-muted">
 
                 <!-- Author Section -->
@@ -144,6 +178,58 @@
                         <span class="fw-bold fs-5">Posted by: {{ story['author_name'] or 'Unknown' }}</span>
                     </div>
                 </div>
+
+                <!-- Success Modal -->
+                <div class="modal fade" id="actionSuccessModal" tabindex="-1" aria-labelledby="actionSuccessModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="actionSuccessModalLabel">Success!
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-secondary fs-5 py-3" id="actionSuccessModalBody">
+                                Action completed successfully.
+                            </div>
+                            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                                <button type="button" class="btn btn-primary px-5 fw-bold"
+                                    data-bs-dismiss="modal">Okay</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        // Check for specific flash message and trigger modal
+                        const alerts = document.querySelectorAll('.alert-success');
+                        alerts.forEach(function (alert) {
+                            const text = alert.textContent.trim();
+                            if (text.includes('Story created successfully!') || text.includes('Story updated successfully!')) {
+                                // Hide the alert since we are showing the modal
+                                alert.classList.remove('show');
+                                alert.classList.add('d-none');
+
+                                const modalTitle = document.getElementById('actionSuccessModalLabel');
+                                const modalBody = document.getElementById('actionSuccessModalBody');
+
+                                if (text.includes('created')) {
+                                    modalTitle.textContent = "Story Posted!";
+                                    modalBody.textContent = "Your story has been successfully shared with the community.";
+                                } else if (text.includes('updated')) {
+                                    modalTitle.textContent = "Story Updated!";
+                                    modalBody.textContent = "Your story has been successfully updated.";
+                                }
+
+                                // Show the modal
+                                var myModal = new bootstrap.Modal(document.getElementById('actionSuccessModal'));
+                                myModal.show();
+                            }
+                        });
+                    });
+                </script>
 
                 <hr class="my-4 text-muted">
 

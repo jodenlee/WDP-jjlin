@@ -154,7 +154,7 @@ def create_story():
             
         conn.commit()
         flash('Story created successfully!', 'success')
-        return redirect(url_for('stories.stories_list'))
+        return redirect(url_for('stories.view_story', story_id=story_id))
         
     return render_template('stories/create.html')
 
@@ -381,6 +381,33 @@ def edit_story(story_id):
     story_tags = ','.join([t['tag'] for t in existing_tags])
     
     return render_template('stories/edit.html', story=story, story_images=story_images, story_tags=story_tags)
+
+# REPORT STORY ACTION: Allows users to flag inappropriate content
+@stories_bp.route('/stories/<int:story_id>/report', methods=['POST'])
+@login_required
+def report_story(story_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(url_for('stories.view_story', story_id=story_id))
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'story' AND target_id = ?", 
+                       (user_id, story_id), one=True)
+    
+    if existing:
+        flash('You have already reported this story.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'story', ?, ?)",
+                    (user_id, story_id, reason))
+        conn.commit()
+        flash('Story reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(url_for('stories.view_story', story_id=story_id))
 
 # DELETE STORY ACTION: Permanently removes a story and its related data (likes, bookmarks, images)
 @stories_bp.route('/stories/<int:story_id>/delete', methods=['POST'])
