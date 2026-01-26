@@ -16,31 +16,21 @@
                 <div class="position-absolute top-0 end-0 m-4 d-flex flex-column gap-2">
                     {% if is_owner %}
                     <!-- Owner Action: Delete Group -->
-                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                         data-bs-target="#deleteGroupModal">
                         <i class="fas fa-trash-alt me-1"></i> Delete Group
                     </button>
                     <!-- Owner Action: Update Group -->
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                         data-bs-target="#updateGroupModal">
                         <i class="fas fa-edit me-1"></i> Update Group
-                    </button>
-                    <!-- Owner/Member Action: Create Post -->
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                        data-bs-target="#createPostModal">
-                        <i class="fas fa-pen me-1"></i> Post
                     </button>
 
                     {% elif is_member %}
                     <!-- Member Action: Leave Group (Deleting membership) -->
-                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                         data-bs-target="#leaveGroupModal">
                         <i class="fas fa-trash-alt me-1"></i> Delete Group
-                    </button>
-                    <!-- Member Action: Create Post -->
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                        data-bs-target="#createPostModal">
-                        <i class="fas fa-pen me-1"></i> Post
                     </button>
                     {% else %}
 
@@ -108,7 +98,15 @@
 
                 <!-- Community Posts Section -->
                 <div>
-                    <h5 class="fw-bold mb-3">Community Posts</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">Community Posts</h5>
+                        {% if is_owner or is_member %}
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#createPostModal">
+                            <i class="fas fa-pen me-1"></i> Post
+                        </button>
+                        {% endif %}
+                    </div>
 
                     {% if posts %}
                     {% for post in posts %}
