@@ -1,66 +1,180 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<section class="mb-5 position-relative text-center">
-    <div class="d-flex align-items-center justify-content-center position-relative">
-        <a href="{{ url_for('stories') }}" class="btn btn-outline-secondary position-absolute start-0">← Back</a>
-        <h1 class="fw-bold mb-0">My Favourites</h1>
+<section class="mb-5">
+    <div class="d-flex flex-column gap-3">
+        <div class="d-flex align-items-center position-relative">
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg me-3">← Back</a>
+            <h1 class="fw-bold mb-0">My Favourites</h1>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="card border-0 shadow-sm p-3 bg-light">
+            <form action="{{ url_for('stories.my_bookmarks') }}" method="get" class="row g-2 align-items-center"
+                id="fav-search-form">
+                <!-- Search -->
+                <div class="col-12 col-md-5">
+                    <input type="text" name="search" class="form-control form-control-lg"
+                        placeholder="Search your favourites..." value="{{ request.args.get('search', '') }}">
+                </div>
+
+                <!-- Tags Filter (Custom Dropdown) -->
+                <div class="col-4 col-md-2 position-relative">
+                    <div class="dropdown">
+                        <button class="form-select form-select-lg w-100 text-start" type="button" id="favTagsDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                            <span class="fav-tags-display text-truncate d-block">{% if selected_tags %}{{ selected_tags
+                                |
+                                join(', ') }}{% else %}Tags{% endif %}</span>
+                        </button>
+                        <ul class="dropdown-menu p-2" style="min-width: 200px; max-height: 400px; overflow-y: auto;"
+                            aria-labelledby="favTagsDropdown">
+                            {% for tag in all_tags %}
+                            <li>
+                                <label class="dropdown-item d-flex align-items-center gap-2 py-2">
+                                    <input type="checkbox" name="tags" value="{{ tag }}" class="form-check-input m-0" {%
+                                        if tag in selected_tags %}checked{% endif %} onchange="updateFavTagsDisplay()">
+                                    <span>{{ tag }}</span>
+                                </label>
+                            </li>
+                            {% else %}
+                            <li class="dropdown-item text-muted">No tags available</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Sorting -->
+                <div class="col-4 col-md-2">
+                    <select name="sort" class="form-select form-select-lg">
+                        <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest
+                        </option>
+                        <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Popular
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Location -->
+                <div class="col-4 col-md-2">
+                    <div class="input-group">
+                        <input type="text" id="fav-location-filter" name="location" list="singapore-locations"
+                            class="form-control form-control-lg" placeholder="Location"
+                            value="{{ request.args.get('location', '') }}">
+                        <button type="button" id="fav-use-location-btn" class="btn btn-outline-secondary"
+                            onclick="populateLocationField('fav-location-filter', 'fav-use-location-btn')"
+                            title="Use My Location">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                    </div>
+                    {% include 'partials/locations.html' %}
+                </div>
+
+                <!-- Search Button -->
+                <div class="col-12 col-md-1 d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+            <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
+            <script>
+                function updateFavTagsDisplay() {
+                    const checkboxes = document.querySelectorAll('#favTagsDropdown + .dropdown-menu input[type="checkbox"]:checked');
+                    const display = document.querySelector('.fav-tags-display');
+                    if (checkboxes.length === 0) {
+                        display.textContent = 'Tags';
+                    } else {
+                        const tags = Array.from(checkboxes).map(cb => cb.value);
+                        display.textContent = tags.join(', ');
+                    }
+                }
+            </script>
+        </div>
     </div>
 </section>
 
 <!-- Stories Grid -->
+{% if stories %}
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% if stories %}
     {% for story in stories %}
     {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
 
     <div class="col">
         <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
             <!-- Story Header / Image -->
-            <div class="position-relative"
-                style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
-                <div
-                    class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-between align-items-start header-overlay-gradient">
-                    <!-- Bookmark Form -->
-                    <form action="{{ url_for('toggle_bookmark', story_id=story['id']) }}" method="POST"
-                        class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-4 text-warning"
-                            title="Remove Favourite">★</button>
-                    </form>
-                    <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
+            <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="text-decoration-none">
+                <div class="position-relative"
+                    style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
+                    <div
+                        class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient">
+                        <!-- Bookmark Form Removed -->
+                        <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
+                    </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Content -->
             <div class="card-body position-relative">
-                <h5 class="card-title fw-bold text-dark">{{ story['title'] }}</h5>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
+                    <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        class="position-relative z-2">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1"
+                            title="Remove Favourite">★</button>
+                    </form>
+                </div>
                 <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
-                <a href="{{ url_for('view_story', story_id=story['id']) }}" class="stretched-link"></a>
+                <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="stretched-link"></a>
             </div>
 
             <!-- Footer -->
-            <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2 position-relative z-2">
-                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
-                            {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
-                        </button>
-                    </form>
-                    <span class="fw-bold text-dark">{{ story['likes'] }}</span>
+            <div class="card-footer bg-white border-0 py-3">
+                <!-- Tags Row -->
+                {% if story.tags %}
+                <div class="d-flex flex-wrap gap-1 mb-2 position-relative z-2">
+                    {% for tag in story.tags %}
+                    <a href="{{ url_for('stories.stories_list', tags=tag) }}"
+                        class="badge bg-secondary text-white text-decoration-none rounded-pill px-2 py-1 small">{{ tag
+                        }}</a>
+                    {% endfor %}
                 </div>
+                {% endif %}
 
-                <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
-                    📍 {{ story['location'] or 'SG' }}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 position-relative z-2">
+                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
+                            <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
+                                {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
+                            </button>
+                        </form>
+                        <span class="fw-bold text-dark">{{ story['likes'] }}</span>
+                    </div>
+
+                    <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
+                        📍 {{ story['location'] or 'SG' }}
+                    </div>
+                </div>
+                <div class="mt-3 text-muted d-flex align-items-center gap-3">
+                    {% if story.profile_pic %}
+                    <img src="{{ url_for('static', filename=story.profile_pic) }}" alt="Profile"
+                        class="rounded-circle object-fit-cover" style="width: 35px; height: 35px;">
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 35px; height: 35px; background-color: var(--accent-color);">
+                        <i class="fas fa-user" style="color: var(--primary-color); font-size: 1rem;"></i>
+                    </div>
+                    {% endif %}
+                    <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
                 </div>
             </div>
         </div>
     </div>
     {% endfor %}
-    {% else %}
-    <div class="col-12 text-center py-5">
-        <p class="lead text-muted mb-4">No favourites yet. Go explore and star some stories!</p>
-        <a href="{{ url_for('stories') }}" class="btn btn-primary btn-lg">Browse Stories</a>
-    </div>
-    {% endif %}
 </div>
+{% else %}
+<div class="text-center py-5">
+    <p class="lead text-muted mb-4 text-center mx-auto" style="max-width: 500px;">No favourites yet. Go explore and
+        star
+        some stories!</p>
+    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg">Browse Stories</a>
+</div>
+{% endif %}
 {% endblock %}

@@ -1,123 +1,179 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="form-container">
-    <h1>Edit Story</h1>
-    <form method="POST" class="story-form" enctype="multipart/form-data">
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
         <div class="mb-3">
-            <label for="title" class="form-label fw-bold">Title</label>
-            <input type="text" id="title" name="title" class="form-control" value="{{ story['title'] }}" required>
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">← Back to Stories</a>
         </div>
+        <div class="form-container">
+            <h1 class="mb-4">Edit Story</h1>
+            <form method="POST" class="story-form" enctype="multipart/form-data" novalidate>
+                <div class="mb-3">
+                    <label for="title" class="form-label fw-bold fs-5">Title</label>
+                    <input type="text" id="title" name="title" class="form-control form-control-lg"
+                        value="{{ story['title'] }}" required minlength="3" maxlength="100">
+                    <div class="form-text">Title must be between 3 and 100 characters.</div>
+                </div>
 
-        <div class="mb-3">
-            <label for="location" class="form-label fw-bold">Location (Singapore)</label>
-            <input type="text" id="location" name="location" list="singapore-locations" class="form-control"
-                value="{{ story['location'] }}" placeholder="e.g. Toa Payoh Public Library">
-            {% include 'partials/locations.html' %}
-        </div>
+                <div class="mb-3">
+                    <label for="content" class="form-label fw-bold fs-5">Story Content</label>
+                    <textarea id="content" name="content" rows="6" class="form-control form-control-lg" required
+                        minlength="10">{{ story['content'] }}</textarea>
+                    <div class="form-text">Share at least 10 characters about your story.</div>
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label fw-bold">Manage Images</label>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                {% if story['image_url'] %}
-                <div class="position-relative border rounded p-1" style="width: 100px; height: 100px;">
-                    <img src="{{ story['image_url'] }}" class="w-100 h-100 object-fit-cover" alt="Main Login">
-                    <div
-                        class="form-check position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center opacity-0 hover-opacity-100 transition">
-                        <input class="form-check-input" type="checkbox" name="delete_main_image" value="1"
-                            title="Delete this image">
+                <div class="mb-3">
+                    <label class="form-label fw-bold fs-5">Manage Images</label>
+                    <div class="d-flex flex-wrap gap-3 mb-3">
+                        {% if story['image_url'] %}
+                        <div class="d-flex flex-column align-items-center gap-2">
+                            <div class="border rounded p-1" style="width: 100px; height: 100px;">
+                                <img src="{{ story['image_url'] }}" class="w-100 h-100 object-fit-cover"
+                                    alt="Main Login">
+                            </div>
+                            <div class="form-check">
+                                <input class="btn-check" type="checkbox" name="delete_main_image" value="1"
+                                    id="del_main">
+                                <label class="btn btn-outline-danger btn-sm w-100" for="del_main">Delete</label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% for img in story_images %}
+                        <div class="d-flex flex-column align-items-center gap-2">
+                            <div class="border rounded p-1" style="width: 100px; height: 100px;">
+                                <img src="{{ url_for('static', filename=img['image_path']) }}"
+                                    class="w-100 h-100 object-fit-cover" alt="Image">
+                            </div>
+                            <div class="form-check">
+                                <input class="btn-check" type="checkbox" name="delete_image_ids" value="{{ img['id'] }}"
+                                    id="del_{{ img['id'] }}">
+                                <label class="btn btn-outline-danger btn-sm w-100"
+                                    for="del_{{ img['id'] }}">Delete</label>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
-                    <span
-                        class="position-absolute bottom-0 start-50 translate-middle-x badge bg-primary small">Main</span>
-                </div>
-                {% endif %}
-
-                {% for img in story_images %}
-                <div class="position-relative border rounded p-1" style="width: 100px; height: 100px;">
-                    <img src="{{ url_for('static', filename=img['image_path']) }}" class="w-100 h-100 object-fit-cover"
-                        alt="Image">
-                    <div
-                        class="form-check position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center opacity-0 hover-opacity-100 transition">
-                        <input class="form-check-input" type="checkbox" name="delete_image_ids" value="{{ img['id'] }}"
-                            title="Delete this image">
+                    <div id="image-inputs-container"></div>
+                    <button type="button" id="add-image-btn"
+                        class="btn btn-outline-primary d-flex align-items-center gap-2">
+                        <i class="fas fa-plus"></i> Add Image
+                    </button>
+                    <div class="form-text mt-2">New images will be added to the existing carousel. Supported: jpg, png,
+                        webp.
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            <div class="form-text mb-3">Hover and check to remove existing images.</div>
 
-            <label class="form-label fw-bold">Add More Images</label>
-            <div id="image-inputs-container">
-                <div class="input-group mb-2">
-                    <input type="file" name="images" class="form-control" accept="image/*">
-                    <button type="button" class="btn btn-outline-danger remove-image-btn"
-                        style="display:none;">&times;</button>
-                </div>
-            </div>
-            <button type="button" id="add-image-btn"
-                class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2">
-                <i class="fas fa-plus"></i> Add Another Image
-            </button>
-            <div class="form-text mt-2">New images will be added to the existing carousel. Supported: jpg, png, webp.
-            </div>
-        </div>
+                <!-- script for dynamic inputs -->
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
 
-        <!-- script for dynamic inputs -->
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                // Image deletion hover effect logic styling handled by CSS classes generally, 
-                // but for simplicity inline styles used above. 
-                // Need to ensure the hover works.
-                const imgContainers = document.querySelectorAll('.position-relative');
-                imgContainers.forEach(div => {
-                    const check = div.querySelector('.form-check');
-                    if (check) {
-                        div.addEventListener('mouseenter', () => check.classList.remove('opacity-0'));
-                        div.addEventListener('mouseleave', () => {
-                            if (!check.querySelector('input').checked) check.classList.add('opacity-0');
-                        });
-                        check.querySelector('input').addEventListener('change', (e) => {
-                            if (e.target.checked) {
-                                check.classList.remove('opacity-0');
-                                div.classList.add('border-danger');
-                            } else {
-                                div.classList.remove('border-danger');
-                            }
-                        });
-                    }
-                });
 
-                const container = document.getElementById('image-inputs-container');
-                const addBtn = document.getElementById('add-image-btn');
+                        const container = document.getElementById('image-inputs-container');
+                        const addBtn = document.getElementById('add-image-btn');
 
-                addBtn.addEventListener('click', function () {
-                    const div = document.createElement('div');
-                    div.className = 'input-group mb-2';
-                    div.innerHTML = `
-                        <input type="file" name="images" class="form-control" accept="image/*">
+                        addBtn.addEventListener('click', function () {
+                            const div = document.createElement('div');
+                            div.className = 'input-group mb-2';
+                            div.innerHTML = `
+                        <input type="file" name="images" class="form-control form-control-lg" accept="image/*">
                         <button type="button" class="btn btn-outline-danger remove-image-btn">&times;</button>
                     `;
-                    container.appendChild(div);
-                });
+                            container.appendChild(div);
+                        });
 
-                container.addEventListener('click', function (e) {
-                    if (e.target.classList.contains('remove-image-btn')) {
-                        e.target.parentElement.remove();
-                    }
-                });
-            });
-        </script>
+                        container.addEventListener('click', function (e) {
+                            if (e.target.classList.contains('remove-image-btn')) {
+                                e.target.parentElement.remove();
+                            }
+                        });
+                    });
+                </script>
 
-        <div class="mb-3">
-            <label for="content" class="form-label fw-bold">Story Content</label>
-            <textarea id="content" name="content" rows="6" class="form-control"
-                required>{{ story['content'] }}</textarea>
+                <div class="mb-3">
+                    <label for="location" class="form-label fw-bold fs-5">Location (Singapore)</label>
+                    <div class="input-group">
+                        <input type="text" id="location" name="location" list="singapore-locations"
+                            class="form-control form-control-lg" maxlength="100" value="{{ story['location'] }}"
+                            placeholder="e.g. Toa Payoh Public Library">
+                        <button type="button" id="use-location-btn" class="btn btn-outline-secondary"
+                            onclick="populateLocationField('location', 'use-location-btn')">
+                            <i class="fas fa-crosshairs"></i> Use My Location
+                        </button>
+                    </div>
+                    {% include 'partials/locations.html' %}
+                </div>
+                <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
+
+                <!-- Tags Input -->
+                <div class="mb-3">
+                    <label for="tags" class="form-label fw-bold fs-5">Tags</label>
+                    <input type="text" id="tags" name="tags" class="form-control form-control-lg" maxlength="200"
+                        value="{{ story_tags }}" placeholder="e.g. Food, Heritage, Nature (comma-separated, max 5)">
+                    <div class="form-text">Add up to 5 tags to help others find your story. Separate with commas.</div>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{{ url_for('stories.view_story', story_id=story['id']) }}"
+                        class="btn btn-lg btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-lg btn-primary">Update Story</button>
+                </div>
+            </form>
         </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Update Story</button>
-            <a href="{{ url_for('view_story', story_id=story['id']) }}" class="btn btn-outline-secondary">Cancel</a>
-        </div>
-    </form>
+    </div>
 </div>
+
+<!-- Validation Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary fs-5 py-3">
+                <p class="mb-2">Please fix the following issues:</p>
+                <ul id="validation-errors" class="text-danger mb-0"></ul>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('.story-form');
+
+        form.addEventListener('submit', function (e) {
+            const errors = [];
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+
+            if (!title) {
+                errors.push('Title is required.');
+            } else if (title.length < 3) {
+                errors.push('Title must be at least 3 characters.');
+            } else if (title.length > 100) {
+                errors.push('Title cannot exceed 100 characters.');
+            }
+
+            if (!content) {
+                errors.push('Story content is required.');
+            } else if (content.length < 10) {
+                errors.push('Story content must be at least 10 characters.');
+            }
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                const errorList = document.getElementById('validation-errors');
+                errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+                const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                modal.show();
+            }
+        });
+    });
+</script>
 {% endblock %}

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="mb-4">
-    <a href="{{ url_for('community') }}" class="btn btn-link text-muted px-0">
+    <a href="{{ url_for('community.index') }}" class="btn btn-primary">
         <i class="fas fa-arrow-left me-1"></i> Back to Groups
     </a>
 </div>
@@ -15,7 +15,7 @@
                 </h4>
             </div>
             <div class="card-body p-4">
-                <form action="{{ url_for('create_group') }}" method="POST">
+                <form action="{{ url_for('community.create_group') }}" method="POST">
                     <div class="mb-3">
                         <label for="name" class="form-label fw-bold">Group Name</label>
                         <input type="text" class="form-control" id="name" name="name" required

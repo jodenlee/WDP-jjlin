@@ -3,12 +3,17 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
+        <div class="mb-3">
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">← Back to Stories</a>
+        </div>
         <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
             <!-- Image Carousel -->
+            {% if story['image_url'] or story_images %}
             <div id="storyCarousel" class="carousel slide bg-light" data-bs-ride="carousel" style="height: 350px;">
                 <div class="carousel-inner h-100">
                     <!-- Main Image -->
+                    {% if story['image_url'] %}
                     <div class="carousel-item h-100 active bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
                             <img src="{{ story['image_url'] | safe }}"
@@ -16,10 +21,12 @@
                                 alt="{{ story['title'] }}" onclick="openLightbox(this.src)">
                         </div>
                     </div>
+                    {% endif %}
+
                     <!-- Additional Images -->
-                    {% if story_images %}
                     {% for img_path in story_images %}
-                    <div class="carousel-item h-100 bg-black">
+                    <div
+                        class="carousel-item h-100 {% if not story['image_url'] and loop.first %}active{% endif %} bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
                             <img src="{{ url_for('static', filename=img_path) }}"
                                 class="d-block mw-100 mh-100 object-fit-contain cursor-pointer" alt="Story Image"
@@ -27,57 +34,137 @@
                         </div>
                     </div>
                     {% endfor %}
-                    {% endif %}
                 </div>
 
-                {% if story_images %}
+                {% if (story['image_url'] and story_images) or (story_images|length > 1) %}
                 <button class="carousel-control-prev" type="button" data-bs-target="#storyCarousel"
                     data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="nav-arrow" aria-hidden="true">
+                        <i class="fas fa-chevron-left text-white"></i>
+                    </span>
                     <span class="visually-hidden">Previous</span>
                 </button>
                 <button class="carousel-control-next" type="button" data-bs-target="#storyCarousel"
                     data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="nav-arrow" aria-hidden="true">
+                        <i class="fas fa-chevron-right text-white"></i>
+                    </span>
                     <span class="visually-hidden">Next</span>
                 </button>
                 {% endif %}
             </div>
+            {% endif %}
 
             <div class="card-body p-4 p-md-5">
                 <!-- Header Section -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
-                    <form action="{{ url_for('toggle_like', story_id=story['id']) }}" method="POST">
-                        <button type="submit"
-                            class="btn {{ 'btn-danger' if is_liked else 'btn-outline-danger' }} btn-lg d-flex align-items-center gap-2 rounded-pill px-4">
-                            {% if is_liked %}♥{% else %}♡{% endif %}
-                            <span class="fw-bold">{{ story['likes'] }}</span>
-                        </button>
-                    </form>
-                </div>
-
-                <p class="lead text-dark mb-4">{{ story['content'] }}</p>
-
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-                    <span class="badge bg-secondary rounded-pill px-3 py-2 fs-6">PLACES</span>
-
-                    <div class="d-flex gap-2">
-                        <!-- Edit/Delete for Author OR Admin (Delete only for Admin usually, but let's allow both if requested "make all show") -->
-                        <!-- Actually, giving admin edit rights is fine for fixing typos -->
-                        {% if session.get('user_id') == story['author_id'] %}
-                        <a href="{{ url_for('edit_story', story_id=story['id']) }}"
-                            class="btn btn-primary px-4 fw-bold">Edit</a>
-                        <form action="{{ url_for('delete_story', story_id=story['id']) }}" method="POST"
-                            onsubmit="return confirm('Are you sure you want to delete this story?');">
-                            <button type="submit" class="btn btn-danger px-4 fw-bold">Delete</button>
+                    <div class="d-flex align-items-center gap-3">
+                        <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST">
+                            <button type="submit"
+                                class="btn p-0 border-0 bg-transparent text-warning d-flex justify-content-center align-items-center">
+                                <i class="{{ 'fas' if is_bookmarked else 'far' }} fa-star fa-2x"></i>
+                            </button>
                         </form>
-                        {% endif %}
+                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
+                            <button type="submit"
+                                class="btn {{ 'btn-danger' if is_liked else 'btn-outline-danger' }} btn-lg d-flex justify-content-center align-items-center gap-2 rounded-pill px-4">
+                                <i class="{{ 'fas' if is_liked else 'far' }} fa-heart"></i>
+                                <span class="fw-bold">{{ story['likes'] }}</span>
+                            </button>
+                        </form>
 
 
                     </div>
                 </div>
 
+                <p class="lead text-dark mb-4">{{ story['content'] }}</p>
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if story_tags %}
+                        {% for tag in story_tags %}
+                        <a href="{{ url_for('stories.stories_list', tags=tag) }}"
+                            class="badge bg-secondary text-white text-decoration-none rounded-pill px-3 py-2 fs-6">{{
+                            tag }}</a>
+                        {% endfor %}
+                        {% else %}
+                        <span class="badge bg-light text-muted rounded-pill px-3 py-2 fs-6">No tags</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <!-- Edit/Delete for Author -->
+                        {% if session.get('user_id') == story['author_id'] %}
+                        <a href="{{ url_for('stories.edit_story', story_id=story['id']) }}"
+                            class="btn btn-primary px-4 fw-bold">Edit</a>
+                        <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
+                            data-bs-target="#deleteStoryModal">
+                            Delete
+                        </button>
+                        {% else %}
+                        <!-- Report Button for Non-Authors -->
+                        <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
+                            data-bs-target="#reportStoryModal">
+                            <i class="fas fa-flag me-2"></i>Report Story
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteStoryModal" tabindex="-1" aria-labelledby="deleteStoryModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="deleteStoryModalLabel">Confirm
+                                    delete?</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-secondary fs-5 py-3">
+                                Are you sure you want to delete this story? This action cannot be undone.
+                            </div>
+                            <div class="modal-footer border-top-0 pt-0 pb-4">
+                                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal"
+                                    style="background-color: #6c757d; border: none;">Cancel</button>
+                                <form action="{{ url_for('stories.delete_story', story_id=story['id']) }}" method="POST"
+                                    class="d-inline">
+                                    <button type="submit" class="btn btn-danger px-4 fw-bold"
+                                        style="background-color: #dc3545; border: none;">Delete Story</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Story Modal -->
+                <div class="modal fade" id="reportStoryModal" tabindex="-1" aria-labelledby="reportStoryModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="reportStoryModalLabel">Report Story
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <form action="{{ url_for('stories.report_story', story_id=story['id']) }}" method="POST">
+                                <div class="modal-body text-secondary fs-5 py-3">
+                                    <p class="mb-2">Why are you reporting this story?</p>
+                                    <textarea name="reason" class="form-control" rows="4"
+                                        placeholder="Please describe the issue..." required></textarea>
+                                </div>
+                                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                                    <button type="button" class="btn btn-secondary px-4 fw-bold"
+                                        data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-danger px-4 fw-bold">Submit Report</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <hr class="my-4 text-muted">
 
                 <!-- Author Section -->
@@ -92,6 +179,58 @@
                     </div>
                 </div>
 
+                <!-- Success Modal -->
+                <div class="modal fade" id="actionSuccessModal" tabindex="-1" aria-labelledby="actionSuccessModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="actionSuccessModalLabel">Success!
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-secondary fs-5 py-3" id="actionSuccessModalBody">
+                                Action completed successfully.
+                            </div>
+                            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                                <button type="button" class="btn btn-primary px-5 fw-bold"
+                                    data-bs-dismiss="modal">Okay</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        // Check for specific flash message and trigger modal
+                        const alerts = document.querySelectorAll('.alert-success');
+                        alerts.forEach(function (alert) {
+                            const text = alert.textContent.trim();
+                            if (text.includes('Story created successfully!') || text.includes('Story updated successfully!')) {
+                                // Hide the alert since we are showing the modal
+                                alert.classList.remove('show');
+                                alert.classList.add('d-none');
+
+                                const modalTitle = document.getElementById('actionSuccessModalLabel');
+                                const modalBody = document.getElementById('actionSuccessModalBody');
+
+                                if (text.includes('created')) {
+                                    modalTitle.textContent = "Story Posted!";
+                                    modalBody.textContent = "Your story has been successfully shared with the community.";
+                                } else if (text.includes('updated')) {
+                                    modalTitle.textContent = "Story Updated!";
+                                    modalBody.textContent = "Your story has been successfully updated.";
+                                }
+
+                                // Show the modal
+                                var myModal = new bootstrap.Modal(document.getElementById('actionSuccessModal'));
+                                myModal.show();
+                            }
+                        });
+                    });
+                </script>
+
                 <hr class="my-4 text-muted">
 
                 <!-- Comments Section -->
@@ -99,14 +238,34 @@
                     <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
                             comments|length }}</span></h2>
 
-                    <form action="{{ url_for('add_comment', story_id=story['id']) }}" method="POST" class="mb-4">
-                        <textarea name="content" class="form-control mb-2" rows="3" placeholder="Leave a comment!"
-                            required></textarea>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-danger">* No Blank Comment</small>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">Post</button>
+                    <form action="{{ url_for('stories.add_comment', story_id=story['id']) }}" method="POST" class="mb-4"
+                        id="commentForm" novalidate>
+                        <textarea name="content" id="commentContent" class="form-control mb-2" rows="3"
+                            placeholder="Leave a comment!" required></textarea>
+                        <div class="d-flex align-items-center">
+                            <small class="text-danger d-none" id="commentError">* No Blank Comment</small>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold ms-auto">Post</button>
                         </div>
                     </form>
+                    <script>
+                        document.getElementById('commentForm').addEventListener('submit', function (e) {
+                            const content = document.getElementById('commentContent').value.trim();
+                            const error = document.getElementById('commentError');
+                            if (!content) {
+                                e.preventDefault();
+                                error.classList.remove('d-none');
+                            } else {
+                                error.classList.add('d-none');
+                            }
+                        });
+                        // Clear error on typing
+                        document.getElementById('commentContent').addEventListener('input', function () {
+                            const error = document.getElementById('commentError');
+                            if (this.value.trim()) {
+                                error.classList.add('d-none');
+                            }
+                        });
+                    </script>
 
                     <div class="comments-list">
                         {% for comment in comments %}
@@ -141,7 +300,7 @@
                                                 </li>
                                                 <li>
                                                     <form
-                                                        action="{{ url_for('delete_comment', comment_id=comment['id']) }}"
+                                                        action="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
                                                         method="POST"
                                                         onsubmit="return confirm('Delete this comment?');">
                                                         <button type="submit"
@@ -157,7 +316,7 @@
 
                                 <!-- Edit Form (Hidden by default) -->
                                 <div class="collapse mt-2" id="editComment{{ comment['id'] }}">
-                                    <form action="{{ url_for('edit_comment', comment_id=comment['id']) }}"
+                                    <form action="{{ url_for('stories.edit_comment', comment_id=comment['id']) }}"
                                         method="POST">
                                         <textarea name="content" class="form-control mb-2"
                                             rows="2">{{ comment['content'] }}</textarea>
@@ -198,18 +357,25 @@
                 <!-- Location Section -->
                 <div>
                     <h2 class="h4 fw-bold mb-3">Location</h2>
-                    <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
-                        style="height: 150px; background-image: url('https://img.freepik.com/free-vector/city-map-background-concept_23-2148599187.jpg'); background-size: cover;">
-                        <span class="fs-1">📍</span>
+                    {% if story['location'] %}
+                    <div class="rounded-3 overflow-hidden mb-3" style="height: 200px;">
+                        <iframe width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.google.com/maps/embed/v1/place?key={{ GOOGLE_MAPS_API_KEY }}&q={{ story['location'] | urlencode }},Singapore">
+                        </iframe>
                     </div>
+                    {% else %}
+                    <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
+                        style="height: 150px;">
+                        <span class="text-muted">No location specified</span>
+                    </div>
+                    {% endif %}
                     <div>
                         <h3 class="h5 fw-bold mb-1">{{ story['location'] or 'Unknown' }}</h3>
-                        <p class="text-muted mb-0">Nostalgic Hawker Center in Singapore</p>
+                        <!-- <p class="text-muted mb-0">Singapore</p> -->
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}

@@ -181,6 +181,16 @@ class Database:
             )
         ''')
 
+        # Story Tags Table (Up to 5 tags per story)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS story_tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                story_id INTEGER NOT NULL,
+                tag TEXT NOT NULL,
+                FOREIGN KEY (story_id) REFERENCES stories (id)
+            )
+        ''')
+
         # Add location and event_date to activities if not exists
         try:
             cursor.execute("SELECT location FROM activities LIMIT 1")
