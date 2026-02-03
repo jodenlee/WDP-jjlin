@@ -11,6 +11,7 @@
     .box{border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin:16px 0;}
     h1,h2{margin-bottom:6px;}
     .muted{color:#666; margin-top:0;}
+    h3{margin:18px 0 8px;}
   </style>
 </head>
 <body>
@@ -19,7 +20,7 @@
 
   <div class="box">
     <h2>Project: TogetherSG - Activities Module (Flask Web App)</h2>
-    <p><b>Overview:</b> A web application that allows users to create, view, and manage community activities with attachments, making it easier for users to join and stay updated.</p>
+    <p><b>Overview:</b> A web feature that lets users create, browse, and join community activities. Users can also upload an attachment (e.g., PDF schedule) when creating an activity.</p>
 
     <p><b>Tech Stack:</b></p>
     <span class="tag">Python</span>
@@ -28,25 +29,34 @@
     <span class="tag">CSS</span>
     <span class="tag">Bootstrap</span>
 
-    <p><b>My Role:</b> I contributed to the Activities feature by building UI templates and supporting key user flows (create → view → manage).</p>
+    <p><b>My Role:</b> I worked on the Activities UI templates and the main user flow (feed → create → view → manage).</p>
 
     <p><b>What I did (Contributions):</b></p>
     <ul>
-      <li>Built and improved Activities UI pages (Jinja templates) including listing, create form, and activity detail views.</li>
-      <li>Implemented form validations and attachment upload workflow to reduce user input errors.</li>
-      <li>Tested, debugged, and fixed issues to improve the user flow and overall reliability.</li>
+      <li>Improved the Activities pages using Jinja templates (feed/list, create form, and activity details view).</li>
+      <li>Added required fields and supported file uploads for attachments on the create activity form.</li>
+      <li>Tested the flow end-to-end and fixed UI/logic issues to make navigation and layout more consistent.</li>
     </ul>
 
     <p><b>Outcome (Results):</b></p>
     <ul>
-      <li>Delivered a working end-to-end flow: Activities Feed → Create Activity → View Details (with attachment) → Join/Delete.</li>
-      <li>Improved usability with clearer navigation, consistent layout, and readable activity information.</li>
+      <li>Completed an end-to-end flow: Activities Feed → Create Activity (with optional attachment) → View Details → Join/Delete.</li>
+      <li>Improved usability with clearer layout, readable activity details, and consistent navigation back to the feed.</li>
     </ul>
 
-    <p><b>Screenshots:</b></p>
+    <p><b>Screenshots (Feature):</b></p>
     <img src="s1.png" alt="Activities Feed page">
     <img src="s2.png" alt="Create Activity form">
     <img src="s3.png" alt="Activity Details page">
+
+    <h3>Code Evidence (My Work)</h3>
+    <p class="muted">These screenshots show the templates I worked on for the Activities module.</p>
+
+    <p><b>Create Activity Page (create.html)</b> — Form structure, required fields, and file upload support.</p>
+    <img src="code_create.png" alt="Code screenshot - create.html">
+
+    <p><b>Activity Details Page (view.html)</b> — Details layout and navigation for the activity view.</p>
+    <img src="code_view.png" alt="Code screenshot - view.html">
 
     <p><b>Links:</b></p>
     <ul>
