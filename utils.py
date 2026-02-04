@@ -29,3 +29,27 @@ def get_current_user():
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+# OpenAI Content Moderation Helper
+def check_content_moderation(text):
+    """
+    Checks text content against OpenAI's moderation API.
+    Returns True if content is flagged as harmful, False otherwise.
+    """
+    from openai import OpenAI
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    api_key = os.getenv('OPENAI_API_KEY')
+    
+    if not api_key or not text:
+        return False  # Fail open if no API key or empty text
+    
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.moderations.create(input=text)
+        return response.results[0].flagged
+    except Exception as e:
+        # Silently fail open on errors in production
+        return False
+
