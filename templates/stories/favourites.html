@@ -13,9 +13,11 @@
             <form action="{{ url_for('stories.my_bookmarks') }}" method="get" class="row g-2 align-items-center"
                 id="fav-search-form">
                 <!-- Search -->
-                <div class="col-12 col-md-5">
-                    <input type="text" name="search" class="form-control form-control-lg"
+                <div class="col-12 col-md-5 position-relative">
+                    <input type="text" name="search" id="fav-search-input" class="form-control form-control-lg pe-5"
                         placeholder="Search your favourites..." value="{{ request.args.get('search', '') }}">
+                    <i class="fas fa-times position-absolute top-50 end-0 translate-middle-y me-4 text-muted cursor-pointer"
+                        id="fav-clear-search" style="cursor: pointer; display: none;"></i>
                 </div>
 
                 <!-- Tags Filter (Custom Dropdown) -->
@@ -60,6 +62,11 @@
                         <input type="text" id="fav-location-filter" name="location" list="singapore-locations"
                             class="form-control form-control-lg" placeholder="Location"
                             value="{{ request.args.get('location', '') }}">
+                        <!-- Clear Location Button -->
+                        <button type="button" class="btn btn-outline-secondary border-start-0 border"
+                            id="fav-clear-location" style="display: none;" title="Clear Location">
+                            <i class="fas fa-times"></i>
+                        </button>
                         <button type="button" id="fav-use-location-btn" class="btn btn-outline-secondary"
                             onclick="populateLocationField('fav-location-filter', 'fav-use-location-btn')"
                             title="Use My Location">
@@ -91,90 +98,105 @@
     </div>
 </section>
 
-<!-- Stories Grid -->
-{% if stories %}
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for story in stories %}
-    {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
-
-    <div class="col">
-        <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
-            <!-- Story Header / Image -->
-            <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="text-decoration-none">
-                <div class="position-relative"
-                    style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
-                    <div
-                        class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient">
-                        <!-- Bookmark Form Removed -->
-                        <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Content -->
-            <div class="card-body position-relative">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
-                    <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
-                        class="position-relative z-2">
-                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1"
-                            title="Remove Favourite">★</button>
-                    </form>
-                </div>
-                <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
-                <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="stretched-link"></a>
-            </div>
-
-            <!-- Footer -->
-            <div class="card-footer bg-white border-0 py-3">
-                <!-- Tags Row -->
-                {% if story.tags %}
-                <div class="d-flex flex-wrap gap-1 mb-2 position-relative z-2">
-                    {% for tag in story.tags %}
-                    <a href="{{ url_for('stories.stories_list', tags=tag) }}"
-                        class="badge bg-secondary text-white text-decoration-none rounded-pill px-2 py-1 small">{{ tag
-                        }}</a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2 position-relative z-2">
-                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
-                            <button type="submit" class="btn p-0 border-0 bg-transparent fs-3 text-danger lh-1">
-                                {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
-                            </button>
-                        </form>
-                        <span class="fw-bold text-dark">{{ story['likes'] }}</span>
-                    </div>
-
-                    <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
-                        📍 {{ story['location'] or 'SG' }}
-                    </div>
-                </div>
-                <div class="mt-3 text-muted d-flex align-items-center gap-3">
-                    {% if story.profile_pic %}
-                    <img src="{{ url_for('static', filename=story.profile_pic) }}" alt="Profile"
-                        class="rounded-circle object-fit-cover" style="width: 35px; height: 35px;">
-                    {% else %}
-                    <div class="rounded-circle d-flex align-items-center justify-content-center"
-                        style="width: 35px; height: 35px; background-color: var(--accent-color);">
-                        <i class="fas fa-user" style="color: var(--primary-color); font-size: 1rem;"></i>
-                    </div>
-                    {% endif %}
-                    <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
+<!-- Stories Grid Container -->
+<div id="fav-stories-grid-container">
+    {% include 'stories/_favourites_grid.html' %}
 </div>
-{% else %}
-<div class="text-center py-5">
-    <p class="lead text-muted mb-4 text-center mx-auto" style="max-width: 500px;">No favourites yet. Go explore and
-        star
-        some stories!</p>
-    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg">Browse Stories</a>
-</div>
-{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('fav-search-input');
+        const clearSearchBtn = document.getElementById('fav-clear-search');
+
+        const locationInput = document.getElementById('fav-location-filter');
+        const clearLocationBtn = document.getElementById('fav-clear-location');
+
+        const sortSelect = document.querySelector('select[name="sort"]');
+        const tagsInputs = document.querySelectorAll('input[name="tags"]');
+        const gridContainer = document.getElementById('fav-stories-grid-container');
+        const searchForm = document.getElementById('fav-search-form');
+
+        let debounceTimer;
+
+        // Helper: Toggle clear buttons
+        function toggleClearButton(input, button) {
+            button.style.display = input.value.trim() !== '' ? 'block' : 'none';
+            // For location input group, managing border might be needed or just keep it simple
+        }
+
+        // Initial check
+        if (searchInput) toggleClearButton(searchInput, clearSearchBtn);
+        if (locationInput) toggleClearButton(locationInput, clearLocationBtn);
+
+        function fetchStories() {
+            gridContainer.style.opacity = '0.5';
+
+            const formData = new FormData(searchForm);
+            const params = new URLSearchParams(formData);
+            let fetchUrl = "{{ url_for('stories.my_bookmarks') }}?" + params.toString() + "&ajax=1";
+
+            fetch(fetchUrl, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(response => response.text())
+                .then(html => {
+                    gridContainer.innerHTML = html;
+                    gridContainer.style.opacity = '1';
+                })
+                .catch(error => {
+                    console.error('Error fetching favorites:', error);
+                    gridContainer.style.opacity = '1';
+                });
+        }
+
+        function debounce(func, delay) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(func, delay);
+        }
+
+        // Search Input Logic
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                toggleClearButton(searchInput, clearSearchBtn);
+                debounce(() => fetchStories(), 500);
+            });
+
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                toggleClearButton(searchInput, clearSearchBtn);
+                fetchStories();
+                searchInput.focus();
+            });
+        }
+
+        // Location Input Logic
+        if (locationInput) {
+            locationInput.addEventListener('input', () => {
+                toggleClearButton(locationInput, clearLocationBtn);
+                debounce(() => fetchStories(), 500);
+            });
+
+            clearLocationBtn.addEventListener('click', () => {
+                locationInput.value = '';
+                toggleClearButton(locationInput, clearLocationBtn);
+                fetchStories();
+                locationInput.focus();
+            });
+        }
+
+        if (sortSelect) sortSelect.addEventListener('change', () => fetchStories());
+
+        tagsInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                updateFavTagsDisplay();
+                fetchStories();
+            });
+        });
+
+        searchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            fetchStories();
+        });
+    });
+</script>
 {% endblock %}

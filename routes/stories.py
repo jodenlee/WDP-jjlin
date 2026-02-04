@@ -116,7 +116,24 @@ def stories_list():
         story_dict['tags'] = [t['tag'] for t in tags_rows]
         stories_with_tags.append(story_dict)
     
-    return render_template('stories/index.html', stories=stories_with_tags, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
+    
+    # Check if this is an AJAX request for real-time search
+    if request.args.get('ajax'):
+        return render_template('stories/_stories_grid.html', 
+                             stories=stories_with_tags, 
+                             page=page, 
+                             total_pages=total_pages, 
+                             bookmarked_story_ids=bookmarked_story_ids, 
+                             liked_story_ids=liked_story_ids)
+
+    return render_template('stories/index.html', 
+                           stories=stories_with_tags, 
+                           all_tags=all_tags, 
+                           selected_tags=tags_filter, 
+                           page=page, 
+                           total_pages=total_pages, 
+                           bookmarked_story_ids=bookmarked_story_ids, 
+                           liked_story_ids=liked_story_ids)
 
 # CREATE STORY ROUTE: Handles new story submission, including image uploads and tag associations
 @stories_bp.route('/stories/new', methods=['GET', 'POST'])
@@ -279,6 +296,7 @@ def my_bookmarks():
         query += " AND (s.title LIKE ? OR s.content LIKE ?)"
         params.extend([f"%{search_query}%", f"%{search_query}%"])
         
+        
     if location_filter:
         query += " AND s.location LIKE ?"
         params.append(f"%{location_filter}%")
@@ -287,8 +305,35 @@ def my_bookmarks():
         query += " ORDER BY s.likes DESC"
     else:
         query += " ORDER BY b.id DESC"
+        
+    stories_data = db.query(query, tuple(params))
     
-    bookmarks = db.query(query, tuple(params))
+    # Get user's liked stories for the heart icon status
+    liked_rows = db.query("SELECT story_id FROM story_likes WHERE user_id = ?", (user_id,))
+    liked_story_ids = [l['story_id'] for l in liked_rows]
+    
+    # Fetch tags for each story
+    stories_with_tags = []
+    for story in stories_data:
+        story_dict = dict(story)
+        tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story['id'],))
+        story_dict['tags'] = [t['tag'] for t in tags_rows]
+        stories_with_tags.append(story_dict)
+        
+    # Get all tags for filter
+    all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
+    all_tags = [row['tag'] for row in all_tags_rows]
+
+    if request.args.get('ajax'):
+        return render_template('stories/_favourites_grid.html', 
+                             stories=stories_with_tags, 
+                             liked_story_ids=liked_story_ids)
+    
+    return render_template('stories/favourites.html', 
+                           stories=stories_with_tags, 
+                           liked_story_ids=liked_story_ids,
+                           all_tags=all_tags,
+                           selected_tags=tags_filter)
     bookmarked_story_ids = [b['id'] for b in bookmarks]
 
     likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
