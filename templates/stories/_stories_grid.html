@@ -1,0 +1,123 @@
+<!-- Stories Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% if stories %}
+    {% for story in stories %}
+    {% set bg_image = story['image_url'] or 'https://via.placeholder.com/400x200' %}
+
+    <div class="col">
+        <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
+            <!-- Story Header / Image -->
+            <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="text-decoration-none">
+                <div class="position-relative"
+                    style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
+                    <div
+                        class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient">
+                        <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Content -->
+            <div class="card-body position-relative">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title fw-bold text-dark mb-0">{{ story['title'] }}</h5>
+                    <!-- Bookmark Form -->
+                    <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST"
+                        class="position-relative z-2">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1"
+                            title="Favourite">
+                            {% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif %}
+                        </button>
+                    </form>
+                </div>
+                <p class="card-text text-muted">{{ story['content'][:80] }}...</p>
+                <!-- Stretched Link for Card Click -->
+                <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="stretched-link"></a>
+            </div>
+
+            <!-- Footer -->
+            <div class="card-footer bg-white border-0 py-3">
+                <!-- Tags Row -->
+                {% if story.tags %}
+                <div class="d-flex flex-wrap gap-1 mb-2 position-relative z-2">
+                    {% for tag in story.tags %}
+                    <a href="{{ url_for('stories.stories_list', tags=tag) }}"
+                        class="badge bg-secondary text-white text-decoration-none rounded-pill px-2 py-1 small">{{ tag
+                        }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 position-relative z-2">
+                        <form action="{{ url_for('stories.toggle_like', story_id=story['id']) }}" method="POST">
+                            <button type="submit" class="btn p-0 border-0 bg-transparent fs-2 text-danger lh-1">
+                                {% if story['id'] in liked_story_ids %}♥{% else %}♡{% endif %}
+                            </button>
+                        </form>
+                        <span class="fw-bold text-dark fs-5">{{ story['likes'] }}</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-muted d-flex align-items-center fs-6 fw-semibold">
+                            📍 {{ story['location'] or 'SG' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 text-muted d-flex align-items-center gap-3">
+                    {% if story.profile_pic %}
+                    <img src="{{ url_for('static', filename=story.profile_pic) }}" alt="Profile"
+                        class="rounded-circle object-fit-cover" style="width: 35px; height: 35px;">
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 35px; height: 35px; background-color: var(--accent-color);">
+                        <i class="fas fa-user" style="color: var(--primary-color); font-size: 1rem;"></i>
+                    </div>
+                    {% endif %}
+                    <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endfor %}
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <p class="leads text-muted">No stories found. Be the first to share!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if total_pages is defined and total_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-5">
+    <div class="d-flex justify-content-center align-items-center flex-wrap gap-2">
+        <!-- Prev Button -->
+        <a class="btn btn-outline-secondary text-center {% if page <= 1 %}disabled{% endif %}" style="min-width: 130px;"
+            href="{{ url_for('stories.stories_list', page=page-1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort'), tags=request.args.getlist('tags')) }}">
+            &larr; Previous
+        </a>
+
+        <!-- Page List -->
+        <div class="btn-group">
+            {% for p in range(1, total_pages + 1) %}
+            {% if p <= 3 or p> total_pages - 3 or (p >= page - 1 and p <= page + 1) %} <a
+                    href="{{ url_for('stories.stories_list', page=p, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort'), tags=request.args.getlist('tags')) }}"
+                    class="btn btn-{{ 'primary' if p == page else 'outline-secondary' }}">
+                    {{ p }}
+                    </a>
+                    {% elif p == 4 and total_pages > 6 %}
+                    <span class="btn btn-outline-secondary disabled">...</span>
+                    {% endif %}
+                    {% endfor %}
+        </div>
+
+        <!-- Next Button -->
+        <a class="btn btn-outline-secondary text-center {% if page >= total_pages %}disabled{% endif %}"
+            style="min-width: 130px;"
+            href="{{ url_for('stories.stories_list', page=page+1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort'), tags=request.args.getlist('tags')) }}">
+            Next &rarr;
+        </a>
+    </div>
+</nav>
+{% endif %}

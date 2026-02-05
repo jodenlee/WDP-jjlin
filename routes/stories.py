@@ -1,9 +1,42 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from werkzeug.utils import secure_filename
-from utils import get_db, login_required, allowed_file
+from utils import get_db, login_required, allowed_file, check_content_moderation
 import os
 import time
 import math
+from google import genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Configure Gemini API
+GENAI_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY') # User put it here based on previous turn, actually distinct key usually but let's check
+# Wait, the user said they added "gemini api key". I should use 'GEMINI_API_KEY'
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+client = None
+if GEMINI_API_KEY:
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Error initializing Gemini client: {e}")
+
+
+def get_location_insight(location):
+    if not client or not location:
+        return None
+    
+    try:
+        prompt = f"Tell me a short, interesting, and unique fact about {location} in 2-3 sentences. Keep it engaging."
+        response = client.models.generate_content(
+            model='gemini-2.0-flash', 
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error fetching AI insight: {e}")
+        return None
+
 
 stories_bp = Blueprint('stories', __name__)
 
@@ -83,7 +116,24 @@ def stories_list():
         story_dict['tags'] = [t['tag'] for t in tags_rows]
         stories_with_tags.append(story_dict)
     
-    return render_template('stories/index.html', stories=stories_with_tags, page=page, total_pages=total_pages, bookmarked_story_ids=bookmarked_story_ids, liked_story_ids=liked_story_ids, all_tags=all_tags, selected_tags=tags_filter)
+    
+    # Check if this is an AJAX request for real-time search
+    if request.args.get('ajax'):
+        return render_template('stories/_stories_grid.html', 
+                             stories=stories_with_tags, 
+                             page=page, 
+                             total_pages=total_pages, 
+                             bookmarked_story_ids=bookmarked_story_ids, 
+                             liked_story_ids=liked_story_ids)
+
+    return render_template('stories/index.html', 
+                           stories=stories_with_tags, 
+                           all_tags=all_tags, 
+                           selected_tags=tags_filter, 
+                           page=page, 
+                           total_pages=total_pages, 
+                           bookmarked_story_ids=bookmarked_story_ids, 
+                           liked_story_ids=liked_story_ids)
 
 # CREATE STORY ROUTE: Handles new story submission, including image uploads and tag associations
 @stories_bp.route('/stories/new', methods=['GET', 'POST'])
@@ -116,6 +166,12 @@ def create_story():
             
         if len(content) < 10:
             flash('Content must be at least 10 characters long.', 'danger')
+            return render_template('stories/create.html', form=request.form)
+        
+        # Content Moderation Check
+        combined_text = f"{title} {content}"
+        if check_content_moderation(combined_text):
+            flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
             return render_template('stories/create.html', form=request.form)
 
         # Fallback to URL if provided
@@ -202,7 +258,12 @@ def view_story(story_id):
     tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story_id,))
     story_tags = [row['tag'] for row in tags_rows]
         
-    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images, story_tags=story_tags)
+    # Get AI Insight for location
+    ai_insight = None
+    if story['location']:
+        ai_insight = get_location_insight(story['location'])
+
+    return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images, story_tags=story_tags, ai_insight=ai_insight)
 
 # MY FAVOURITES VIEW: Displays stories bookmarked by the logged-in user with filter support
 @stories_bp.route('/stories/bookmarks')
@@ -235,6 +296,7 @@ def my_bookmarks():
         query += " AND (s.title LIKE ? OR s.content LIKE ?)"
         params.extend([f"%{search_query}%", f"%{search_query}%"])
         
+        
     if location_filter:
         query += " AND s.location LIKE ?"
         params.append(f"%{location_filter}%")
@@ -243,8 +305,35 @@ def my_bookmarks():
         query += " ORDER BY s.likes DESC"
     else:
         query += " ORDER BY b.id DESC"
+        
+    stories_data = db.query(query, tuple(params))
     
-    bookmarks = db.query(query, tuple(params))
+    # Get user's liked stories for the heart icon status
+    liked_rows = db.query("SELECT story_id FROM story_likes WHERE user_id = ?", (user_id,))
+    liked_story_ids = [l['story_id'] for l in liked_rows]
+    
+    # Fetch tags for each story
+    stories_with_tags = []
+    for story in stories_data:
+        story_dict = dict(story)
+        tags_rows = db.query("SELECT tag FROM story_tags WHERE story_id = ?", (story['id'],))
+        story_dict['tags'] = [t['tag'] for t in tags_rows]
+        stories_with_tags.append(story_dict)
+        
+    # Get all tags for filter
+    all_tags_rows = db.query("SELECT DISTINCT tag FROM story_tags ORDER BY tag")
+    all_tags = [row['tag'] for row in all_tags_rows]
+
+    if request.args.get('ajax'):
+        return render_template('stories/_favourites_grid.html', 
+                             stories=stories_with_tags, 
+                             liked_story_ids=liked_story_ids)
+    
+    return render_template('stories/favourites.html', 
+                           stories=stories_with_tags, 
+                           liked_story_ids=liked_story_ids,
+                           all_tags=all_tags,
+                           selected_tags=tags_filter)
     bookmarked_story_ids = [b['id'] for b in bookmarks]
 
     likes_query = "SELECT story_id FROM story_likes WHERE user_id = ?"
@@ -329,6 +418,12 @@ def edit_story(story_id):
         if len(content) < 10:
              flash('Content must be at least 10 characters long.', 'danger')
              return redirect(url_for('stories.edit_story', story_id=story_id))
+        
+        # Content Moderation Check
+        combined_text = f"{title} {content}"
+        if check_content_moderation(combined_text):
+            flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
+            return redirect(url_for('stories.edit_story', story_id=story_id))
 
         conn = db.get_connection()
         conn.execute("UPDATE stories SET title = ?, content = ?, location = ? WHERE id = ?", 
@@ -439,6 +534,11 @@ def add_comment(story_id):
     content = request.form['content']
     if not content.strip():
         return redirect(url_for('stories.view_story', story_id=story_id))
+    
+    # Content Moderation Check
+    if check_content_moderation(content):
+        flash('Your comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'danger')
+        return redirect(url_for('stories.view_story', story_id=story_id))
         
     user_id = session['user_id']
     db = get_db()
@@ -453,6 +553,12 @@ def add_comment(story_id):
 @login_required
 def edit_comment(comment_id):
     new_content = request.form['content']
+    
+    # Content Moderation Check
+    if check_content_moderation(new_content):
+        flash('Your updated comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'danger')
+        return redirect(request.referrer)
+        
     user_id = session['user_id']
     
     db = get_db()

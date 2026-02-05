@@ -134,6 +134,8 @@ async function populateLocationField(inputId, buttonId) {
         const address = await reverseGeocode(coords.lat, coords.lng);
         const finalLocation = categorizeToSingaporeLocation(address);
         inputElement.value = finalLocation;
+        // Trigger input event for real-time search listeners
+        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
 
     } catch (error) {
         alert(error.message);

@@ -28,5 +28,5 @@ Thumbs.db
 # static/uploads/
 
 # Database (if using SQLite locally)
-*.db
-*.sqlite3
+# *.db
+# *.sqlite3
