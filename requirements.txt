@@ -1,0 +1,6 @@
+flask
+python-dotenv
+openai
+gunicorn
+google-genai
+google-cloud-storage

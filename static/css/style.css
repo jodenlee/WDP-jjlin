@@ -43,6 +43,7 @@ h6 {
 .btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+    font-family: 'Fredoka', sans-serif;
 }
 
 .btn-primary:hover {

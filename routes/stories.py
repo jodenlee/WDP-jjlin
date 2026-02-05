@@ -5,6 +5,7 @@ import os
 import time
 import math
 from google import genai
+from google.cloud import storage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,6 +36,30 @@ def get_location_insight(location):
         return response.text
     except Exception as e:
         print(f"Error fetching AI insight: {e}")
+        return None
+
+
+def upload_to_gcs(file_obj, filename):
+    """Uploads a file to Google Cloud Storage and returns the public URL."""
+    bucket_name = os.getenv('GCS_BUCKET_NAME')
+    if not bucket_name:
+        print("GCS_BUCKET_NAME not set in environment.")
+        return None
+    
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(f"uploads/{filename}")
+        
+        # Upload from the file object
+        blob.upload_from_file(file_obj, content_type=file_obj.content_type)
+        
+        # Make the blob public (optional, depends on bucket settings)
+        # blob.make_public() 
+        
+        return blob.public_url
+    except Exception as e:
+        print(f"Error uploading to GCS: {e}")
         return None
 
 
@@ -155,9 +180,16 @@ def create_story():
             if image and allowed_file(image.filename, allowed_ext):
                 filename = secure_filename(image.filename)
                 filename = f"{int(time.time())}_{filename}"
-                filepath = os.path.join(upload_folder, filename)
-                image.save(filepath)
-                saved_image_paths.append(f"uploads/{filename}")
+                
+                # Try GCS Upload first
+                gcs_url = upload_to_gcs(image, filename)
+                if gcs_url:
+                    saved_image_paths.append(gcs_url)
+                else:
+                    # Fallback to local storage if GCS fails
+                    filepath = os.path.join(upload_folder, filename)
+                    image.save(filepath)
+                    saved_image_paths.append(request.url_root + 'static/uploads/' + filename)
         
         # Validation
         if len(title) < 3 or len(title) > 100:
@@ -179,7 +211,7 @@ def create_story():
         if not saved_image_paths and image_url:
             main_image = image_url
         elif saved_image_paths:
-            main_image = request.url_root + 'static/' + saved_image_paths[0]
+            main_image = saved_image_paths[0]
         else:
             main_image = None
             
@@ -196,10 +228,9 @@ def create_story():
         
         # Insert extra images
         for img_path in saved_image_paths:
-            full_url = request.url_root + 'static/' + img_path
             cursor.execute(
                 "INSERT INTO story_images (story_id, image_path) VALUES (?, ?)",
-                (story_id, full_url)
+                (story_id, img_path)
             )
         
         # SAVE TAGS TO DATABASE: Handle tags input (comma-separated, max 5)
@@ -447,14 +478,21 @@ def edit_story(story_id):
                 if image and allowed_file(image.filename, allowed_ext):
                     filename = secure_filename(image.filename)
                     filename = f"{int(time.time())}_{filename}"
-                    filepath = os.path.join(upload_folder, filename)
-                    image.save(filepath)
-                    saved_image_paths.append(f"uploads/{filename}")
+                    
+                    # Try GCS Upload first
+                    gcs_url = upload_to_gcs(image, filename)
+                    if gcs_url:
+                        saved_image_paths.append(gcs_url)
+                    else:
+                        # Fallback to local storage
+                        filepath = os.path.join(upload_folder, filename)
+                        image.save(filepath)
+                        saved_image_paths.append(request.url_root + 'static/uploads/' + filename)
         
         for img_path in saved_image_paths:
             current_story = db.query("SELECT image_url FROM stories WHERE id=?", (story_id,), one=True)
             if not current_story['image_url']:
-                 conn.execute("UPDATE stories SET image_url = ? WHERE id = ?", (request.url_root + 'static/' + img_path, story_id))
+                 conn.execute("UPDATE stories SET image_url = ? WHERE id = ?", (img_path, story_id))
             else:
                  conn.execute("INSERT INTO story_images (story_id, image_path) VALUES (?, ?)", (story_id, img_path))
         
