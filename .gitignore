@@ -3,6 +3,8 @@
 # Environment variables
 .env
 
+GCP_DEPLOY_GUIDE_GCE.md
+
 # Python
 __pycache__/
 *.py[cod]

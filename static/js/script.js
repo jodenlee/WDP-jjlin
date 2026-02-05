@@ -27,4 +27,86 @@ document.addEventListener('DOMContentLoaded', () => {
             navLinks.classList.toggle('active');
         });
     }
+
+    // GLOBAL MODAL VALIDATION: Intercepts specific flash messages to show a success modal
+    checkAlertsForModals();
 });
+
+/**
+ * Checks for specific alert messages and converts them into a global success modal.
+ * This provides a more polished user experience for key actions like reporting or logging in.
+ */
+function checkAlertsForModals() {
+    // List of triggers that should convert an alert into a modal
+    const modalTriggers = [
+        {
+            keywords: ['Story created successfully!', 'Story updated successfully!'],
+            title: 'Story Posted!',
+            body: 'Your story has been successfully shared with the community.'
+        },
+        {
+            keywords: ['Story updated successfully!'], // Handle specific update text if needed differently
+            title: 'Story Updated!',
+            body: 'Your story has been successfully updated.'
+        },
+        {
+            keywords: ['Story reported'],
+            title: 'Report Submitted',
+            body: 'Thank you for helping keep our community safe.'
+        },
+        {
+            keywords: ['already reported this story'],
+            title: 'Already Reported',
+            body: 'You have already reported this story. We are reviewing it.'
+        },
+        {
+            keywords: ['Welcome back!'],
+            title: 'Login Successful',
+            body: 'Welcome back to TogetherSG!'
+        },
+        {
+            keywords: ['Account created successfully!'],
+            title: 'Welcome to TogetherSG!',
+            body: 'Your account has been created successfully. Please log in to continue.'
+        },
+        {
+            keywords: ['You have been logged out.'],
+            title: 'Logged Out',
+            body: 'You have been successfully logged out. See you again soon!'
+        }
+    ];
+
+    // Select all alerts (success and info)
+    const alerts = document.querySelectorAll('.alert-success, .alert-info');
+
+    alerts.forEach(function (alert) {
+        const text = alert.textContent.trim();
+        let matched = false;
+
+        for (const trigger of modalTriggers) {
+            // Check if any keyword matches
+            const match = trigger.keywords.some(keyword => text.includes(keyword));
+
+            if (match) {
+                // Hide the original alert
+                alert.classList.remove('show');
+                alert.classList.add('d-none');
+
+                // Update Modal Content
+                const modalTitle = document.getElementById('globalSuccessModalLabel');
+                const modalBody = document.getElementById('globalSuccessModalBody');
+
+                if (modalTitle && modalBody) {
+                    modalTitle.textContent = trigger.title;
+                    modalBody.textContent = trigger.body;
+
+                    // Show the modal
+                    var myModal = new bootstrap.Modal(document.getElementById('globalSuccessModal'));
+                    myModal.show();
+                }
+                matched = true;
+                break; // Stop after first match
+            }
+        }
+    });
+}

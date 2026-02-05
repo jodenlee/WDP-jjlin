@@ -179,57 +179,7 @@
                     </div>
                 </div>
 
-                <!-- Success Modal -->
-                <div class="modal fade" id="actionSuccessModal" tabindex="-1" aria-labelledby="actionSuccessModalLabel"
-                    aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow">
-                            <div class="modal-header border-bottom-0 pb-0">
-                                <h5 class="modal-title fw-bold text-dark fs-4" id="actionSuccessModalLabel">Success!
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body text-secondary fs-5 py-3" id="actionSuccessModalBody">
-                                Action completed successfully.
-                            </div>
-                            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
-                                <button type="button" class="btn btn-primary px-5 fw-bold"
-                                    data-bs-dismiss="modal">Okay</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        // Check for specific flash message and trigger modal
-                        const alerts = document.querySelectorAll('.alert-success');
-                        alerts.forEach(function (alert) {
-                            const text = alert.textContent.trim();
-                            if (text.includes('Story created successfully!') || text.includes('Story updated successfully!')) {
-                                // Hide the alert since we are showing the modal
-                                alert.classList.remove('show');
-                                alert.classList.add('d-none');
-
-                                const modalTitle = document.getElementById('actionSuccessModalLabel');
-                                const modalBody = document.getElementById('actionSuccessModalBody');
-
-                                if (text.includes('created')) {
-                                    modalTitle.textContent = "Story Posted!";
-                                    modalBody.textContent = "Your story has been successfully shared with the community.";
-                                } else if (text.includes('updated')) {
-                                    modalTitle.textContent = "Story Updated!";
-                                    modalBody.textContent = "Your story has been successfully updated.";
-                                }
-
-                                // Show the modal
-                                var myModal = new bootstrap.Modal(document.getElementById('actionSuccessModal'));
-                                myModal.show();
-                            }
-                        });
-                    });
-                </script>
 
                 <hr class="my-4 text-muted">
 
