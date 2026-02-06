@@ -701,6 +701,76 @@ def leave_activity(activity_id):
     conn.commit()
     return redirect(url_for('view_activity', activity_id=activity_id))
 
+@app.route("/activities/<int:activity_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_activity(activity_id):
+    
+    if not activities_unlocked():
+        return redirect(url_for("activities_unlock"))
+
+    db = get_db()
+    conn = db.get_connection()
+
+    activity = conn.execute(
+        "SELECT * FROM activities WHERE id = ?",
+        (activity_id,)
+    ).fetchone()
+
+    if not activity:
+        return "Activity not found", 404
+
+    user_id = session.get("user_id")
+    if int(activity["organizer_id"]) != int(user_id):
+        return "Forbidden", 403
+
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        activity_type = (request.form.get("type") or "").strip()
+        location = (request.form.get("location") or "").strip()
+        event_date = (request.form.get("event_date") or "").strip()
+
+        if not title or not activity_type or not location or not event_date:
+            flash("Please fill in all required fields.", "danger")
+            return render_template("activities/edit.html", activity=activity)
+
+        
+        attachment_filename = activity["attachment"]
+        file = request.files.get("attachment")
+
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash("Invalid file type. Allowed: JPG/PNG/GIF/PDF/DOC/DOCX", "danger")
+                return render_template("activities/edit.html", activity=activity)
+
+            original = secure_filename(file.filename)
+            ext = original.rsplit(".", 1)[1].lower()
+            new_name = f"{uuid.uuid4().hex}.{ext}"
+
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], new_name)
+            file.save(save_path)
+
+            attachment_filename = new_name
+
+        conn.execute(
+            """
+            UPDATE activities
+            SET title=?, description=?, type=?, location=?, event_date=?, attachment=?
+            WHERE id=?
+            """,
+            (title, description, activity_type, location, event_date, attachment_filename, activity_id)
+        )
+        conn.commit()
+
+        
+        session.pop("activities_unlocked", None)
+
+        flash("Activity updated successfully.", "success")
+        return redirect(url_for("view_activity", activity_id=activity_id))
+
+    return render_template("activities/edit.html", activity=activity)
+
+
 @app.route("/activities/<int:activity_id>/delete", methods=["GET", "POST"])
 @login_required
 def delete_activity(activity_id):

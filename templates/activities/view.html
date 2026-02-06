@@ -54,7 +54,7 @@
                 {% endif %}
 
                 <!-- Action Buttons -->
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     {% if is_joined %}
                     <form action="{{ url_for('leave_activity', activity_id=activity['id']) }}" method="POST">
                         <button type="submit" class="btn btn-outline-danger">
@@ -68,17 +68,24 @@
                         </button>
                     </form>
                     {% endif %}
+
                     {% if 'user_id' in session and activity['organizer_id'] == session['user_id'] %}
+                    <a href="{{ url_for('edit_activity', activity_id=activity['id']) }}"
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-pen me-1"></i> Edit
+                    </a>
+
                     <form action="{{ url_for('delete_activity', activity_id=activity['id']) }}"
-                        method="POST"
-                        onsubmit="return confirm('Delete this activity? This cannot be undone.');"
-                        class="d-inline">
+                          method="POST"
+                          onsubmit="return confirm('Delete this activity? This cannot be undone.');"
+                          class="d-inline">
                         <button type="submit" class="btn btn-danger">
                             <i class="fas fa-trash me-1"></i> Delete
                         </button>
                     </form>
                     {% endif %}
                 </div>
+
             </div>
         </div>
     </div>
