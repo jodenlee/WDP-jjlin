@@ -1,6 +1,3 @@
-# ============================================================================
-# IMPORTS AND CONFIGURATION
-# ============================================================================
 from flask import Flask, render_template, g, request, redirect, url_for, session, flash, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -9,8 +6,41 @@ from database import Database
 import re
 import os
 
+try:
+    from flask_babel import Babel, _
+except ImportError:
+    # Fallback if flask-babel not installed
+    Babel = None
+    def _(text): return text
+
 app = Flask(__name__)
 app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
+
+# Babel Configuration for Internationalization
+SUPPORTED_LANGUAGES = ['en', 'zh', 'ms', 'ta', 'ko', 'ja']
+app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+
+if Babel:
+    babel = Babel(app)
+    
+    @babel.localeselector
+    def get_locale():
+        # 1. Check session for language preference
+        if 'language' in session:
+            return session['language']
+        # 2. Check user preference from database
+        if 'user_id' in session:
+            try:
+                from database import Database
+                db = Database()
+                user = db.query("SELECT language FROM users WHERE id = ?", (session['user_id'],), one=True)
+                if user and user['language']:
+                    return user['language']
+            except:
+                pass
+        # 3. Fall back to browser preference
+        return request.accept_languages.best_match(SUPPORTED_LANGUAGES)
 
 # Upload Configuration
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -89,11 +119,6 @@ def admin_required(f):
             
         return f(*args, **kwargs)
     return decorated_function
-
-
-# ============================================================================
-# AUTHENTICATION FEATURE - Login, Register, Forgot Password, Logout
-# ============================================================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
@@ -293,9 +318,6 @@ def home():
 
     return render_template('index.html', stories=recent_stories, activities=upcoming_activities)
 
-# ============================================================================
-# STORIES FEATURE - View, Create, Edit, Delete Stories, Comments, Likes, Bookmarks
-# ============================================================================
 @app.route('/stories')
 def stories():
     db = get_db()
@@ -622,10 +644,6 @@ def add_comment(story_id):
     conn.commit()
     return redirect(url_for('view_story', story_id=story_id))
 
-
-# ============================================================================
-# ACTIVITIES FEATURE - View, Create, Join, Leave Events & Workshops
-# ============================================================================
 @app.route('/activities')
 def activities():
     db = get_db()
@@ -711,10 +729,6 @@ def leave_activity(activity_id):
     conn.commit()
     return redirect(url_for('view_activity', activity_id=activity_id))
 
-
-# ============================================================================
-# MESSAGING FEATURE - Direct Messages Between Users
-# ============================================================================
 @app.route('/messages')
 @login_required
 def messages():
@@ -843,9 +857,7 @@ def delete_comment(comment_id):
     return redirect(request.referrer)
 
 
-# ============================================================================
-# PROFILE FEATURE - User Profile, Settings, Notifications Preferences
-# ============================================================================
+
 @app.route('/profile')
 @login_required
 def profile():
@@ -959,51 +971,27 @@ def update_notifications():
     
     return redirect(url_for('profile'))
 
-@app.route('/profile/change-password', methods=['GET', 'POST'])
+@app.route('/profile/language', methods=['POST'])
 @login_required
-def change_password():
-    if request.method == 'POST':
-        current_password = request.form['current_password']
-        new_password = request.form['new_password']
-        confirm_password = request.form['confirm_password']
-        
-        user_id = session['user_id']
-        db = get_db()
-        user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
-        
-        # Verify current password
-        if not check_password_hash(user['password_hash'], current_password):
-            flash('Current password is incorrect.', 'danger')
-            return render_template('auth/change_password.html')
-        
-        # Validate new password
-        if len(new_password) < 6:
-            flash('New password must be at least 6 characters.', 'danger')
-            return render_template('auth/change_password.html')
-        
-        if not re.search(r'[A-Z]', new_password):
-            flash('New password must contain at least one capital letter.', 'danger')
-            return render_template('auth/change_password.html')
-        
-        if not re.search(r'[0-9]', new_password):
-            flash('New password must contain at least one number.', 'danger')
-            return render_template('auth/change_password.html')
-        
-        if new_password != confirm_password:
-            flash('New passwords do not match.', 'danger')
-            return render_template('auth/change_password.html')
-        
-        # Update password
-        conn = db.get_connection()
-        new_hash = generate_password_hash(new_password)
-        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
-        conn.commit()
-        
-        flash('Password changed successfully!', 'success')
-        return redirect(url_for('profile'))
-        
-    return render_template('auth/change_password.html')
-
+def update_language():
+    """Update user's language preference and refresh the page"""
+    language = request.form.get('language', 'en')
+    
+    # Validate language
+    if language not in SUPPORTED_LANGUAGES:
+        language = 'en'
+    
+    # Update session immediately
+    session['language'] = language
+    
+    # Update database
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, session['user_id']))
+    conn.commit()
+    
+    # Redirect back to profile page (will refresh with new language)
+    return redirect(url_for('profile'))
 
 @app.route('/notifications/mark_read/<int:notif_id>', methods=['POST'])
 @login_required
@@ -1043,11 +1031,9 @@ def delete_account():
         flash('An error occurred while deleting your account.', 'danger')
         
     return redirect(url_for('home'))
+    flash('Profile updated successfully!', 'success')
+    return redirect(url_for('profile'))
 
-
-# ============================================================================
-# COMMUNITY FEATURE - Groups, Join/Leave Groups
-# ============================================================================
 @app.route('/community')
 def community():
     db = get_db()
@@ -1146,9 +1132,7 @@ def leave_group(group_id):
     return redirect(url_for('view_group', group_id=group_id))
 
 
-# ============================================================================
-# ADMIN FEATURE - Dashboard, User Management, Reports
-# ============================================================================
+# --- Admin Dashboard & Reporting ---
 
 @app.route('/admin/users')
 @admin_required
@@ -1341,9 +1325,89 @@ def dismiss_report(report_id):
     flash('Report dismissed.', 'info')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/setup_admin_emergency')
+def setup_admin_emergency():
+    db = get_db()
+    conn = db.get_connection()
+    email = 'admin@gmail.com'
+    password = 'admin123'
+    
+    # Check if exists
+    user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+    msg = ""
+    
+    try:
+        if user:
+            # Force update password and admin status
+            hashed = generate_password_hash(password)
+            conn.execute("UPDATE users SET password_hash = ?, is_admin = 1, role = 'senior' WHERE email = ?", (hashed, email))
+            msg = f"UPDATED existing user {email}. Password reset to {password}. Admin access ENABLED."
+        else:
+            # Create new
+            hashed = generate_password_hash(password)
+            conn.execute('''
+                INSERT INTO users (username, full_name, email, password_hash, role, is_admin, bio)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('admin_user', 'System Administrator', email, hashed, 'senior', 1, 'Emergency Created Admin'))
+            msg = f"CREATED new user {email}. Password is {password}. Admin access ENABLED."
+            
+        conn.commit()
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+        
+    return f"SUCCESS: {msg} <br><a href='/login'>Go to Login</a>"
 
-# ============================================================================
-# APPLICATION ENTRY POINT
-# ============================================================================
+@app.route('/debug_users')
+def debug_users():
+    db = get_db()
+    users = db.query("SELECT * FROM users")
+    # Get columns
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(users)")
+    cols = [r[1] for r in cursor.fetchall()]
+    
+    html = f"<h3>User Table Columns: {cols}</h3>"
+    html += "<table border='1'><tr>"
+    for c in cols:
+        html += f"<th>{c}</th>"
+    html += "</tr>"
+    
+    for u in users:
+        html += "<tr>"
+        for c in cols:
+            html += f"<td>{u[c]}</td>"
+        html += "</tr>"
+    html += "</table>"
+    html += "<br><a href='/fix_schema' class='btn btn-danger'>Force Fix Schema</a>"
+    return html
+
+@app.route('/fix_schema')
+def fix_schema_route():
+    db = get_db()
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    
+    required = ['notify_messages', 'notify_activities', 'notify_stories', 'notify_groups', 'profile_pic', 'full_name', 'bio']
+    log = []
+    
+    cursor.execute("PRAGMA table_info(users)")
+    existing = [r[1] for r in cursor.fetchall()]
+    
+    for col in required:
+        if col not in existing:
+            try:
+                col_type = 'TEXT' if col in ['profile_pic', 'full_name', 'bio'] else 'INTEGER DEFAULT 1'
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+                log.append(f"ADDED {col}")
+            except Exception as e:
+                log.append(f"ERROR adding {col}: {str(e)}")
+        else:
+            log.append(f"EXISTS {col}")
+            
+    conn.commit()
+    return "<br>".join(log) + "<br><a href='/debug_users'>Back to Debug</a>"
+
 if __name__ == '__main__':
     app.run(debug=True)
+

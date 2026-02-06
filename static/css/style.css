@@ -24,17 +24,17 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom Dark Theme - Background Only */
+/* Custom Dark Theme - Dark Gray Background with Light Cards */
 body.dark-theme {
-    --bg-color: #000000;
-    /* Pure Black background */
+    --bg-color: #121212;
+    /* Dark gray background (not pure black) */
     --text-color: #f8f9fa;
     /* Light text for body context */
 }
 
 /* Navbar in Dark Mode */
 body.dark-theme .navbar {
-    background-color: #111111 !important;
+    background-color: #1a1a1a !important;
     /* Dark Navbar */
     border-bottom: 1px solid #333;
 }
