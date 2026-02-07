@@ -73,6 +73,16 @@ function checkAlertsForModals() {
             keywords: ['You have been logged out.'],
             title: 'Logged Out',
             body: 'You have been successfully logged out. See you again soon!'
+        },
+        {
+            keywords: ['Comment posted successfully!'],
+            title: 'Comment Posted',
+            body: 'Your comment has been added to the story.'
+        },
+        {
+            keywords: ['Comment deleted.'],
+            title: 'Comment Deleted',
+            body: 'Your comment has been successfully removed.'
         }
     ];
 
