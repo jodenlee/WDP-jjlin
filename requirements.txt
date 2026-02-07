@@ -1,4 +1,8 @@
 flask
+flask-mail
+werkzeug
+authlib
+requests
 python-dotenv
 openai
 gunicorn

@@ -28,10 +28,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Theme Handling
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
+
+    // If on profile page, set the radio button
+    const themeRadio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+    if (themeRadio) themeRadio.checked = true;
+
     // GLOBAL MODAL VALIDATION: Intercepts specific flash messages to show a success modal
     checkAlertsForModals();
 });
 
+
+function setTheme(theme) {
+    localStorage.setItem('theme', theme);
+    applyTheme(theme);
+}
+
+function applyTheme(theme) {
+    // We strictly want the 'boxes' (components) to stay light, so we force data-bs-theme to light
+    document.documentElement.setAttribute('data-bs-theme', 'light');
+
+    // We toggle the custom class on body to change the background color
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+    }
+}
+
+// Toggle password visibility
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 /**
  * Checks for specific alert messages and converts them into a global success modal.
  * This provides a more polished user experience for key actions like reporting or logging in.

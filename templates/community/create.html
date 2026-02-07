@@ -1,57 +1,85 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- Back to Groups Navigation -->
-<div class="mb-4">
-    <a href="{{ url_for('community.community') }}" class="btn btn-link text-muted px-0">
-        <i class="fas fa-arrow-left me-1"></i> Back to Groups
-    </a>
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="mb-3">
+            <a href="{{ url_for('community.community') }}" class="btn btn-primary btn-lg fs-4">← Back to Groups</a>
+        </div>
+        <div class="form-container">
+            <h1 class="mb-4">Create New Group</h1>
+            <form action="{{ url_for('community.create_group') }}" method="POST" enctype="multipart/form-data"
+                novalidate>
+                <div class="mb-3">
+                    <label for="name" class="form-label fw-bold fs-5">Group Name</label>
+                    <input type="text" class="form-control form-control-lg" id="name" name="name" required minlength="5"
+                        placeholder="Name your group">
+                    <div class="form-text">Group name must be at least 5 characters.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label fw-bold fs-5">Description</label>
+                    <textarea class="form-control form-control-lg" id="description" name="description" rows="4"
+                        placeholder="What is this group about?"></textarea>
+                    <div class="form-text">Describe what your group is about to attract members.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="image" class="form-label fw-bold fs-5">Group Image (optional)</label>
+                    <input type="file" class="form-control form-control-lg" id="image" name="image" accept="image/*">
+                    <div class="form-text">Add an image to make your group stand out.</div>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{{ url_for('community.community') }}" class="btn btn-lg btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-lg btn-primary">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
-<!-- Create Group Container -->
-<div class="row">
-    <div class="col-lg-6 mx-auto">
-        <div class="card nav-card-minimal">
-            <!-- Form Header -->
-            <div class="card-header bg-transparent border-0 pt-4 px-4">
-                <h4 class="fw-bold"><i class="fas fa-users me-2" style="color: var(--primary-color);"></i> Create Group
-                </h4>
+<!-- Validation Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
-            <div class="card-body p-4">
-                <!-- Group Creation Form -->
-                <form action="{{ url_for('community.create_group') }}" method="POST" enctype="multipart/form-data">
-
-                    <!-- Group Name Input -->
-                    <div class="mb-3">
-                        <label for="name" class="form-label fw-bold">Group Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required minlength="5"
-                            placeholder="Name your group"
-                            oninvalid="if(this.value.length > 0 && this.value.length < 5) this.setCustomValidity('Have at least 5 characters'); else this.setCustomValidity('');"
-                            oninput="this.setCustomValidity('');">
-                    </div>
-
-                    <!-- Group Description Text Area -->
-                    <div class="mb-3">
-                        <label for="description" class="form-label fw-bold">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="4"
-                            placeholder="What is this group about?"></textarea>
-                    </div>
-
-
-                    <!-- Group Image File Upload (Optional) -->
-                    <div class="mb-4">
-                        <label for="image" class="form-label fw-bold">Group Image (optional)</label>
-                        <input type="file" class="form-control" id="image" name="image" accept="image/*">
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Create Group</button>
-                    </div>
-                </form>
+            <div class="modal-body text-secondary fs-5 py-3">
+                <p class="mb-2">Please fix the following issues:</p>
+                <ul id="validation-errors" class="text-danger mb-0"></ul>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+
+        form.addEventListener('submit', function (e) {
+            const errors = [];
+            const name = document.getElementById('name').value.trim();
+
+            if (!name) {
+                errors.push('Group name is required.');
+            } else if (name.length < 5) {
+                errors.push('Group name must be at least 5 characters.');
+            }
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                const errorList = document.getElementById('validation-errors');
+                errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+                const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                modal.show();
+            }
+        });
+    });
+</script>
 {% endblock %}

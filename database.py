@@ -267,6 +267,79 @@ class Database:
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
 
+        # Add notification preference columns if not exists
+        try:
+            cursor.execute("SELECT notify_messages FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_messages INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_activities INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_stories INTEGER DEFAULT 1")
+            cursor.execute("ALTER TABLE users ADD COLUMN notify_groups INTEGER DEFAULT 1")
+
+        # Add language preference column if not exists
+        try:
+            cursor.execute("SELECT language FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
+
+        # Add is_verified column to users if not exists (for email verification)
+        try:
+            cursor.execute("SELECT is_verified FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+
+        # Email verification codes table (for registration)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                is_used INTEGER DEFAULT 0
+            )
+        ''')
+
+        # Login OTP codes table (for login verification)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS login_otps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                is_used INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Trusted devices table (for 30-day OTP bypass)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS trusted_devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                device_token TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Notifications table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                link TEXT,
+                is_read INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
         conn.commit()
         conn.close()
 
