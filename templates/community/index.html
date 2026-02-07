@@ -1,38 +1,46 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- New group button -->
-<!-- Header section containing the page title and the 'New Group' button -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-users me-2"></i> Community Groups</h2>
-    <div class="d-flex gap-2">
-        <form action="{{ url_for('community.community') }}" method="GET" class="d-flex gap-2">
-            <input type="text" name="search" class="form-control" placeholder="Search groups..."
-                value="{{ request.args.get('search', '') }}">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-        </form>
-        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i> New Group
-        </a>
+<section class="mb-5">
+    <!-- Header Actions -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold text-dark mb-3 mb-md-0">Community Groups</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('community.create_group') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-1"></i> New Group
+            </a>
+        </div>
     </div>
-</div>
+
+    <!-- Search & Filters -->
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
+        <form action="{{ url_for('community.community') }}" method="GET" class="row g-2 align-items-center">
+            <!-- Search -->
+            <div class="col-12 col-md-10 position-relative">
+                <input type="text" name="search" class="form-control form-control-lg pe-5"
+                    placeholder="Search groups..." value="{{ request.args.get('search', '') }}">
+            </div>
+            <!-- Search Button -->
+            <div class="col-12 col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i></button>
+            </div>
+        </form>
+    </div>
+</section>
 
 <!-- Groups Grid -->
-<!-- Display list of community groups in a responsive grid -->
 <div class="row">
     {% if groups %}
     {% for group in groups %}
-    <div class="col-12 col-md-4 mb-4">
-        <div class="card nav-card-minimal h-100">
+    <div class="col-12 col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center p-4">
                 <!-- Group Image Section -->
                 <div class="mb-3">
                     {% if group['image_url'] %}
-                    <!-- Display group image if available -->
                     <img src="{{ url_for('static', filename=group['image_url']) }}" class="rounded-circle"
                         style="width: 80px; height: 80px; object-fit: cover;">
                     {% else %}
-                    <!-- Display placeholder icon if no image -->
                     <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center"
                         style="width: 80px; height: 80px; background-color: var(--accent-color);">
                         <i class="fas fa-users fa-2x" style="color: var(--primary-color);"></i>
@@ -42,31 +50,32 @@
                 <!-- Group Name -->
                 <h5 class="card-title fw-bold">{{ group['name'] }}</h5>
                 <!-- Group Description (Truncated) -->
-                <p class="card-text text-muted small">{{ group['description'][:80] }}{% if group['description']|length >
-                    80 %}...{% endif %}</p>
+                <p class="card-text text-muted">{{ group['description'][:80] }}{% if group['description']|length > 80
+                    %}...{% endif %}</p>
                 <!-- Member Count -->
-                <p class="text-muted small mb-3">
+                <p class="text-muted mb-3">
                     <i class="fas fa-user-friends me-1"></i> {{ group['member_count'] or 0 }} members
                 </p>
                 <!-- View Group Button -->
                 <a href="{{ url_for('community.view_group', group_id=group['id']) }}"
-                    class="btn btn-sm btn-outline-primary">View
-                    Group</a>
+                    class="btn btn-primary btn-lg">View Group</a>
             </div>
         </div>
     </div>
     {% endfor %}
     {% else %}
-    <!-- Empty State: Show when there are no groups -->
+    <!-- Empty State -->
     <div class="col-12 text-center py-5">
         {% if request.args.get('search') %}
         <i class="fas fa-search fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">Group Not Found</h5>
-        <a href="{{ url_for('community.community') }}" class="btn btn-outline-primary mt-3">View All Groups</a>
+        <h5 class="text-muted">No groups found matching "{{ request.args.get('search') }}"</h5>
+        <a href="{{ url_for('community.community') }}" class="btn btn-primary btn-lg mt-3">
+            <i class="fas fa-arrow-left me-2"></i>Back to All Groups
+        </a>
         {% else %}
         <i class="fas fa-users fa-3x text-muted mb-3"></i>
-        <p class="text-muted">No groups yet. Start a community!</p>
-        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary">Create Group</a>
+        <p class="text-muted fs-5">No groups yet. Start a community!</p>
+        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary btn-lg">Create Group</a>
         {% endif %}
     </div>
     {% endif %}

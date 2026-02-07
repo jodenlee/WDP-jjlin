@@ -1,9 +1,13 @@
 from flask import Flask, g, request
 import os
 from dotenv import load_dotenv
+from authlib.integrations.flask_client import OAuth
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Global OAuth instance
+oauth = OAuth()
 
 def create_app():
     app = Flask(__name__)
@@ -20,6 +24,30 @@ def create_app():
 
     # Ensure upload directory exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+    # Initialize OAuth with Google
+    oauth.init_app(app)
+    oauth.register(
+        name='google',
+        client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+        access_token_url='https://oauth2.googleapis.com/token',
+        authorize_url='https://accounts.google.com/o/oauth2/v2/auth',
+        api_base_url='https://www.googleapis.com/oauth2/v3/',
+        userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+        client_kwargs={'scope': 'openid email profile'},
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    )
+    
+    # Store oauth on app for access from blueprints
+    app.oauth = oauth
+
+    # Initialize Flask-Mail
+    try:
+        from email_utils import init_mail
+        init_mail(app)
+    except ImportError:
+        pass
 
     # Inject common variables into all templates
     @app.context_processor
@@ -44,6 +72,7 @@ def create_app():
     from routes.messages import messages_bp
     from routes.main import main_bp
     from routes.community import community_bp
+    from routes.admin import admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(stories_bp)
@@ -51,6 +80,7 @@ def create_app():
     app.register_blueprint(messages_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(community_bp)
+    app.register_blueprint(admin_bp)
 
     return app
 
