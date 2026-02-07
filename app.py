@@ -1579,6 +1579,51 @@ def admin_dashboard():
     
     return render_template('admin/dashboard.html', stats=stats, reports=reports)
 
+@app.route('/admin/reports')
+@admin_required
+def admin_reports():
+    db = get_db()
+    filter_type = request.args.get('type')  # story, activity, group, comment
+    
+    # Base query
+    base_query = """
+        SELECT r.*, u.username as reporter_name 
+        FROM reports r 
+        LEFT JOIN users u ON r.reporter_id = u.id
+    """
+    
+    # Build where clause for type filter
+    where_clause = ""
+    params = ()
+    if filter_type and filter_type in ['story', 'activity', 'group', 'comment']:
+        where_clause = " WHERE r.target_type = ?"
+        params = (filter_type,)
+    
+    # Get reports by status
+    pending_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'pending' ORDER BY r.created_at DESC"
+    deleted_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'resolved_deleted' ORDER BY r.created_at DESC"
+    dismissed_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'dismissed' ORDER BY r.created_at DESC"
+    
+    pending_reports = db.query(pending_query, params)
+    deleted_reports = db.query(deleted_query, params)
+    dismissed_reports = db.query(dismissed_query, params)
+    
+    # Get counts for filter badges
+    counts = {
+        'all': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending'")[0]['c'],
+        'story': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'story'")[0]['c'],
+        'activity': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'activity'")[0]['c'],
+        'group': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'group'")[0]['c'],
+        'comment': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'comment'")[0]['c'],
+    }
+    
+    return render_template('admin/reports.html', 
+                          pending_reports=pending_reports,
+                          deleted_reports=deleted_reports,
+                          dismissed_reports=dismissed_reports,
+                          filter_type=filter_type,
+                          counts=counts)
+
 @app.route('/report/<target_type>/<int:target_id>', methods=['GET', 'POST'])
 @login_required
 def report_item(target_type, target_id):
