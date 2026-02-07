@@ -1020,6 +1020,55 @@ def create_group_post(group_id):
     flash('Post created!', 'success')
     return redirect(url_for('view_group', group_id=group_id))
 
+@app.route('/community/post/<int:post_id>/update', methods=['POST'])
+@login_required
+def update_group_post(post_id):
+    user_id = session['user_id']
+    new_content = request.form['content']
+    
+    db = get_db()
+    post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
+    
+    if not post:
+        return redirect(request.referrer or url_for('community'))
+        
+    if post['user_id'] != user_id:
+        flash('You can only edit your own posts.', 'danger')
+        return redirect(url_for('view_group', group_id=post['group_id']))
+        
+    conn = db.get_connection()
+    conn.execute("UPDATE group_posts SET content = ? WHERE id = ?", (new_content, post_id))
+    conn.commit()
+    
+    flash('Post updated.', 'success')
+    return redirect(url_for('view_group', group_id=post['group_id']))
+
+@app.route('/community/post/<int:post_id>/delete', methods=['POST'])
+@login_required
+def delete_group_post(post_id):
+    user_id = session['user_id']
+    
+    db = get_db()
+    post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
+    
+    if not post:
+        return redirect(request.referrer or url_for('community'))
+        
+    # Check if user is the owner of the post
+    # (Optional: Allow group owner to delete any post? For now, just post owner as per prompt 'user that created the post')
+    if post['user_id'] != user_id:
+        flash('You can only delete your own posts.', 'danger')
+        return redirect(url_for('view_group', group_id=post['group_id']))
+        
+    conn = db.get_connection()
+    # Delete associated comments first
+    conn.execute("DELETE FROM group_post_comments WHERE post_id = ?", (post_id,))
+    conn.execute("DELETE FROM group_posts WHERE id = ?", (post_id,))
+    conn.commit()
+    
+    flash('Post deleted.', 'success')
+    return redirect(url_for('view_group', group_id=post['group_id']))
+
 # Route to add a comment to a group post
 @app.route('/community/post/<int:post_id>/comment', methods=['POST'])
 @login_required
