@@ -801,8 +801,10 @@ def view_group(group_id):
     """
     posts = db.query(posts_query, (group_id,))
     
-    # Organize posts with their comments
+    # Organize posts with their comments and like status
     posts_data = []
+    user_id = session.get('user_id')
+    
     for post in posts:
         comments_query = """
             SELECT c.*, u.username, u.profile_pic
@@ -812,11 +814,46 @@ def view_group(group_id):
             ORDER BY c.created_at ASC
         """
         comments = db.query(comments_query, (post['id'],))
+        
+        # Check if current user liked the post
+        is_liked = False
+        if user_id:
+            like_check = db.query("SELECT * FROM group_post_likes WHERE user_id = ? AND post_id = ?", (user_id, post['id']), one=True)
+            is_liked = bool(like_check)
+            
         post_dict = dict(post)
         post_dict['comments'] = comments
+        post_dict['is_liked'] = is_liked
         posts_data.append(post_dict)
     
     return render_template('community/view.html', group=group, is_member=is_member, is_owner=is_owner, member_count=member_count, members=members, posts=posts_data)
+
+@app.route('/community/post/<int:post_id>/like', methods=['POST'])
+@login_required
+def toggle_group_post_like(post_id):
+    user_id = session['user_id']
+    db = get_db()
+    conn = db.get_connection()
+    
+    # Check if post exists
+    post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
+    if not post:
+        return redirect(request.referrer or url_for('community'))
+        
+    # Check if already liked
+    like = db.query("SELECT * FROM group_post_likes WHERE user_id = ? AND post_id = ?", (user_id, post_id), one=True)
+    
+    if like:
+        # Unlike
+        conn.execute("DELETE FROM group_post_likes WHERE user_id = ? AND post_id = ?", (user_id, post_id))
+        conn.execute("UPDATE group_posts SET likes = likes - 1 WHERE id = ?", (post_id,))
+    else:
+        # Like
+        conn.execute("INSERT INTO group_post_likes (user_id, post_id) VALUES (?, ?)", (user_id, post_id))
+        conn.execute("UPDATE group_posts SET likes = likes + 1 WHERE id = ?", (post_id,))
+        
+    conn.commit()
+    return redirect(url_for('view_group', group_id=post['group_id']))
 
 # Route to create a new community group
 @app.route('/community/new', methods=['GET', 'POST'])
@@ -1100,6 +1137,56 @@ def create_group_post_comment(post_id):
         return redirect(url_for('view_group', group_id=post['group_id']))
     else:
         return redirect(url_for('community'))
+
+@app.route('/community/post/comment/<int:comment_id>/update', methods=['POST'])
+@login_required
+def update_group_post_comment(comment_id):
+    user_id = session['user_id']
+    new_content = request.form['content']
+    
+    db = get_db()
+    # verify comment ownership and get post_id for redirect
+    comment = db.query("SELECT * FROM group_post_comments WHERE id = ?", (comment_id,), one=True)
+    
+    if not comment:
+        return indent(redirect(request.referrer or url_for('community')))
+        
+    post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (comment['post_id'],), one=True)
+    
+    if comment['user_id'] != user_id:
+        flash('You can only edit your own comments.', 'danger')
+        return redirect(url_for('view_group', group_id=post['group_id']))
+        
+    conn = db.get_connection()
+    conn.execute("UPDATE group_post_comments SET content = ? WHERE id = ?", (new_content, comment_id))
+    conn.commit()
+    
+    flash('Comment updated.', 'success')
+    return redirect(url_for('view_group', group_id=post['group_id']))
+
+@app.route('/community/post/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_group_post_comment(comment_id):
+    user_id = session['user_id']
+    
+    db = get_db()
+    comment = db.query("SELECT * FROM group_post_comments WHERE id = ?", (comment_id,), one=True)
+    
+    if not comment:
+        return redirect(request.referrer or url_for('community'))
+        
+    post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (comment['post_id'],), one=True)
+
+    if comment['user_id'] != user_id:
+        flash('You can only delete your own comments.', 'danger')
+        return redirect(url_for('view_group', group_id=post['group_id']))
+        
+    conn = db.get_connection()
+    conn.execute("DELETE FROM group_post_comments WHERE id = ?", (comment_id,))
+    conn.commit()
+    
+    flash('Comment deleted.', 'success')
+    return redirect(url_for('view_group', group_id=post['group_id']))
 
 if __name__ == '__main__':
     app.run(debug=True)

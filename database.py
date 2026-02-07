@@ -236,6 +236,25 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
+
+        # Group Post Likes Table (New)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                post_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                UNIQUE(user_id, post_id)
+            )
+        ''')
+
+        # Add likes column to group_posts if not exists
+        try:
+            cursor.execute("SELECT likes FROM group_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
         
         conn.commit()
         conn.close()
