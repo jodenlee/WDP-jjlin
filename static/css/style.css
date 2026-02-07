@@ -150,3 +150,17 @@ h6 {
 .detail-carousel .nav-arrow:hover {
     background: rgba(0, 0, 0, 0.6);
 }
+
+
+
+/* Enlarged Post Style */
+.enlarged-post {
+    transform: scale(1.25);
+    /* Significant enlargement */
+    z-index: 1050;
+    /* Higher than standard elements but below modals */
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
+    transition: all 0.3s ease;
+    position: relative;
+    /* Ensure z-index works */
+}

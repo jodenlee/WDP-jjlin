@@ -583,6 +583,7 @@ def add_comment(story_id):
     conn = db.get_connection()
     conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
     conn.commit()
+    flash('Comment posted successfully!', 'success')
     return redirect(url_for('stories.view_story', story_id=story_id))
 
 # Comment Management inside stories blueprint

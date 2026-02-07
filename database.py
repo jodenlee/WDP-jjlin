@@ -129,6 +129,47 @@ class Database:
             )
         ''')
 
+        # Group Posts Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                image_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                likes INTEGER DEFAULT 0,
+                FOREIGN KEY (group_id) REFERENCES groups (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Group Post Comments Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Group Post Likes Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                post_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                UNIQUE(user_id, post_id)
+            )
+        ''')
+
         # Messages Table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
@@ -219,7 +260,13 @@ class Database:
             cursor.execute("SELECT is_admin FROM users LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
-        
+
+        # Add likes column to group_posts if not exists
+        try:
+            cursor.execute("SELECT likes FROM group_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
+
         conn.commit()
         conn.close()
 
