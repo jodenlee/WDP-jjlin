@@ -224,6 +224,62 @@ class Database:
             cursor.execute("SELECT language FROM users LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
+
+        # Add is_verified column to users if not exists (for email verification)
+        try:
+            cursor.execute("SELECT is_verified FROM users LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+
+        # Email verification codes table (for registration)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                is_used INTEGER DEFAULT 0
+            )
+        ''')
+
+        # Login OTP codes table (for login verification)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS login_otps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                is_used INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Trusted devices table (for 30-day OTP bypass)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS trusted_devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                device_token TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Auto-create default admin account if it doesn't exist
+        from werkzeug.security import generate_password_hash
+        admin_email = 'admin@togethersg.com'
+        admin_exists = cursor.execute("SELECT id FROM users WHERE email = ?", (admin_email,)).fetchone()
+        if not admin_exists:
+            admin_password_hash = generate_password_hash('Admin@123')
+            cursor.execute(
+                """INSERT INTO users (username, email, password_hash, role, full_name, is_admin, is_verified) 
+                   VALUES (?, ?, ?, ?, ?, 1, 1)""",
+                ('admin', admin_email, admin_password_hash, 'youth', 'System Administrator')
+            )
         
         conn.commit()
         conn.close()

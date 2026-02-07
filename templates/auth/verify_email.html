@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card nav-card-minimal shadow">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="fas fa-envelope-open-text fa-3x" style="color: var(--primary-color);"></i>
+                    </div>
+                    <h2 class="fw-bold" style="color: var(--primary-color);">Verify Your Email</h2>
+                    <p class="text-muted">We've sent a 6-digit code to</p>
+                    <p class="fw-bold">{{ email }}</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                </div>
+                {% endif %}
+
+                <form action="{{ url_for('verify_email') }}" method="POST" novalidate>
+                    <div class="mb-4">
+                        <label for="code" class="form-label fw-bold">Verification Code</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-key text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 text-center fs-4 letter-spacing-wide"
+                                id="code" name="code" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
+                                autofocus style="letter-spacing: 0.5em;">
+                        </div>
+                        <small class="text-muted">Code expires in 5 minutes</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-check-circle me-2"></i>Verify Email
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <p class="text-muted mb-2">Didn't receive the code?</p>
+                    <form action="{{ url_for('resend_verification') }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo me-2"></i>Resend Code
+                        </button>
+                    </form>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('register') }}" class="text-decoration-none text-muted">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,11 +6,34 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
 from database import Database
+from datetime import datetime, timedelta
 import re
 import os
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in production!
+
+# Initialize Flask-Mail for email verification
+from email_utils import init_mail, generate_otp, get_otp_expiry, send_verification_email
+init_mail(app)
+
+# Google OAuth Configuration
+from authlib.integrations.flask_client import OAuth
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', ''),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 # Upload Configuration
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -113,26 +136,158 @@ def login():
             user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
             
             if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
-                session['user_id'] = user['id']
-                session['username'] = user['username']
-                # Set language preference from database
+                # Check if email is verified
                 try:
-                    if user['language']:
-                        session['language'] = user['language']
+                    is_verified = user['is_verified']
                 except (KeyError, IndexError):
-                    pass
-
-                flash('Welcome back!', 'success')
+                    is_verified = 1  # Default to verified for older accounts
                 
-                # Redirect to admin dashboard if user is admin
+                if not is_verified:
+                    # User not verified, redirect to verification
+                    session['pending_verification_email'] = email
+                    flash('Please verify your email first.', 'warning')
+                    return redirect(url_for('verify_email'))
+                
+                # Check if user is admin - skip OTP for admin
                 if user['is_admin']:
+                    session['user_id'] = user['id']
+                    session['username'] = user['username']
+                    flash('Welcome back, Admin!', 'success')
                     return redirect(url_for('admin_dashboard'))
-                    
-                return redirect(url_for('home'))
+                
+                # Check for trusted device
+                device_token = request.cookies.get('trusted_device')
+                if device_token:
+                    trusted = db.query(
+                        """SELECT * FROM trusted_devices 
+                           WHERE user_id = ? AND device_token = ? AND expires_at > ?""",
+                        (user['id'], device_token, datetime.now()), one=True
+                    )
+                    if trusted:
+                        # Device is trusted - skip OTP
+                        session['user_id'] = user['id']
+                        session['username'] = user['username']
+                        try:
+                            if user['language']:
+                                session['language'] = user['language']
+                        except (KeyError, IndexError):
+                            pass
+                        flash('Welcome back!', 'success')
+                        return redirect(url_for('home'))
+                
+                # Regular user - generate login OTP
+                otp_code = generate_otp()
+                expires_at = get_otp_expiry()
+                
+                conn = db.get_connection()
+                conn.execute(
+                    """INSERT INTO login_otps (user_id, email, code, expires_at) 
+                       VALUES (?, ?, ?, ?)""",
+                    (user['id'], email, otp_code, expires_at)
+                )
+                conn.commit()
+                conn.close()
+                
+                # Send OTP email
+                email_sent = send_verification_email(email, otp_code, purpose='login')
+                
+                # Store user id in session for OTP verification
+                session['pending_login_user_id'] = user['id']
+                session['pending_login_email'] = email
+                
+                if email_sent:
+                    flash('Please check your email for the login verification code.', 'info')
+                else:
+                    flash('Could not send verification code. Please try again.', 'warning')
+                
+                return redirect(url_for('verify_login_otp'))
             else:
                 error = 'Invalid email or password.'
     
     return render_template('auth/login.html', error=error, success=success)
+
+# Google OAuth Routes
+@app.route('/auth/google')
+def google_login():
+    """Initiate Google OAuth login flow"""
+    redirect_uri = url_for('google_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google/callback')
+def google_callback():
+    """Handle Google OAuth callback"""
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        
+        if not user_info:
+            flash('Could not get user info from Google.', 'danger')
+            return redirect(url_for('login'))
+        
+        email = user_info.get('email', '').lower()
+        name = user_info.get('name', '')
+        
+        if not email:
+            flash('Could not get email from Google account.', 'danger')
+            return redirect(url_for('login'))
+        
+        # Check if user exists
+        db = get_db()
+        user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+        
+        if not user:
+            # Create new user from Google account
+            # Generate a random username from email prefix
+            username = email.split('@')[0].lower()
+            # Make username unique if needed
+            existing = db.query("SELECT id FROM users WHERE username = ?", (username,), one=True)
+            if existing:
+                import time
+                username = f"{username}_{int(time.time()) % 10000}"
+            
+            conn = db.get_connection()
+            conn.execute(
+                """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
+                   VALUES (?, ?, ?, ?, ?, 1)""",
+                (username, email, '', 'youth', name)  # No password for OAuth users
+            )
+            conn.commit()
+            conn.close()
+            
+            # Fetch the newly created user
+            user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+        
+        # User exists (or just created) - generate login OTP
+        otp_code = generate_otp()
+        expires_at = get_otp_expiry()
+        
+        conn = db.get_connection()
+        conn.execute(
+            """INSERT INTO login_otps (user_id, email, code, expires_at) 
+               VALUES (?, ?, ?, ?)""",
+            (user['id'], email, otp_code, expires_at)
+        )
+        conn.commit()
+        conn.close()
+        
+        # Send OTP email
+        email_sent = send_verification_email(email, otp_code, purpose='login')
+        
+        # Store user id in session for OTP verification
+        session['pending_login_user_id'] = user['id']
+        session['pending_login_email'] = email
+        
+        if email_sent:
+            flash('Please check your email for the login verification code.', 'info')
+        else:
+            flash('Could not send verification code. Please try again.', 'warning')
+        
+        return redirect(url_for('verify_login_otp'))
+        
+    except Exception as e:
+        print(f"Google OAuth error: {e}")
+        flash('Google login failed. Please try again.', 'danger')
+        return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -162,8 +317,8 @@ def register():
         
         if not form['email']:
             errors.append('Email is required.')
-        elif not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', form['email']):
-            errors.append('Please enter a valid email address.')
+        elif not re.match(r'^[a-zA-Z0-9._%+-]+@gmail\.com$', form['email']):
+            errors.append('Please use a Gmail address (@gmail.com) to register.')
         
         if not password:
             errors.append('Password is required.')
@@ -191,25 +346,242 @@ def register():
                 if existing_user['email'] == form['email']:
                     errors.append('Email already registered.')
         
-        # Create user if no errors
+        # Create user if no errors (with is_verified=0)
         if not errors:
             password_hash = generate_password_hash(password)
             db = get_db()
             conn = db.get_connection()
             try:
+                # Insert user as unverified
                 conn.execute(
-                    """INSERT INTO users (username, email, password_hash, role, full_name) 
-                       VALUES (?, ?, ?, ?, ?)""",
+                    """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
+                       VALUES (?, ?, ?, ?, ?, 0)""",
                     (form['username'], form['email'], password_hash, form['role'], form['full_name'])
                 )
                 conn.commit()
-                return redirect(url_for('login', success='Account created successfully! Please log in.'))
+                
+                # Generate OTP and save to email_verifications table
+                otp_code = generate_otp()
+                expires_at = get_otp_expiry()
+                conn.execute(
+                    """INSERT INTO email_verifications (email, code, expires_at) 
+                       VALUES (?, ?, ?)""",
+                    (form['email'], otp_code, expires_at)
+                )
+                conn.commit()
+                conn.close()
+                
+                # Send verification email
+                email_sent = send_verification_email(form['email'], otp_code, purpose='registration')
+                
+                # Store email in session for verification page
+                session['pending_verification_email'] = form['email']
+                
+                if email_sent:
+                    flash('Please check your email for the verification code.', 'info')
+                else:
+                    flash('Account created but verification email failed. Please try resending.', 'warning')
+                
+                return redirect(url_for('verify_email'))
             except Exception as e:
+                print(f"Registration error: {e}")
                 errors.append('An error occurred. Please try again.')
     
     return render_template('auth/register.html', errors=errors, form=form)
 
-    return render_template('auth/register.html', errors=errors, form=form)
+# Email Verification Route (for registration)
+@app.route('/verify-email', methods=['GET', 'POST'])
+def verify_email():
+    email = session.get('pending_verification_email')
+    if not email:
+        flash('No pending verification. Please register first.', 'warning')
+        return redirect(url_for('register'))
+    
+    error = None
+    
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        
+        if not code:
+            error = 'Please enter the verification code.'
+        else:
+            db = get_db()
+            # Check for valid, unused, non-expired OTP
+            verification = db.query(
+                """SELECT * FROM email_verifications 
+                   WHERE email = ? AND code = ? AND is_used = 0 AND expires_at > ?
+                   ORDER BY created_at DESC LIMIT 1""",
+                (email, code, datetime.now()), one=True
+            )
+            
+            if verification:
+                conn = db.get_connection()
+                # Mark OTP as used
+                conn.execute("UPDATE email_verifications SET is_used = 1 WHERE id = ?", (verification['id'],))
+                # Mark user as verified
+                conn.execute("UPDATE users SET is_verified = 1 WHERE email = ?", (email,))
+                conn.commit()
+                conn.close()
+                
+                # Clear session
+                session.pop('pending_verification_email', None)
+                
+                flash('Email verified successfully! You can now log in.', 'success')
+                return redirect(url_for('login'))
+            else:
+                error = 'Invalid or expired verification code. Please try again or request a new code.'
+    
+    return render_template('auth/verify_email.html', email=email, error=error)
+
+# Resend Email Verification Code
+@app.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    email = session.get('pending_verification_email')
+    if not email:
+        flash('No pending verification.', 'warning')
+        return redirect(url_for('register'))
+    
+    # Generate new OTP
+    otp_code = generate_otp()
+    expires_at = get_otp_expiry()
+    
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute(
+        """INSERT INTO email_verifications (email, code, expires_at) 
+           VALUES (?, ?, ?)""",
+        (email, otp_code, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    
+    # Send email
+    email_sent = send_verification_email(email, otp_code, purpose='registration')
+    
+    if email_sent:
+        flash('New verification code sent to your email.', 'success')
+    else:
+        flash('Could not send verification code. Please try again.', 'danger')
+    
+    return redirect(url_for('verify_email'))
+
+# Login OTP Verification Route
+@app.route('/verify-login-otp', methods=['GET', 'POST'])
+def verify_login_otp():
+    user_id = session.get('pending_login_user_id')
+    email = session.get('pending_login_email')
+    
+    if not user_id or not email:
+        flash('Please log in first.', 'warning')
+        return redirect(url_for('login'))
+    
+    error = None
+    
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        
+        if not code:
+            error = 'Please enter the verification code.'
+        else:
+            db = get_db()
+            # Check for valid, unused, non-expired OTP
+            otp_record = db.query(
+                """SELECT * FROM login_otps 
+                   WHERE user_id = ? AND code = ? AND is_used = 0 AND expires_at > ?
+                   ORDER BY created_at DESC LIMIT 1""",
+                (user_id, code, datetime.now()), one=True
+            )
+            
+            if otp_record:
+                conn = db.get_connection()
+                # Mark OTP as used
+                conn.execute("UPDATE login_otps SET is_used = 1 WHERE id = ?", (otp_record['id'],))
+                conn.commit()
+                conn.close()
+                
+                # Get user and complete login
+                user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+                
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                
+                # Set language preference
+                try:
+                    if user['language']:
+                        session['language'] = user['language']
+                except (KeyError, IndexError):
+                    pass
+                
+                # Clear pending login session vars
+                session.pop('pending_login_user_id', None)
+                session.pop('pending_login_email', None)
+                
+                flash('Welcome back!', 'success')
+                
+                # Prepare response
+                if user['is_admin']:
+                    response = redirect(url_for('admin_dashboard'))
+                else:
+                    response = redirect(url_for('home'))
+                
+                # Handle trust device checkbox
+                trust_device = request.form.get('trust_device')
+                if trust_device:
+                    import secrets
+                    device_token = secrets.token_urlsafe(32)
+                    expires_at = datetime.now() + timedelta(days=30)
+                    
+                    conn = db.get_connection()
+                    conn.execute(
+                        """INSERT INTO trusted_devices (user_id, device_token, expires_at) 
+                           VALUES (?, ?, ?)""",
+                        (user['id'], device_token, expires_at)
+                    )
+                    conn.commit()
+                    conn.close()
+                    
+                    # Set cookie for 30 days
+                    response.set_cookie('trusted_device', device_token, max_age=30*24*60*60, httponly=True)
+                
+                return response
+            else:
+                error = 'Invalid or expired code. Please try again or request a new code.'
+    
+    return render_template('auth/verify_login_otp.html', email=email, error=error)
+
+# Resend Login OTP
+@app.route('/resend-login-otp', methods=['POST'])
+def resend_login_otp():
+    user_id = session.get('pending_login_user_id')
+    email = session.get('pending_login_email')
+    
+    if not user_id or not email:
+        flash('Please log in first.', 'warning')
+        return redirect(url_for('login'))
+    
+    # Generate new OTP
+    otp_code = generate_otp()
+    expires_at = get_otp_expiry()
+    
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute(
+        """INSERT INTO login_otps (user_id, email, code, expires_at) 
+           VALUES (?, ?, ?, ?)""",
+        (user_id, email, otp_code, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    
+    # Send email
+    email_sent = send_verification_email(email, otp_code, purpose='login')
+    
+    if email_sent:
+        flash('New verification code sent to your email.', 'success')
+    else:
+        flash('Could not send verification code. Please try again.', 'danger')
+    
+    return redirect(url_for('verify_login_otp'))
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
