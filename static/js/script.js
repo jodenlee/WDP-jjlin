@@ -36,6 +36,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeRadio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
     if (themeRadio) themeRadio.checked = true;
 
+    // Theme Change Listener
+    const themeRadios = document.querySelectorAll('input[name="theme"]');
+    themeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // Map the ID to the theme name
+                let theme = 'light';
+                if (e.target.id === 'theme_dark') theme = 'dark';
+                if (e.target.id === 'theme_auto') theme = 'auto'; // Future support
+                setTheme(theme);
+            }
+        });
+    });
+
     // GLOBAL MODAL VALIDATION: Intercepts specific flash messages to show a success modal
     checkAlertsForModals();
 });
