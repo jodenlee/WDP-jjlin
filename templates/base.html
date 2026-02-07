@@ -55,6 +55,14 @@
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                {% if g.user and g.user['is_admin'] %}
+                                <li><a class="dropdown-item text-danger fw-bold"
+                                        href="{{ url_for('admin.admin_dashboard') }}">
+                                        <i class="fas fa-shield-alt me-2"></i> Admin Dashboard</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                {% endif %}
                                 <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
                                         <i class="fas fa-cog me-2"></i> Settings</a></li>
                                 <li>

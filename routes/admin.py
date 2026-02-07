@@ -158,10 +158,10 @@ def reports_list():
     """List all reports"""
     db = get_db()
     
-    status_filter = request.args.get('status', 'pending')
+    status_filter = request.args.get('status', '')  # Default to all reports
     
     query = """
-        SELECT r.*, u.username as reporter_name 
+        SELECT r.*, u.username as reporter 
         FROM reports r 
         JOIN users u ON r.reporter_id = u.id
     """
@@ -206,3 +206,107 @@ def resolve_report(report_id):
     
     conn.commit()
     return redirect(url_for('admin.reports_list'))
+
+@admin_bp.route('/reports/all')
+@admin_required
+def admin_reports():
+    db = get_db()
+    filter_type = request.args.get('type')  # story, activity, group, comment
+    
+    # Base query
+    base_query = """
+        SELECT r.*, u.username as reporter_name 
+        FROM reports r 
+        LEFT JOIN users u ON r.reporter_id = u.id
+    """
+    
+    # Build where clause for type filter
+    where_clause = ""
+    params = ()
+    if filter_type and filter_type in ['story', 'activity', 'group', 'comment']:
+        where_clause = " WHERE r.target_type = ?"
+        params = (filter_type,)
+    
+    # Get reports by status
+    pending_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'pending' ORDER BY r.created_at DESC"
+    deleted_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'resolved_deleted' ORDER BY r.created_at DESC"
+    dismissed_query = base_query + where_clause + (" AND" if where_clause else " WHERE") + " r.status = 'dismissed' ORDER BY r.created_at DESC"
+    
+    pending_reports = db.query(pending_query, params)
+    deleted_reports = db.query(deleted_query, params)
+    dismissed_reports = db.query(dismissed_query, params)
+    
+    # Get counts for filter badges
+    counts = {
+        'all': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending'")[0]['c'],
+        'story': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'story'")[0]['c'],
+        'activity': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'activity'")[0]['c'],
+        'group': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'group'")[0]['c'],
+        'comment': db.query("SELECT COUNT(*) as c FROM reports WHERE status = 'pending' AND target_type = 'comment'")[0]['c'],
+    }
+    
+    return render_template('admin/reports.html', 
+                          pending_reports=pending_reports,
+                          deleted_reports=deleted_reports,
+                          dismissed_reports=dismissed_reports,
+                          filter_type=filter_type,
+                          counts=counts)
+
+@admin_bp.route('/reports/view/<target_type>/<int:target_id>')
+@admin_required
+def view_reported_item(target_type, target_id):
+    """Redirect to view the reported content"""
+    if target_type == 'story':
+        return redirect(url_for('stories.view_story', story_id=target_id))
+    elif target_type == 'activity':
+        return redirect(url_for('activities.view_activity', activity_id=target_id))
+    elif target_type == 'group':
+        return redirect(url_for('community.view_group', group_id=target_id))
+    elif target_type == 'comment':
+        flash('Comment viewing is not available directly.', 'info')
+        return redirect(url_for('admin.admin_reports'))
+    else:
+        flash('Unknown content type.', 'warning')
+        return redirect(url_for('admin.admin_reports'))
+
+@admin_bp.route('/reports/<int:report_id>/delete', methods=['POST'])
+@admin_required
+def delete_reported_item(report_id):
+    """Delete reported content and update report status"""
+    db = get_db()
+    conn = db.get_connection()
+    
+    report = db.query("SELECT * FROM reports WHERE id = ?", (report_id,), one=True)
+    if not report:
+        flash('Report not found.', 'warning')
+        return redirect(url_for('admin.admin_reports'))
+    
+    # Delete the target content based on type
+    if report['target_type'] == 'story':
+        conn.execute("DELETE FROM stories WHERE id = ?", (report['target_id'],))
+    elif report['target_type'] == 'comment':
+        conn.execute("DELETE FROM comments WHERE id = ?", (report['target_id'],))
+    elif report['target_type'] == 'group':
+        conn.execute("DELETE FROM groups WHERE id = ?", (report['target_id'],))
+    elif report['target_type'] == 'activity':
+        conn.execute("DELETE FROM activities WHERE id = ?", (report['target_id'],))
+    
+    # Update report status to resolved_deleted
+    conn.execute("UPDATE reports SET status = 'resolved_deleted' WHERE id = ?", (report_id,))
+    conn.commit()
+    
+    flash('Content deleted and report resolved.', 'success')
+    return redirect(url_for('admin.admin_reports'))
+
+@admin_bp.route('/reports/<int:report_id>/dismiss', methods=['POST'])
+@admin_required
+def dismiss_report(report_id):
+    """Dismiss a report without deleting content"""
+    db = get_db()
+    conn = db.get_connection()
+    
+    conn.execute("UPDATE reports SET status = 'dismissed' WHERE id = ?", (report_id,))
+    conn.commit()
+    
+    flash('Report dismissed.', 'info')
+    return redirect(url_for('admin.admin_reports'))

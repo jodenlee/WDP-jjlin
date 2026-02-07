@@ -258,7 +258,7 @@ def view_story(story_id):
     story = db.query(query, (story_id,), one=True)
     
     if not story:
-        return "Story not found", 404
+        return render_template('stories/unavailable.html'), 404
         
     is_bookmarked = False
     is_liked = False
