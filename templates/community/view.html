@@ -30,7 +30,7 @@
                     <!-- Member Action: Leave Group (Deleting membership) -->
                     <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                         data-bs-target="#leaveGroupModal">
-                        <i class="fas fa-trash-alt me-1"></i> Delete Group
+                        <i class="fas fa-sign-out-alt me-1"></i> Leave Group
                     </button>
                     {% else %}
 
@@ -83,7 +83,10 @@
                             <!-- Member Details -->
                             <div>
                                 <span class="fw-bold">{{ member['username'] }}</span>
-                                <span class="badge bg-light text-dark ms-2">{{ member['role'] }}</span>
+                                <span class="badge bg-light text-dark ms-2"> {{ member['role']|capitalize }} </span>
+                                {% if group['created_by'] == member['id'] %}
+                                <span style="color: green; font-weight: bold;"> Creator</span>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -256,16 +259,16 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="leaveGroupModalLabel">Confirm delete?</h5>
+                <h5 class="modal-title" id="leaveGroupModalLabel">Confirm leave?</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this group?</p>
+                <p>Are you sure you want to leave this group?</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form action="{{ url_for('leave_group', group_id=group['id']) }}" method="POST">
-                    <button type="submit" class="btn btn-danger">Delete Group</button>
+                    <button type="submit" class="btn btn-danger">Leave Group</button>
                 </form>
             </div>
         </div>

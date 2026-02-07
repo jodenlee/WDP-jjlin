@@ -5,9 +5,16 @@
 <!-- Header section containing the page title and the 'New Group' button -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-users me-2"></i> Community Groups</h2>
-    <a href="{{ url_for('create_group') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> New Group
-    </a>
+    <div class="d-flex gap-2">
+        <form action="{{ url_for('community') }}" method="GET" class="d-flex gap-2">
+            <input type="text" name="search" class="form-control" placeholder="Search groups..."
+                value="{{ request.args.get('search', '') }}">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+        </form>
+        <a href="{{ url_for('create_group') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Group
+        </a>
+    </div>
 </div>
 
 <!-- Groups Grid -->
@@ -50,9 +57,15 @@
 {% else %}
 <!-- Empty State: Show when there are no groups -->
 <div class="col-12 text-center py-5">
+    {% if request.args.get('search') %}
+    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">Group Not Found</h5>
+    <a href="{{ url_for('community') }}" class="btn btn-outline-primary mt-3">View All Groups</a>
+    {% else %}
     <i class="fas fa-users fa-3x text-muted mb-3"></i>
     <p class="text-muted">No groups yet. Start a community!</p>
     <a href="{{ url_for('create_group') }}" class="btn btn-primary">Create Group</a>
+    {% endif %}
 </div>
 {% endif %}
 </div>

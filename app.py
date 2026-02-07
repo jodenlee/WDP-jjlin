@@ -752,12 +752,22 @@ def delete_account():
 def community():
     db = get_db()
     # Query to fetch all groups along with their member count
-    groups = db.query("""
+    search_query = request.args.get('search', '').strip()
+    
+    query = """
         SELECT g.*, 
                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
         FROM groups g
-        ORDER BY g.created_at DESC
-    """)
+    """
+    params = []
+    
+    if search_query:
+        query += " WHERE g.name LIKE ? OR g.description LIKE ?"
+        params.extend([f'%{search_query}%', f'%{search_query}%'])
+        
+    query += " ORDER BY g.created_at DESC"
+    
+    groups = db.query(query, params)
     return render_template('community/index.html', groups=groups)
 
 # Route to view a specific group's details
