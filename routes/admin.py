@@ -65,12 +65,12 @@ def admin_dashboard():
     
     # Get youth and senior user counts
     try:
-        youth_count = db.query("SELECT COUNT(*) as count FROM users WHERE age_group = 'youth'", one=True)['count']
+        youth_count = db.query("SELECT COUNT(*) as count FROM users WHERE role = 'youth'", one=True)['count']
     except:
         youth_count = 0
     
     try:
-        senior_count = db.query("SELECT COUNT(*) as count FROM users WHERE age_group = 'senior'", one=True)['count']
+        senior_count = db.query("SELECT COUNT(*) as count FROM users WHERE role = 'senior'", one=True)['count']
     except:
         senior_count = 0
     
