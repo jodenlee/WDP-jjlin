@@ -95,7 +95,14 @@ def users_list():
     role_filter = request.args.get('role', '')
     search = request.args.get('search', '')
     
-    query = "SELECT * FROM users WHERE 1=1"
+    # Get admin users
+    try:
+        admins = db.query("SELECT * FROM users WHERE is_admin = 1 ORDER BY created_at DESC")
+    except:
+        admins = []
+    
+    # Get non-admin users
+    query = "SELECT * FROM users WHERE (is_admin = 0 OR is_admin IS NULL)"
     params = []
     
     if role_filter:
@@ -110,7 +117,7 @@ def users_list():
     
     users = db.query(query, params)
     
-    return render_template('admin/users.html', users=users, role_filter=role_filter, search=search)
+    return render_template('admin/users.html', users=users, admins=admins, role_filter=role_filter, search=search, current_filter=role_filter)
 
 @admin_bp.route('/users/<int:user_id>')
 @admin_required

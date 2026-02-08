@@ -168,30 +168,27 @@ def google_callback():
             conn.close()
             user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
         
-        # Generate login OTP
-        otp_code = generate_otp()
-        expires_at = get_otp_expiry()
+        # Google OAuth provides secure authentication - skip 2FA and log in directly
+        session['user_id'] = user['id']
+        session['username'] = user['username']
         
-        conn = db.get_connection()
-        conn.execute(
-            """INSERT INTO login_otps (user_id, email, code, expires_at) 
-               VALUES (?, ?, ?, ?)""",
-            (user['id'], email, otp_code, expires_at)
-        )
-        conn.commit()
-        conn.close()
+        # Set language preference if available
+        try:
+            if user['language']:
+                session['language'] = user['language']
+        except (KeyError, IndexError):
+            pass
         
-        email_sent = send_verification_email(email, otp_code, purpose='login')
+        flash('Welcome back!', 'success')
         
-        session['pending_login_user_id'] = user['id']
-        session['pending_login_email'] = email
+        # Redirect admin users to admin dashboard
+        try:
+            if user['is_admin']:
+                return redirect(url_for('admin.admin_dashboard'))
+        except (KeyError, IndexError):
+            pass
         
-        if email_sent:
-            flash('Please check your email for the login verification code.', 'info')
-        else:
-            flash('Could not send verification code. Please try again.', 'warning')
-        
-        return redirect(url_for('auth.verify_login_otp'))
+        return redirect(url_for('main.home'))
         
     except Exception as e:
         print(f"Google OAuth error: {e}")
