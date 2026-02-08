@@ -2,6 +2,7 @@ from flask import Flask, g, request
 import os
 from dotenv import load_dotenv
 from authlib.integrations.flask_client import OAuth
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,6 +12,10 @@ oauth = OAuth()
 
 def create_app():
     app = Flask(__name__)
+    
+    # Trust proxy headers (Nginx sends X-Forwarded-Proto, X-Forwarded-Host, etc.)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    
     app.secret_key = os.environ.get('SECRET_KEY', 'togethersg-secret-key-change-in-production')
 
     # Google Maps API Key (from environment)
