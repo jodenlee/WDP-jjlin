@@ -21,6 +21,9 @@ def create_app():
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
+    
+    # Force HTTPS for external URL generation (OAuth redirects)
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
 
     # Ensure upload directory exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

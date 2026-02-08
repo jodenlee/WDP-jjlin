@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="mb-3">
+            <a href="{{ url_for('activities.activities_list') }}" class="btn btn-primary btn-lg fs-4">← Back to
+                Activities</a>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h1 class="fw-bold mb-4">
+                    <i class="fas fa-pen me-2 text-primary"></i>
+                    Edit Activity
+                </h1>
+
+                <form method="POST" enctype="multipart/form-data" novalidate>
+
+                    <!-- Title -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold fs-5">Title</label>
+                        <input class="form-control form-control-lg" name="title" maxlength="120"
+                            value="{{ request.form.get('title', activity['title']) }}" placeholder="Activity name">
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold fs-5">Description</label>
+                        <textarea class="form-control form-control-lg" name="description" rows="4"
+                            placeholder="What's this activity about?">{{ request.form.get('description', activity['description']) }}</textarea>
+                    </div>
+
+                    <!-- Attachment -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold fs-5">Attachment (optional)</label>
+                        <input type="file" class="form-control form-control-lg" name="attachment"
+                            accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx">
+                        <div class="form-text">Upload a new file to replace the existing one.</div>
+
+                        {% if activity['attachment'] %}
+                        <div class="mt-2 p-3 bg-light rounded">
+                            <span class="text-muted">Current:</span>
+                            <a href="{{ url_for('static', filename='uploads/' ~ activity['attachment']) }}"
+                                class="btn btn-sm btn-outline-primary ms-2" target="_blank" rel="noopener">
+                                <i class="fas fa-paperclip me-1"></i> View / Download
+                            </a>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" value="1" id="remove_attachment"
+                                    name="remove_attachment">
+                                <label class="form-check-label text-danger" for="remove_attachment">Remove current
+                                    attachment</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <!-- Type -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold fs-5">Type</label>
+                            {% set t = request.form.get('type', activity['type']) %}
+                            <select class="form-select form-select-lg" name="type">
+                                <option value="Workshop" {{ 'selected' if t=='Workshop' else '' }}>Workshop</option>
+                                <option value="Social" {{ 'selected' if t=='Social' else '' }}>Social Gathering</option>
+                                <option value="Exercise" {{ 'selected' if t=='Exercise' else '' }}>Exercise</option>
+                                <option value="Learning" {{ 'selected' if t=='Learning' else '' }}>Learning</option>
+                                <option value="Community" {{ 'selected' if t=='Community' else '' }}>Community Service
+                                </option>
+                                <option value="Other" {{ 'selected' if t=='Other' else '' }}>Other</option>
+                            </select>
+                        </div>
+
+                        <!-- Date -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold fs-5">Date</label>
+                            <input type="date" class="form-control form-control-lg" name="event_date"
+                                value="{{ request.form.get('event_date', activity['event_date']) }}" min="2026-01-01"
+                                max="2029-12-31">
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold fs-5">Location</label>
+                        <input class="form-control form-control-lg" name="location" maxlength="120"
+                            value="{{ request.form.get('location', activity['location']) }}"
+                            placeholder="Where will this take place?">
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a class="btn btn-lg btn-outline-secondary"
+                            href="{{ url_for('activities.view_activity', activity_id=activity['id']) }}">Cancel</a>
+                        <button type="submit" class="btn btn-lg btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
