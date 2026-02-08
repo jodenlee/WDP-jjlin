@@ -93,14 +93,29 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show"
-            role="alert">
+        <div class="alert alert-{{ 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show modal-alert-check"
+            role="alert" style="opacity: 0; transition: opacity 0.15s;">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
+        <script>
+            // Immediately check alerts and hide those that trigger modals
+            (function () {
+                var modalKeywords = ['Welcome back!', 'Story published!', 'Story updated successfully!', 'Story reported', 'already reported this story', 'Account created successfully!', 'You have been logged out.', 'Comment posted successfully!', 'Comment deleted.'];
+                document.querySelectorAll('.modal-alert-check').forEach(function (alert) {
+                    var text = alert.textContent.trim();
+                    var shouldHide = modalKeywords.some(function (kw) { return text.includes(kw); });
+                    if (shouldHide) {
+                        alert.style.display = 'none';
+                    } else {
+                        alert.style.opacity = '1';
+                    }
+                });
+            })();
+        </script>
 
         {% block content %}{% endblock %}
     </main>
