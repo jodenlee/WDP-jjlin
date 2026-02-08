@@ -1,51 +1,169 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-calendar-alt me-2"></i> Activities</h2>
-    <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> New Activity
-    </a>
-</div>
+<section class="mb-5">
+    <!-- Header Actions -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold text-dark mb-3 mb-md-0">Activities Feed</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary btn-lg">+ New Activity</a>
+        </div>
+    </div>
+
+    {# --- read query params --- #}
+    {% set q = request.args.get('q','') %}
+    {% set loc_q = request.args.get('location','') %}
+    {% set s = request.args.get('sort','newest') %}
+
+    <!-- Search & Filters -->
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
+        <form action="{{ url_for('activities.activities_list') }}" method="get" class="row g-2 align-items-center">
+            <!-- Search -->
+            <div class="col-12 col-md-5">
+                <input type="text" name="q" class="form-control form-control-lg" placeholder="Search activities..."
+                    value="{{ q }}">
+            </div>
+
+            <!-- Location -->
+            <div class="col-6 col-md-3">
+                <input type="text" name="location" class="form-control form-control-lg" placeholder="Location"
+                    value="{{ loc_q }}">
+            </div>
+
+            <!-- Sorting -->
+            <div class="col-6 col-md-2">
+                <select name="sort" class="form-select form-select-lg">
+                    <option value="newest" {{ 'selected' if s=='newest' else '' }}>Newest</option>
+                    <option value="upcoming" {{ 'selected' if s=='upcoming' else '' }}>Upcoming</option>
+                    <option value="oldest" {{ 'selected' if s=='oldest' else '' }}>Oldest</option>
+                </select>
+            </div>
+
+            <!-- Search Button -->
+            <div class="col-12 col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> Search</button>
+            </div>
+        </form>
+    </div>
+</section>
 
 <!-- Activities Grid -->
 <div class="row g-4">
-    {% if activities %}
+    {% if activities and activities|length > 0 %}
     {% for activity in activities %}
+
+    {% set title = activity['title'] if activity['title'] else 'Untitled' %}
+    {% set desc = activity['description'] if activity['description'] else '' %}
+    {% set typ = activity['type'] if activity['type'] else 'Event' %}
+    {% set date = activity['event_date'] %}
+    {% set loc = activity['location'] %}
+    {% set rsvp = activity['rsvp_count'] if activity['rsvp_count'] else 0 %}
+
     <div class="col-12 col-md-6 col-lg-4">
-        <div class="card nav-card-minimal h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge bg-secondary rounded-pill">{{ activity['type'] or 'Event' }}</span>
-                    {% if activity['event_date'] %}
-                    <small class="text-muted"><i class="fas fa-clock me-1"></i>{{ activity['event_date'] }}</small>
+        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <!-- Card Header with gradient -->
+            <div class="position-relative"
+                style="height: 150px; background: linear-gradient(135deg, var(--primary-color) 0%, #21b3c9 100%);">
+                <span
+                    class="badge bg-white text-dark position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill fw-bold shadow-sm">
+                    {{ typ|upper }}
+                </span>
+                <div class="position-absolute bottom-0 start-0 p-3 text-white">
+                    {% if date %}
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="fw-bold">{{ date }}</span>
+                    </div>
                     {% endif %}
                 </div>
-                <h5 class="card-title fw-bold">{{ activity['title'] }}</h5>
-                <p class="card-text text-muted small">{{ activity['description'][:100] }}{% if
-                    activity['description']|length > 100 %}...{% endif %}</p>
-                {% if activity['location'] %}
-                <p class="text-muted small mb-2"><i class="fas fa-map-marker-alt me-1"></i> {{ activity['location'] }}
+            </div>
+
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="fw-bold mb-0">{{ title }}</h5>
+
+                    {% if 'user_id' in session and (activity['organizer_id']|int) == (session['user_id']|int) %}
+                    <div class="dropdown">
+                        <button class="btn btn-link btn-sm text-secondary p-0" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                            <li>
+                                <a class="dropdown-item"
+                                    href="{{ url_for('activities.edit_activity', activity_id=activity['id']) }}">
+                                    <i class="fas fa-edit me-2 text-primary"></i> Edit
+                                </a>
+                            </li>
+                            <li>
+                                <form action="{{ url_for('activities.delete_activity', activity_id=activity['id']) }}"
+                                    method="POST"
+                                    onsubmit="return confirm('Delete this activity? This cannot be undone.');">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-trash-alt me-2"></i> Delete
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <p class="text-muted mb-3" style="min-height: 48px;">
+                    {% if desc %}
+                    {{ desc[:100] }}{% if desc|length > 100 %}...{% endif %}
+                    {% else %}
+                    <span class="fst-italic">No description provided.</span>
+                    {% endif %}
                 </p>
-                {% endif %}
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <span class="text-muted small">
-                        <i class="fas fa-users me-1"></i> {{ activity['rsvp_count'] or 0 }} attending
-                    </span>
+
+                <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="fas fa-users text-primary"></i>
+                        <span>{{ rsvp }} attending</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="fas fa-map-marker-alt text-danger"></i>
+                        <span>{{ loc if loc else 'TBA' }}</span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
                     <a href="{{ url_for('activities.view_activity', activity_id=activity['id']) }}"
-                        class="btn btn-sm btn-outline-primary">View</a>
+                        class="btn btn-outline-primary flex-grow-1">
+                        View Details
+                    </a>
+                    {% if activity['id'] in user_joined_ids %}
+                    <form action="{{ url_for('activities.leave_activity', activity_id=activity['id']) }}" method="POST">
+                        <button class="btn btn-success" type="submit" title="Click to leave">
+                            <i class="fas fa-check me-1"></i> Joined
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('activities.join_activity', activity_id=activity['id']) }}" method="POST">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-check me-1"></i> Join
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
+
     {% endfor %}
     {% else %}
-    <div class="col-12 text-center py-5">
-        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-        <p class="text-muted">No activities yet. Be the first to create one!</p>
-        <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary">Create Activity</a>
+    <div class="col-12">
+        <div class="text-center py-5">
+            <div class="mb-3" style="font-size: 64px; opacity: 0.3;">📅</div>
+            <h3 class="fw-bold mb-2">No activities yet</h3>
+            <p class="text-muted mb-4">Create the first activity and invite others to join!</p>
+            <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus me-2"></i> Create Activity
+            </a>
+        </div>
     </div>
     {% endif %}
 </div>
+
 {% endblock %}

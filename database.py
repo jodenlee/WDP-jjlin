@@ -6,9 +6,17 @@ class Database:
         self.init_db()
 
     def get_connection(self):
-        """Returns a connection to the SQLite database."""
-        conn = sqlite3.connect(self.db_file)
+        """Returns a connection to the SQLite database with optimized settings."""
+        conn = sqlite3.connect(self.db_file, timeout=20)
         conn.row_factory = sqlite3.Row  # Access columns by name
+        
+        # Enable WAL mode for better concurrency
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+        except sqlite3.Error:
+            pass
+            
         return conn
 
     def init_db(self):
@@ -240,6 +248,12 @@ class Database:
             cursor.execute("ALTER TABLE activities ADD COLUMN event_date TEXT")
             cursor.execute("ALTER TABLE activities ADD COLUMN organizer_id INTEGER")
 
+        # Add attachment column to activities if not exists
+        try:
+            cursor.execute("SELECT attachment FROM activities LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE activities ADD COLUMN attachment TEXT")
+
         # Add profile fields to users if not exists
         try:
             cursor.execute("SELECT full_name FROM users LIMIT 1")
@@ -340,6 +354,14 @@ class Database:
             )
         ''')
 
+        # Settings Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        ''')
+
         conn.commit()
         conn.close()
 
@@ -352,3 +374,18 @@ class Database:
         conn.commit()
         conn.close()
         return (rv[0] if rv else None) if one else rv
+    def set_setting(self, key, value):
+        """Sets a value in the settings table."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, value))
+        conn.commit()
+        conn.close()
+
+    def get_setting(self, key):
+        """Gets a value from the settings table."""
+        res = self.query("SELECT value FROM settings WHERE key = ?", (key,), one=True)
+        return res['value'] if res else None

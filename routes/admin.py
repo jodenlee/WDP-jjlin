@@ -63,7 +63,21 @@ def admin_dashboard():
     except:
         reports = []
     
+    # Get youth and senior user counts
+    try:
+        youth_count = db.query("SELECT COUNT(*) as count FROM users WHERE age_group = 'youth'", one=True)['count']
+    except:
+        youth_count = 0
+    
+    try:
+        senior_count = db.query("SELECT COUNT(*) as count FROM users WHERE age_group = 'senior'", one=True)['count']
+    except:
+        senior_count = 0
+    
     stats = {
+        'total_users': user_count,
+        'youth_count': youth_count,
+        'senior_count': senior_count,
         'users': user_count,
         'stories': story_count,
         'groups': group_count,
