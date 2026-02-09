@@ -259,6 +259,10 @@ def view_story(story_id):
     
     if not story:
         return render_template('stories/unavailable.html'), 404
+
+    # Automated Translation: Pre-detect language
+    from utils import auto_translate
+    user_lang = session.get('language') or (g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en')
         
     is_bookmarked = False
     is_liked = False
@@ -319,6 +323,24 @@ def view_story(story_id):
     ai_insight = None
     if story['location']:
         ai_insight = get_location_insight(story['location'])
+
+    # Automated Translation: Re-translate everything if language is not English
+    if user_lang != 'en':
+        story_dict = dict(story)
+        story_dict['title'] = auto_translate(story_dict['title'], target_lang=user_lang)
+        story_dict['content'] = auto_translate(story_dict['content'], target_lang=user_lang)
+        story = story_dict
+        
+        for comment in comments:
+            comment['content'] = auto_translate(comment['content'], target_lang=user_lang)
+            if comment.get('replies'):
+                # Handle both list of dicts and Row objects if necessary
+                replies_translated = []
+                for reply in comment['replies']:
+                    reply_dict = dict(reply)
+                    reply_dict['content'] = auto_translate(reply_dict['content'], target_lang=user_lang)
+                    replies_translated.append(reply_dict)
+                comment['replies'] = replies_translated
 
     return render_template('stories/view.html', story=story, is_bookmarked=is_bookmarked, is_liked=is_liked, comments=comments, story_images=story_images, story_tags=story_tags, ai_insight=ai_insight)
 

@@ -415,3 +415,13 @@ body.dark-theme #notifications-list .border-bottom {
 body.dark-theme #notifications-list .border-top {
     border-top: 1px solid var(--card-border) !important;
 }
+
+/* Search Bar Consistency */
+.search-bar-text {
+    color: var(--text-light) !important;
+}
+
+.search-bar-text::placeholder {
+    color: var(--text-light) !important;
+    opacity: 1;
+}

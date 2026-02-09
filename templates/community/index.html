@@ -2,6 +2,12 @@
 
 {% block content %}
 <section class="mb-5">
+    <div class="mb-4">
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary btn-lg fs-4 py-2 px-4 shadow-sm">
+            <i class="fas fa-home me-2"></i>{{ _('Return to Home') }}
+        </a>
+    </div>
+
     <!-- Header Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
         <h1 class="fw-bold text-dark mb-3 mb-md-0">{{ _('Community Groups') }}</h1>
@@ -17,7 +23,7 @@
         <form action="{{ url_for('community.community') }}" method="GET" class="row g-2 align-items-center">
             <!-- Search -->
             <div class="col-12 col-md-10 position-relative">
-                <input type="text" name="search" class="form-control form-control-lg pe-5"
+                <input type="text" name="search" class="form-control form-control-lg pe-5 search-bar-text"
                     placeholder="{{ _('Search groups...') }}" value="{{ request.args.get('search', '') }}">
             </div>
             <!-- Search Button -->
@@ -34,7 +40,7 @@
     {% for group in groups %}
     <div class="col-12 col-md-6 col-lg-4 mb-4">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
+            <div class="card-body text-center p-4 d-flex flex-column">
                 <!-- Group Image Section -->
                 <div class="mb-3">
                     {% if group['image_url'] %}
@@ -57,8 +63,11 @@
                     <i class="fas fa-user-friends me-1"></i> {{ group['member_count'] or 0 }} {{ _('members') }}
                 </p>
                 <!-- View Group Button -->
-                <a href="{{ url_for('community.view_group', group_id=group['id']) }}" class="btn btn-primary btn-lg">{{
-                    _('View Group') }}</a>
+                <div class="mt-auto">
+                    <a href="{{ url_for('community.view_group', group_id=group['id']) }}"
+                        class="btn btn-primary btn-lg w-100">{{
+                        _('View Group') }}</a>
+                </div>
             </div>
         </div>
     </div>
