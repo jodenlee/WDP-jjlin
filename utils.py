@@ -9,6 +9,31 @@ def get_db():
         g.db = Database()
     return g.db
 
+def get_conn():
+    """Returns a shared database connection for the current request context"""
+    if 'db_conn' not in g:
+        db = get_db()
+        g.db_conn = db.get_connection()
+    return g.db_conn
+
+def create_notification(user_id, ntype, content, link=None):
+    """Creates a new notification for a specific user"""
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+            (user_id, ntype, content, link)
+        )
+        # We don't commit here if we want it to be part of the caller's transaction, 
+        # but since most routes commit and then call this, or call this and then commit, 
+        # it's safer to let the caller handle the final commit if they are using the same conn.
+        # However, to maintain current behavior where create_notification is "fire and forget":
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"DEBUG: Error creating notification: {e}")
+        return False
+
 # Login required decorator
 def login_required(f):
     @wraps(f)
@@ -33,9 +58,29 @@ def allowed_file(filename, allowed_extensions):
 # OpenAI Content Moderation Helper
 def check_content_moderation(text):
     """
-    Checks text content against OpenAI's moderation API.
-    Returns True if content is flagged as harmful, False otherwise.
+    Checks text content against a local profanity filter and OpenAI's moderation API.
+    Returns True if content is flagged as harmful or profane, False otherwise.
     """
+    if not text:
+        return False
+
+    # 1. Local Profanity Check (Instant & Strict)
+    # A base list of common profanity and the specific word mentioned by the user.
+    blocked_keywords = [
+        'fuck', 'shit', 'piss', 'crap', 'bitch', 'asshole', 'dick', 'pussy', 'slut'
+    ]
+    
+    # Clean text for robust matching
+    cleaned_text = text.lower().strip()
+    # Simple word-boundary check to avoid false positives (e.g., "assessment" vs "ass")
+    import re
+    for word in blocked_keywords:
+        pattern = rf'\b{re.escape(word)}\b'
+        if re.search(pattern, cleaned_text):
+            print(f"DEBUG: Local Moderation: Content flagged by keyword filter ({word})")
+            return True
+
+    # 2. OpenAI Content Moderation (Nuanced Safety)
     from openai import OpenAI
     from dotenv import load_dotenv
     

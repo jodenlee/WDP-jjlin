@@ -375,3 +375,43 @@ h6 {
 .clear-btn:hover {
     color: #dc3545 !important;
 }
+
+/* Notification Styles */
+#notification-badge {
+    padding: 0.25em 0.4em;
+    font-weight: 600;
+}
+
+.dropdown-item.whitespace-normal {
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item.whitespace-normal:hover {
+    background-color: var(--accent-color);
+}
+
+#notifications-list {
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+body.dark-theme #notifications-list {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border) !important;
+}
+
+body.dark-theme #notifications-list .dropdown-item {
+    color: var(--text-color);
+}
+
+body.dark-theme #notifications-list .dropdown-item:hover {
+    background-color: var(--hover-bg);
+}
+
+body.dark-theme #notifications-list .border-bottom {
+    border-bottom: 1px solid var(--card-border) !important;
+}
+
+body.dark-theme #notifications-list .border-top {
+    border-top: 1px solid var(--card-border) !important;
+}

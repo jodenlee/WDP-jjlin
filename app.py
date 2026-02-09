@@ -91,10 +91,9 @@ def create_app():
 
     @app.teardown_appcontext
     def close_db(error):
-        if hasattr(g, 'db'):
-            pass
+        if hasattr(g, 'db_conn'):
+            g.db_conn.close()
 
-    # Register Blueprints
     from routes.auth import auth_bp
     from routes.stories import stories_bp
     from routes.activities import activities_bp
@@ -103,6 +102,7 @@ def create_app():
     from routes.community import community_bp
     from routes.admin import admin_bp
     from routes.translate import translate_bp
+    from routes.notifications import notifications_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(stories_bp)
@@ -112,6 +112,8 @@ def create_app():
     app.register_blueprint(community_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(translate_bp)
+    app.register_blueprint(notifications_bp)
+
 
     return app
 

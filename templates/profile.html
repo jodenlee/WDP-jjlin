@@ -17,7 +17,7 @@
                     </div>
                     {% endif %}
                     <h5 class="fw-bold mb-1">{{ user.full_name }}</h5>
-                    <span class="badge bg-light text-muted">{{ _(user.user_type) }}</span>
+                    <span class="badge bg-light text-muted">{{ user.user_type }}</span>
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link active py-3 px-4 border-bottom" href="#profile-info" data-section="profile-info">
@@ -56,7 +56,9 @@
                         <div class="col-md-6 mb-3">
                             <label for="username" class="form-label fw-bold">{{ _('Username') }}</label>
                             <input type="text" class="form-control" id="username" name="username"
-                                value="{{ user.username }}" readonly>
+                                value="{{ user.username }}" required pattern="[a-zA-Z0-9_]{3,20}">
+                            <div class="form-text">{{ _('3-20 characters, letters, numbers, and underscores only.') }}
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -141,7 +143,8 @@
                             {{ 'checked' if user.notify_groups else '' }}>
                         <label class="form-check-label" for="notify_groups">
                             <strong>{{ _('Group Updates') }}</strong>
-                            <br><small class="text-muted">{{ _("Updates from groups you've joined") }}</small>
+                            <br><small class="text-muted">{{ _('When you join a group or someone joins your group')
+                                }}</small>
                         </label>
                     </div>
                     <button type="submit" class="btn btn-primary mt-3">{{ _('Save Notification Settings') }}</button>
@@ -177,17 +180,20 @@
                 </div>
 
                 <div class="mb-4">
-                    <label for="language" class="form-label fw-bold">{{ _('Language Setting') }}</label>
-                    <form action="{{ url_for('auth.update_language') }}" method="POST">
-                        <select class="form-select" id="language" name="language" onchange="this.form.submit()">
-                            <option value="en" {{ 'selected' if user.language=='en' else '' }}>{{ _('English') }}
-                            </option>
-                            <option value="zh_CN" {{ 'selected' if user.language=='zh_CN' else '' }}>{{ _('Chinese
-                                (Mandarin) / 中文') }}
-                            </option>
+                    <label class="form-label fw-bold">{{ _('Language') }}</label>
+                    <form action="{{ url_for('auth.update_language') }}" method="POST"
+                        class="d-flex gap-2 align-items-center">
+                        <select name="language" class="form-select" style="max-width: 200px;"
+                            onchange="this.form.submit()">
+                            <option value="en" {{ 'selected' if user.language=='en' or not user.language else '' }}>🇬🇧
+                                {{ _('English') }}</option>
+                            <option value="zh_CN" {{ 'selected' if user.language=='zh_CN' else '' }}>🇨🇳 {{
+                                _('Chinese') }}</option>
                         </select>
+                        <noscript><button type="submit" class="btn btn-sm btn-primary">{{ _('Save')
+                                }}</button></noscript>
                     </form>
-                    <div class="form-text">{{ _('Choose your preferred language for the website interface.') }}</div>
+                    <div class="form-text">{{ _('Select your preferred language for the interface.') }}</div>
                 </div>
             </div>
         </div>

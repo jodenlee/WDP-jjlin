@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, session, flash, request
-from utils import get_db, login_required
+from utils import get_db, login_required, get_conn
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -133,16 +133,53 @@ def user_detail(user_id):
     # Get user's stories
     stories = db.query("SELECT * FROM stories WHERE author_id = ? ORDER BY created_at DESC LIMIT 5", (user_id,))
     
+    # Get user's groups
+    try:
+        groups = db.query("""
+            SELECT g.* FROM groups g
+            JOIN group_members gm ON g.id = gm.group_id
+            WHERE gm.user_id = ?
+            ORDER BY gm.joined_at DESC LIMIT 5
+        """, (user_id,))
+    except:
+        groups = []
+    
+    # Get user's activities
+    try:
+        activities = db.query("""
+            SELECT a.* FROM activities a
+            JOIN activity_signups s ON a.id = s.activity_id
+            WHERE s.user_id = ?
+            ORDER BY s.created_at DESC LIMIT 5
+        """, (user_id,))
+    except:
+        activities = []
+    
     # Get user's stats
     story_count = db.query("SELECT COUNT(*) as count FROM stories WHERE author_id = ?", (user_id,), one=True)['count']
-    comment_count = db.query("SELECT COUNT(*) as count FROM comments WHERE user_id = ?", (user_id,), one=True)['count']
+    
+    try:
+        groups_count = db.query("""
+            SELECT COUNT(*) as count FROM group_members WHERE user_id = ?
+        """, (user_id,), one=True)['count']
+    except:
+        groups_count = 0
+    
+    try:
+        activities_count = db.query("""
+            SELECT COUNT(*) as count FROM activity_signups WHERE user_id = ?
+        """, (user_id,), one=True)['count']
+    except:
+        activities_count = 0
     
     stats = {
-        'stories': story_count,
-        'comments': comment_count
+        'stories_count': story_count,
+        'groups_count': groups_count,
+        'activities_count': activities_count
     }
     
-    return render_template('admin/user_detail.html', user=user, stories=stories, stats=stats)
+    return render_template('admin/user_detail.html', user=user, stories=stories, groups=groups, activities=activities, stats=stats)
+
 
 @admin_bp.route('/users/<int:user_id>/toggle_admin', methods=['POST'])
 @admin_required
@@ -166,7 +203,7 @@ def toggle_admin(user_id):
         current_is_admin = False
     
     new_status = 0 if current_is_admin else 1
-    conn = db.get_connection()
+    conn = get_conn()
     conn.execute("UPDATE users SET is_admin = ? WHERE id = ?", (new_status, user_id))
     conn.commit()
     
@@ -205,7 +242,7 @@ def resolve_report(report_id):
     action = request.form.get('action', 'dismiss')
     
     db = get_db()
-    conn = db.get_connection()
+    conn = get_conn()
     
     if action == 'delete':
         # Get the report details
@@ -295,7 +332,7 @@ def view_reported_item(target_type, target_id):
 def delete_reported_item(report_id):
     """Delete reported content and update report status"""
     db = get_db()
-    conn = db.get_connection()
+    conn = get_conn()
     
     report = db.query("SELECT * FROM reports WHERE id = ?", (report_id,), one=True)
     if not report:
@@ -324,7 +361,7 @@ def delete_reported_item(report_id):
 def dismiss_report(report_id):
     """Dismiss a report without deleting content"""
     db = get_db()
-    conn = db.get_connection()
+    conn = get_conn()
     
     conn.execute("UPDATE reports SET status = 'dismissed' WHERE id = ?", (report_id,))
     conn.commit()

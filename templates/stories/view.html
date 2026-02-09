@@ -312,7 +312,8 @@
                                                 <strong>{{ reply['username'] }}</strong>
                                                 <small class="text-muted">{{ reply['created_at'] }}</small>
                                             </div>
-                                            <p class="mb-0 fs-5">{{ reply['content'] }}</p>
+                                            <p class="mb-0 fs-5" id="reply-content-{{ reply['id'] }}">{{
+                                                reply['content'] }}</p>
                                         </div>
                                         {% if reply['user_id'] == session['user_id'] %}
                                         <div class="dropdown ms-2">
@@ -523,7 +524,12 @@
                             // Reload to show new comment (or implement dynamic insert)
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post comment');
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
                         }
                     })
                     .catch(() => location.reload());
@@ -585,20 +591,24 @@
                             // Reload to show new reply
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post reply');
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
                         }
                     })
                     .catch(() => location.reload());
             });
         });
 
-        // Handle reply edit form submissions
-        document.querySelectorAll('.reply-edit-form').forEach(form => {
+        // Handle comment edit form submissions
+        document.querySelectorAll('.comment-edit-form').forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const formData = new FormData(this);
-
-                if (!formData.get('content').trim()) return;
+                const commentId = this.dataset.commentId || this.id.split('-').pop();
 
                 fetch(this.action, {
                     method: 'POST',
@@ -608,12 +618,70 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            location.reload();
+                            // Update UI
+                            const contentElem = document.getElementById(`comment-content-${commentId}`);
+                            if (contentElem) contentElem.textContent = data.content;
+                            // Close modal
+                            const modalId = `editCommentModal-${commentId}`;
+                            const modalElem = document.getElementById(modalId);
+                            if (modalElem) {
+                                const modal = bootstrap.Modal.getInstance(modalElem);
+                                if (modal) modal.hide();
+                                else {
+                                    const m = new bootstrap.Modal(modalElem);
+                                    m.hide();
+                                }
+                            }
+                            checkAlertsForModals();
                         } else {
-                            alert(data.error || 'Failed to update reply');
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
                         }
-                    })
-                    .catch(() => location.reload());
+                    });
+            });
+        });
+
+        // Handle reply edit form submissions
+        document.querySelectorAll('.reply-edit-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const replyId = this.action.split('/').slice(-2, -1)[0];
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update UI
+                            const contentElem = document.getElementById(`reply-content-${replyId}`);
+                            if (contentElem) contentElem.textContent = data.content;
+
+                            // Close collapse
+                            const collapseId = `editReply${replyId}`;
+                            const collapseElem = document.getElementById(collapseId);
+                            if (collapseElem) {
+                                const bsCollapse = bootstrap.Collapse.getInstance(collapseElem) || new bootstrap.Collapse(collapseElem);
+                                bsCollapse.hide();
+                            }
+
+                            checkAlertsForModals();
+                        } else {
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
+                        }
+                    });
             });
         });
     });

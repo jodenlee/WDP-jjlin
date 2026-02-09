@@ -45,6 +45,37 @@
                                 href="{{ url_for('activities.activities_list') }}">{{ _('Activities') }}</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
                                 href="{{ url_for('messages.messages_list') }}">{{ _('Messages') }}</a></li>
+                        <li class="nav-item dropdown me-2">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center position-relative" href="#"
+                                id="notificationsDropdown" role="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                <i class="fas fa-bell fs-4 text-dark"></i>
+                                <span id="notification-badge"
+                                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                    style="display: none; font-size: 0.6rem;">
+                                    0
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0"
+                                aria-labelledby="notificationsDropdown" id="notifications-list"
+                                style="width: 400px; max-height: 500px; overflow-y: auto;">
+                                <li class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 fw-bold">{{ _('Notifications') }}</h5>
+                                    <form action="{{ url_for('notifications.clear_all_notifications') }}" method="POST"
+                                        class="d-inline">
+                                        <button type="submit" class="btn btn-link py-0 px-1 text-decoration-none"
+                                            style="font-size: 0.9rem;">{{ _('Clear All') }}</button>
+                                    </form>
+                                </li>
+                                <div id="notifications-items">
+                                    <!-- Notifications will be loaded here via JS -->
+                                    <li class="p-4 text-center text-muted">
+                                        <i class="fas fa-bell-slash mb-2 d-block fa-2x"></i>
+                                        <span>{{ _('No new notifications') }}</span>
+                                    </li>
+                                </div>
+                            </ul>
+                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
                                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -112,7 +143,7 @@
         <script>
             // Immediately check alerts and hide those that trigger modals
             (function () {
-                var modalKeywords = ['Welcome back!', 'Story published!', 'Story updated successfully!', 'Story reported', 'already reported this story', 'Account created successfully!', 'You have been logged out.', 'Comment posted successfully!', 'Comment deleted.'];
+                var modalKeywords = ['Welcome back!', 'Story published!', 'Story updated successfully!', 'Story reported', 'already reported this story', 'Account created successfully!', 'You have been logged out.', 'Comment posted successfully!', 'Comment deleted.', 'Story deleted successfully.', 'Reply deleted.'];
                 document.querySelectorAll('.modal-alert-check').forEach(function (alert) {
                     var text = alert.textContent.trim();
                     var shouldHide = modalKeywords.some(function (kw) { return text.includes(kw); });
@@ -147,8 +178,8 @@
                     {{ _('Action completed successfully.') }}
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
-                    <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">{{ _('Okay')
-                        }}</button>
+                    <button type="button" class="btn btn-primary px-5 fw-bold" id="globalSuccessModalBtn"
+                        data-bs-dismiss="modal">{{ _('Okay') }}</button>
                 </div>
             </div>
         </div>

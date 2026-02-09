@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from utils import get_db, login_required
+from utils import get_db, login_required, create_notification, get_conn
 
 messages_bp = Blueprint('messages', __name__)
 
@@ -53,7 +53,7 @@ def chat(user_id):
     """, (current_user_id, user_id, user_id, current_user_id))
     
     # Mark messages as read
-    conn = db.get_connection()
+    conn = get_conn()
     conn.execute("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?", (user_id, current_user_id))
     conn.commit()
     
@@ -66,11 +66,21 @@ def send_message(recipient_id):
     sender_id = session['user_id']
     
     db = get_db()
-    conn = db.get_connection()
+    conn = get_conn()
     conn.execute(
         "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
         (sender_id, recipient_id, content)
     )
     conn.commit()
+    
+    # Notify Recipient
+    sender = db.query("SELECT username FROM users WHERE id = ?", (sender_id,), one=True)
+    create_notification(
+        recipient_id, 
+        'Message', 
+        f"New message from {sender['username']}", 
+        url_for('messages.chat', user_id=sender_id)
+    )
+    
     flash('Message sent!', 'success')
     return redirect(url_for('messages.chat', user_id=recipient_id))
