@@ -6,17 +6,9 @@ class Database:
         self.init_db()
 
     def get_connection(self):
-        """Returns a connection to the SQLite database with optimized settings."""
-        conn = sqlite3.connect(self.db_file, timeout=20)
+        """Returns a connection to the SQLite database."""
+        conn = sqlite3.connect(self.db_file)
         conn.row_factory = sqlite3.Row  # Access columns by name
-        
-        # Enable WAL mode for better concurrency
-        try:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
-        except sqlite3.Error:
-            pass
-            
         return conn
 
     def init_db(self):
@@ -105,45 +97,11 @@ class Database:
                 story_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
-                likes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (story_id) REFERENCES stories (id),
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
-
-        # Add likes column to comments if not exists
-        try:
-            cursor.execute("SELECT likes FROM comments LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE comments ADD COLUMN likes INTEGER DEFAULT 0")
-
-        # Comment Likes Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS comment_likes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                comment_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (comment_id) REFERENCES comments (id),
-                UNIQUE(user_id, comment_id)
-            )
-        ''')
-
-        # Comment Replies Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS comment_replies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                comment_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                content TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (comment_id) REFERENCES comments (id),
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-
 
         # Groups Table (Community)
         cursor.execute('''
@@ -168,47 +126,6 @@ class Database:
                 FOREIGN KEY (group_id) REFERENCES groups (id),
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(group_id, user_id)
-            )
-        ''')
-
-        # Group Posts Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS group_posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                group_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                content TEXT NOT NULL,
-                image_url TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                likes INTEGER DEFAULT 0,
-                FOREIGN KEY (group_id) REFERENCES groups (id),
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-
-        # Group Post Comments Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS group_post_comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                content TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (post_id) REFERENCES group_posts (id),
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-
-        # Group Post Likes Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS group_post_likes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                post_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (post_id) REFERENCES group_posts (id),
-                UNIQUE(user_id, post_id)
             )
         ''')
 
@@ -259,24 +176,7 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 story_id INTEGER NOT NULL,
                 image_path TEXT NOT NULL,
-                position INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (story_id) REFERENCES stories (id)
-            )
-        ''')
-
-        # Add position column to story_images if not exists
-        try:
-            cursor.execute("SELECT position FROM story_images LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE story_images ADD COLUMN position INTEGER DEFAULT 0")
-
-        # Story Tags Table (Up to 5 tags per story)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS story_tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                story_id INTEGER NOT NULL,
-                tag TEXT NOT NULL,
                 FOREIGN KEY (story_id) REFERENCES stories (id)
             )
         ''')
@@ -288,12 +188,6 @@ class Database:
             cursor.execute("ALTER TABLE activities ADD COLUMN location TEXT")
             cursor.execute("ALTER TABLE activities ADD COLUMN event_date TEXT")
             cursor.execute("ALTER TABLE activities ADD COLUMN organizer_id INTEGER")
-
-        # Add attachment column to activities if not exists
-        try:
-            cursor.execute("SELECT attachment FROM activities LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE activities ADD COLUMN attachment TEXT")
 
         # Add profile fields to users if not exists
         try:
@@ -315,109 +209,60 @@ class Database:
             cursor.execute("SELECT is_admin FROM users LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+        
+        # Group Posts Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                image_url TEXT,
+                audio_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (group_id) REFERENCES groups (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
 
-        # Add likes and audio_url columns to group_posts if not exists
+        # Group Post Comments Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
+        # Group Post Likes Table (New)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS group_post_likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                post_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (post_id) REFERENCES group_posts (id),
+                UNIQUE(user_id, post_id)
+            )
+        ''')
+
+        # Add likes column to group_posts if not exists
         try:
             cursor.execute("SELECT likes FROM group_posts LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
-        
+
+        # Add audio_url column to group_posts if not exists
         try:
             cursor.execute("SELECT audio_url FROM group_posts LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN audio_url TEXT")
-
-        # Add notification preference columns if not exists
-        try:
-            cursor.execute("SELECT notify_messages FROM users LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE users ADD COLUMN notify_messages INTEGER DEFAULT 1")
-            cursor.execute("ALTER TABLE users ADD COLUMN notify_activities INTEGER DEFAULT 1")
-            cursor.execute("ALTER TABLE users ADD COLUMN notify_stories INTEGER DEFAULT 1")
-            cursor.execute("ALTER TABLE users ADD COLUMN notify_groups INTEGER DEFAULT 1")
-
-        # UI Translations Cache Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ui_translations (
-                text_key TEXT,
-                language TEXT,
-                translation TEXT,
-                PRIMARY KEY(text_key, language)
-            )
-        ''')
-
-        # Add language preference column if not exists
-        try:
-            cursor.execute("SELECT language FROM users LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'")
-
-        # Add is_verified column to users if not exists (for email verification)
-        try:
-            cursor.execute("SELECT is_verified FROM users LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
-
-        # Email verification codes table (for registration)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS email_verifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT NOT NULL,
-                code TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP NOT NULL,
-                is_used INTEGER DEFAULT 0
-            )
-        ''')
-
-        # Login OTP codes table (for login verification)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS login_otps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                email TEXT NOT NULL,
-                code TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP NOT NULL,
-                is_used INTEGER DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
         
-        # Trusted devices table (for 30-day OTP bypass)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS trusted_devices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                device_token TEXT NOT NULL UNIQUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        # Notifications table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                type TEXT NOT NULL,
-                content TEXT NOT NULL,
-                link TEXT,
-                is_read INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-
-        # Settings Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            )
-        ''')
-
         conn.commit()
         conn.close()
 
@@ -430,18 +275,3 @@ class Database:
         conn.commit()
         conn.close()
         return (rv[0] if rv else None) if one else rv
-    def set_setting(self, key, value):
-        """Sets a value in the settings table."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO settings (key, value) VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value
-        """, (key, value))
-        conn.commit()
-        conn.close()
-
-    def get_setting(self, key):
-        """Gets a value from the settings table."""
-        res = self.query("SELECT value FROM settings WHERE key = ?", (key,), one=True)
-        return res['value'] if res else None

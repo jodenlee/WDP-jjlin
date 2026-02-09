@@ -250,16 +250,31 @@ def create_group_post(group_id):
     user_id = session['user_id']
     content = request.form['content']
     
+    # Handle audio upload
+    audio_url = None
+    if 'audio' in request.files:
+        file = request.files['audio']
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            # Ensure filename has a valid extension if it's missing (Webm is common for browser recordings)
+            if '.' not in filename:
+                filename += '.webm'
+            filename = f"audio_{int(time.time())}_{filename}"
+            from flask import current_app
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            audio_url = f"uploads/{filename}"
+
     # Content Moderation Check
-    if check_content_moderation(content):
+    if content and check_content_moderation(content):
         flash('Your post has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
         return redirect(url_for('community.view_group', group_id=group_id))
         
     db = get_db()
     conn = get_conn()
     conn.execute(
-        "INSERT INTO group_posts (group_id, user_id, content) VALUES (?, ?, ?)",
-        (group_id, user_id, content)
+        "INSERT INTO group_posts (group_id, user_id, content, audio_url) VALUES (?, ?, ?, ?)",
+        (group_id, user_id, content, audio_url)
     )
     conn.commit()
     flash('Post created!', 'success')
