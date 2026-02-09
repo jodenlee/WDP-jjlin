@@ -251,8 +251,70 @@
             fetchStories();
         });
 
+        // AJAX Like/Bookmark handlers
+        function bindLikeBookmarkHandlers() {
+            // Like buttons
+            document.querySelectorAll('.ajax-like').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const url = this.dataset.url;
+                    const storyId = this.dataset.storyId;
+                    const iconSpan = this.querySelector('.like-icon');
+                    const countSpan = document.querySelector('.like-count[data-story-id="' + storyId + '"]');
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                iconSpan.textContent = data.is_liked ? '♥' : '♡';
+                                if (countSpan) countSpan.textContent = data.likes;
+                            }
+                        })
+                        .catch(err => console.error('Like error:', err));
+                });
+            });
+
+            // Bookmark buttons
+            document.querySelectorAll('.ajax-bookmark').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const url = this.dataset.url;
+                    const iconSpan = this.querySelector('.bookmark-icon');
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                iconSpan.textContent = data.is_bookmarked ? '★' : '☆';
+                            }
+                        })
+                        .catch(err => console.error('Bookmark error:', err));
+                });
+            });
+        }
+
         // Initial binding
         bindPaginationLinks();
+        bindLikeBookmarkHandlers();
+
+        // Re-bind handlers after AJAX content loads
+        const originalFetchStories = fetchStories;
+        fetchStories = function (url) {
+            originalFetchStories(url);
+            setTimeout(bindLikeBookmarkHandlers, 500);
+        };
     });
 </script>
 {% endblock %}

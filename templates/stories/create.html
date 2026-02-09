@@ -1,5 +1,20 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<!-- SortableJS for media rearrangement -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<style>
+    .new-image-container:hover {
+        cursor: move;
+    }
+
+    .sortable-ghost {
+        opacity: 0.4;
+        border: 2px dashed var(--primary-color);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-md-8 col-lg-6">
@@ -26,45 +41,125 @@
 
                 <div class="mb-3">
                     <label class="form-label fw-bold fs-5">Upload Images</label>
-                    <div id="image-inputs-container">
-                        <div class="input-group mb-2">
-                            <input type="file" name="images" class="form-control form-control-lg" accept="image/*">
-                            <button type="button" class="btn btn-outline-danger remove-image-btn"
-                                style="display:none;">&times;</button>
-                        </div>
+                    <div class="d-flex flex-wrap gap-3 mb-3" id="images-gallery">
+                        <!-- Container for new image previews -->
+                        <div id="new-images-container" class="d-flex flex-wrap gap-3"></div>
                     </div>
-                    <button type="button" id="add-image-btn"
-                        class="btn btn-outline-primary d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i> Add Another Image
+
+                    <!-- Hidden file input -->
+                    <input type="file" id="hidden-image-input" name="images" class="d-none" accept="image/*,video/*"
+                        multiple>
+
+                    <button type="button" id="add-image-btn" class="btn btn-primary d-flex align-items-center gap-2">
+                        <i class="fas fa-plus"></i> Add Media
                     </button>
-                    <div class="form-text mt-2">Add images one by one to create a gallery carousel. Supported: jpg, png,
-                        webp.
+                    <div class="form-text mt-2">Add images or videos to your story. Supported: jpg, png, webm, mp4.
                     </div>
                 </div>
 
                 <!-- script for dynamic inputs -->
                 <script>
                     document.addEventListener('DOMContentLoaded', function () {
-                        const container = document.getElementById('image-inputs-container');
                         const addBtn = document.getElementById('add-image-btn');
+                        const hiddenInput = document.getElementById('hidden-image-input');
+                        const newImagesContainer = document.getElementById('new-images-container');
 
-                        addBtn.addEventListener('click', function () {
-                            const div = document.createElement('div');
-                            div.className = 'input-group mb-2';
-                            div.innerHTML = `
-                        <input type="file" name="images" class="form-control form-control-lg" accept="image/*">
-                        <button type="button" class="btn btn-outline-danger remove-image-btn">&times;</button>
-                    `;
-                            container.appendChild(div);
+                        // Initialize SortableJS
+                        const sortable = new Sortable(newImagesContainer, {
+                            animation: 150,
+                            ghostClass: 'sortable-ghost',
+                            draggable: '.new-image-container'
                         });
 
-                        container.addEventListener('click', function (e) {
-                            if (e.target.classList.contains('remove-image-btn')) {
-                                e.target.parentElement.remove();
+                        // Store all selected files
+                        let selectedFiles = [];
+
+                        // Click "Add Image" opens file picker
+                        addBtn.addEventListener('click', function () {
+                            hiddenInput.click();
+                        });
+
+                        // When files are selected, show previews
+                        hiddenInput.addEventListener('change', function (e) {
+                            const files = Array.from(e.target.files);
+
+                            files.forEach((file, index) => {
+                                // Allow both images and videos
+                                const isImage = file.type.startsWith('image/');
+                                const isVideo = file.type.startsWith('video/');
+
+                                if (!isImage && !isVideo) return;
+
+                                const fileIndex = selectedFiles.length;
+                                selectedFiles.push(file);
+
+                                const div = document.createElement('div');
+                                div.className = 'd-flex flex-column align-items-center gap-2 new-image-container';
+                                div.dataset.fileIndex = fileIndex;
+
+                                let previewHtml = '';
+                                if (isImage) {
+                                    const reader = new FileReader();
+                                    reader.onload = function (event) {
+                                        const img = div.querySelector('img');
+                                        if (img) img.src = event.target.result;
+                                    };
+                                    reader.readAsDataURL(file);
+                                    previewHtml = `<img src="" class="w-100 h-100 object-fit-cover" alt="New Image">`;
+                                } else {
+                                    // Video preview
+                                    const fileURL = URL.createObjectURL(file);
+                                    previewHtml = `
+                                        <video src="${fileURL}" class="w-100 h-100 object-fit-cover bg-black" controls muted></video>
+                                    `;
+                                }
+
+                                div.innerHTML = `
+                                    <div class="border rounded p-1 position-relative" style="width: 150px; height: 150px;">
+                                        ${previewHtml}
+                                        ${isVideo ? '<div class="position-absolute top-0 start-0 m-1"><span class="badge bg-dark opacity-75"><i class="fas fa-video"></i></span></div>' : ''}
+                                    </div>
+                                    <button type="button" class="btn btn-danger btn-sm remove-new-image-btn" style="width: 150px;">
+                                        Remove
+                                    </button>
+                                `;
+                                newImagesContainer.appendChild(div);
+                            });
+
+                            // Clear the input so the same file can be selected again
+                            hiddenInput.value = '';
+                        });
+
+                        // Remove new image preview
+                        newImagesContainer.addEventListener('click', function (e) {
+                            if (e.target.classList.contains('remove-new-image-btn')) {
+                                const container = e.target.closest('.new-image-container');
+                                const fileIndex = parseInt(container.dataset.fileIndex);
+                                selectedFiles[fileIndex] = null; // Mark as removed
+                                container.remove();
                             }
+                        });
+
+                        // Before form submit, update the file input with selected files
+                        const form = document.querySelector('.story-form');
+                        form.addEventListener('submit', function (e) {
+                            // Create a new DataTransfer to hold selected files in visual order
+                            const dt = new DataTransfer();
+                            const containers = Array.from(newImagesContainer.querySelectorAll('.new-image-container'));
+
+                            containers.forEach(container => {
+                                const fileIndex = parseInt(container.dataset.fileIndex);
+                                const file = selectedFiles[fileIndex];
+                                if (file) {
+                                    dt.items.add(file);
+                                }
+                            });
+
+                            hiddenInput.files = dt.files;
                         });
                     });
                 </script>
+
 
                 <div class="mb-3">
                     <label for="location" class="form-label fw-bold fs-5">Location</label>

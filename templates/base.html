@@ -15,6 +15,8 @@
         rel="stylesheet">
     <!-- Inject API key for geolocation.js (must be before any scripts that use it) -->
     <script>window.GOOGLE_MAPS_API_KEY = "{{ GOOGLE_MAPS_API_KEY }}";</script>
+
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -46,9 +48,14 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
                                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center"
+                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center overflow-hidden"
                                     style="width: 35px; height: 35px; background-color: var(--accent-color);">
+                                    {% if g.user['profile_pic'] %}
+                                    <img src="{{ g.user['profile_pic'] }}" alt="Profile"
+                                        class="w-100 h-100 object-fit-cover">
+                                    {% else %}
                                     <i class="fas fa-user" style="color: var(--primary-color);"></i>
+                                    {% endif %}
                                 </div>
                                 <div class="d-flex flex-column lh-1 text-start">
                                     <span class="fw-semibold">{{ g.user['username'] }}</span>

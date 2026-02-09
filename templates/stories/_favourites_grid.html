@@ -7,10 +7,19 @@
         <div class="card h-100 border-0 shadow-sm hover-card overflow-hidden">
             <!-- Story Header / Image -->
             <a href="{{ url_for('stories.view_story', story_id=story['id']) }}" class="text-decoration-none">
-                <div class="position-relative"
-                    style="height: 200px; background-image: url('{{ bg_image | safe }}'); background-size: cover; background-position: center;">
+                <div class="position-relative bg-light" style="height: 200px;">
+                    {% if bg_image.lower().endswith(('.mp4', '.mov', '.avi', '.webm')) %}
+                    <video src="{{ bg_image | safe }}" class="w-100 h-100 object-fit-cover" muted loop
+                        onmouseover="this.play()" onmouseout="this.pause();this.currentTime=0;"></video>
+                    <div class="position-absolute top-50 start-50 translate-middle pointer-events-none">
+                        <i class="fas fa-play-circle fa-3x text-white opacity-75"></i>
+                    </div>
+                    {% else %}
+                    <img src="{{ bg_image | safe }}" class="w-100 h-100 object-fit-cover" alt="{{ story['title'] }}">
+                    {% endif %}
+
                     <div
-                        class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient">
+                        class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient pointer-events-none">
                         <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
                     </div>
                 </div>
@@ -58,15 +67,11 @@
                     </div>
                 </div>
                 <div class="mt-3 text-muted d-flex align-items-center gap-3">
-                    {% if story.profile_pic %}
-                    <img src="{{ url_for('static', filename=story.profile_pic) }}" alt="Profile"
-                        class="rounded-circle object-fit-cover" style="width: 35px; height: 35px;">
-                    {% else %}
-                    <div class="rounded-circle d-flex align-items-center justify-content-center"
-                        style="width: 35px; height: 35px; background-color: var(--accent-color);">
-                        <i class="fas fa-user" style="color: var(--primary-color); font-size: 1rem;"></i>
+                    <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center overflow-hidden"
+                        style="width: 35px; height: 35px;">
+                        <img src="{{ story.profile_pic or 'https://ui-avatars.com/api/?name=' + (story.username or 'User') + '&background=random' }}"
+                            alt="Profile" class="w-100 h-100 object-fit-cover">
                     </div>
-                    {% endif %}
                     <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
                 </div>
             </div>
