@@ -236,58 +236,110 @@ def google_callback():
         user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
         
         if not user:
-            # Create new user from Google account
-            # Generate a random username from email prefix
-            username = email.split('@')[0].lower()
-            # Make username unique if needed
-            existing = db.query("SELECT id FROM users WHERE username = ?", (username,), one=True)
-            if existing:
-                import time
-                username = f"{username}_{int(time.time()) % 10000}"
+            # New user - redirect to account setup page
+            # Store Google info in session temporarily
+            session['google_setup_email'] = email
+            session['google_setup_name'] = name
+            session['google_setup_suggested_username'] = email.split('@')[0].lower()
             
-            conn = db.get_connection()
-            conn.execute(
-                """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
-                   VALUES (?, ?, ?, ?, ?, 1)""",
-                (username, email, '', 'youth', name)  # No password for OAuth users
-            )
-            conn.commit()
-            conn.close()
-            
-            # Fetch the newly created user
-            user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+            return redirect(url_for('google_setup'))
         
-        # User exists (or just created) - generate login OTP
-        otp_code = generate_otp()
-        expires_at = get_otp_expiry()
+        # Existing user - log them in directly (Google already verified their identity)
+        session['user_id'] = user['id']
+        session['username'] = user['username']
         
-        conn = db.get_connection()
-        conn.execute(
-            """INSERT INTO login_otps (user_id, email, code, expires_at) 
-               VALUES (?, ?, ?, ?)""",
-            (user['id'], email, otp_code, expires_at)
-        )
-        conn.commit()
-        conn.close()
-        
-        # Send OTP email
-        email_sent = send_verification_email(email, otp_code, purpose='login')
-        
-        # Store user id in session for OTP verification
-        session['pending_login_user_id'] = user['id']
-        session['pending_login_email'] = email
-        
-        if email_sent:
-            flash('Please check your email for the login verification code.', 'info')
-        else:
-            flash('Could not send verification code. Please try again.', 'warning')
-        
-        return redirect(url_for('verify_login_otp'))
+        flash(f'Welcome back, {user["username"]}!', 'success')
+        return redirect(url_for('home'))
         
     except Exception as e:
         print(f"Google OAuth error: {e}")
         flash('Google login failed. Please try again.', 'danger')
         return redirect(url_for('login'))
+
+@app.route('/auth/google/setup')
+def google_setup():
+    """Display account setup page for new Google users"""
+    email = session.get('google_setup_email')
+    if not email:
+        flash('Please start the Google login process again.', 'warning')
+        return redirect(url_for('login'))
+    
+    return render_template('auth/google_setup.html',
+                          email=email,
+                          name=session.get('google_setup_name', ''),
+                          suggested_username=session.get('google_setup_suggested_username', ''))
+
+@app.route('/auth/google/setup/complete', methods=['POST'])
+def complete_google_setup():
+    """Handle account setup form submission"""
+    email = session.get('google_setup_email')
+    if not email:
+        flash('Session expired. Please start the Google login process again.', 'warning')
+        return redirect(url_for('login'))
+    
+    full_name = request.form.get('full_name', '').strip()
+    username = request.form.get('username', '').strip().lower()
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
+    role = request.form.get('role', 'youth')
+    
+    error = None
+    
+    # Validate username
+    if not username or not re.match(r'^[a-zA-Z0-9_]{3,20}$', username):
+        error = 'Username must be 3-20 characters with only letters, numbers, and underscores.'
+    
+    # Check if username is taken
+    db = get_db()
+    if not error:
+        existing = db.query("SELECT id FROM users WHERE username = ?", (username,), one=True)
+        if existing:
+            error = 'That username is already taken. Please choose another.'
+    
+    # Validate password
+    if not error and len(password) < 8:
+        error = 'Password must be at least 8 characters.'
+    
+    if not error and password != confirm_password:
+        error = 'Passwords do not match.'
+    
+    # Validate role
+    if not error and role not in ['youth', 'senior']:
+        error = 'Please select a valid role.'
+    
+    if error:
+        return render_template('auth/google_setup.html',
+                              email=email,
+                              name=full_name,
+                              suggested_username=username,
+                              error=error)
+    
+    # Create the user account
+    password_hash = generate_password_hash(password)
+    
+    conn = db.get_connection()
+    conn.execute(
+        """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
+           VALUES (?, ?, ?, ?, ?, 1)""",
+        (username, email, password_hash, role, full_name)
+    )
+    conn.commit()
+    conn.close()
+    
+    # Get the newly created user
+    user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+    
+    # Clear setup session vars
+    session.pop('google_setup_email', None)
+    session.pop('google_setup_name', None)
+    session.pop('google_setup_suggested_username', None)
+    
+    # Log them in directly (skip OTP for first-time setup since they just came from Google)
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    
+    flash(f'Welcome to TogetherSG, {full_name or username}!', 'success')
+    return redirect(url_for('home'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1266,6 +1318,19 @@ def update_profile():
     user_id = session['user_id']
     full_name = request.form.get('full_name', '')
     bio = request.form.get('bio', '')
+    new_username = request.form.get('username', '').strip()
+    
+    # Validate username format
+    if new_username and not re.match(r'^[a-zA-Z0-9_]{3,20}$', new_username):
+        flash('Username must be 3-20 characters with only letters, numbers, and underscores.', 'danger')
+        return redirect(url_for('profile'))
+    
+    # Check if username is already taken by someone else
+    db = get_db()
+    existing_user = db.query("SELECT id FROM users WHERE username = ? AND id != ?", (new_username, user_id), one=True)
+    if existing_user:
+        flash('That username is already taken. Please choose another.', 'danger')
+        return redirect(url_for('profile'))
     
     # Handle Profile Pic Upload
     profile_pic = request.files.get('profile_pic')
@@ -1287,12 +1352,11 @@ def update_profile():
     notify_stories = 1 if 'notify_stories' in request.form else 0
     notify_groups = 1 if 'notify_groups' in request.form else 0
 
-    db = get_db()
     conn = db.get_connection()
     
     # Construct update query dynamically to handle profile pic only if changed
-    query = "UPDATE users SET full_name = ?, bio = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
-    params = [full_name, bio, notify_messages, notify_activities, notify_stories, notify_groups]
+    query = "UPDATE users SET full_name = ?, bio = ?, username = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
+    params = [full_name, bio, new_username, notify_messages, notify_activities, notify_stories, notify_groups]
     
     if profile_pic_path:
         query += ", profile_pic = ?"
@@ -1304,6 +1368,10 @@ def update_profile():
     
     conn.execute(query, params)
     conn.commit()
+    
+    # Update session username if changed
+    if new_username:
+        session['username'] = new_username
     
     # flash('Profile updated successfully!', 'success')  <-- REMOVED as requested
     return redirect(url_for('profile'))
@@ -1394,6 +1462,37 @@ def clear_all_notifications():
     conn.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (session['user_id'],))
     conn.commit()
     return redirect(request.referrer)
+
+@app.route('/api/notifications')
+@login_required
+def api_notifications():
+    """API endpoint for real-time notification polling"""
+    from flask import jsonify
+    db = get_db()
+    notifications = db.query(
+        """SELECT id, type, content, link, created_at 
+           FROM notifications 
+           WHERE user_id = ? AND is_read = 0 
+           ORDER BY created_at DESC 
+           LIMIT 10""", 
+        (session['user_id'],)
+    )
+    
+    # Convert to list of dicts for JSON serialization
+    notif_list = []
+    for n in notifications:
+        notif_list.append({
+            'id': n['id'],
+            'type': n['type'],
+            'content': n['content'],
+            'link': n['link'],
+            'created_at': str(n['created_at'])[:16] if n['created_at'] else ''
+        })
+    
+    return jsonify({
+        'notifications': notif_list,
+        'unread_count': len(notifications)
+    })
 
 @app.route('/profile/delete', methods=['POST'])
 @login_required
@@ -1490,11 +1589,18 @@ def join_group(group_id):
     try:
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         
-        # Notify Group Creator
         group = db.query("SELECT created_by, name FROM groups WHERE id = ?", (group_id,), one=True)
         if group:
+            # Notify the user who joined (if they have notifications on)
+            user_prefs = db.query("SELECT notify_groups FROM users WHERE id = ?", (user_id,), one=True)
+            if user_prefs and user_prefs['notify_groups']:
+                conn.execute(
+                    "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                    (user_id, 'Group Joined', f'You successfully joined "{group["name"]}".', url_for('view_group', group_id=group_id))
+                )
+            
+            # Notify Group Creator (if different from joiner)
             creator_id = group['created_by']
-            # Check preference
             creator_prefs = db.query("SELECT notify_groups FROM users WHERE id = ?", (creator_id,), one=True)
             if creator_id != user_id and creator_prefs and creator_prefs['notify_groups']:
                  conn.execute(

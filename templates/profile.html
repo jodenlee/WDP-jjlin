@@ -56,7 +56,8 @@
                         <div class="col-md-6 mb-3">
                             <label for="username" class="form-label fw-bold">Username</label>
                             <input type="text" class="form-control" id="username" name="username"
-                                value="{{ user.username }}" readonly>
+                                value="{{ user.username }}" required pattern="[a-zA-Z0-9_]{3,20}">
+                            <div class="form-text">3-20 characters, letters, numbers, and underscores only.</div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -144,8 +145,7 @@
                             {{ 'checked' if user.notify_groups else '' }}>
                         <label class="form-check-label" for="notify_groups">
                             <strong>Group Updates</strong>
-                            <br><small class="text-muted">Updates from groups you've
-                                joined</small>
+                            <br><small class="text-muted">When you join a group or someone joins your group</small>
                         </label>
                     </div>
                     <button type="submit" class="btn btn-primary mt-3">Save

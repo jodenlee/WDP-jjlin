@@ -124,8 +124,10 @@
                     <div class="form-check mb-4">
                         <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
                         <label class="form-check-label" for="terms">
-                            I agree to the <a href="#" style="color: var(--primary-color);">Terms of Service</a> and
-                            <a href="#" style="color: var(--primary-color);">Privacy Policy</a>
+                            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#tosModal"
+                                style="color: var(--primary-color);">Terms of Service</a> and
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal"
+                                style="color: var(--primary-color);">Privacy Policy</a>
                         </label>
                         <div class="invalid-feedback">You must agree to the terms.</div>
                     </div>
@@ -146,6 +148,110 @@
                         Sign In <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms of Service Modal -->
+<div class="modal fade" id="tosModal" tabindex="-1" aria-labelledby="tosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--primary-color); color: white;">
+                <h5 class="modal-title" id="tosModalLabel"><i class="fas fa-file-contract me-2"></i>Terms of Service
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <h6 class="fw-bold">1. Acceptance of Terms</h6>
+                <p>By accessing and using TogetherSG, you accept and agree to be bound by the terms and provisions of
+                    this agreement.</p>
+
+                <h6 class="fw-bold">2. Use of Service</h6>
+                <p>You agree to use TogetherSG only for lawful purposes. You must not use this service to:</p>
+                <ul>
+                    <li>Post harmful, offensive, or inappropriate content</li>
+                    <li>Harass or bully other users</li>
+                    <li>Share false or misleading information</li>
+                    <li>Violate any applicable laws or regulations</li>
+                </ul>
+
+                <h6 class="fw-bold">3. User Accounts</h6>
+                <p>You are responsible for maintaining the confidentiality of your account credentials and for all
+                    activities that occur under your account.</p>
+
+                <h6 class="fw-bold">4. Content Guidelines</h6>
+                <p>All content you post must be respectful and appropriate for all ages. We reserve the right to remove
+                    any content that violates these guidelines.</p>
+
+                <h6 class="fw-bold">5. Community Standards</h6>
+                <p>TogetherSG is designed to connect youth and seniors in meaningful ways. We expect all users to treat
+                    each other with respect and kindness.</p>
+
+                <h6 class="fw-bold">6. Modifications</h6>
+                <p>We reserve the right to modify these terms at any time. Continued use of the service constitutes
+                    acceptance of any changes.</p>
+
+                <h6 class="fw-bold">7. Contact</h6>
+                <p>If you have any questions about these Terms, please contact us at support@togethersg.com.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--primary-color); color: white;">
+                <h5 class="modal-title" id="privacyModalLabel"><i class="fas fa-shield-alt me-2"></i>Privacy Policy</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <h6 class="fw-bold">1. Information We Collect</h6>
+                <p>We collect information you provide directly to us, such as:</p>
+                <ul>
+                    <li>Name, email address, and username</li>
+                    <li>Profile information and bio</li>
+                    <li>Stories, comments, and messages you share</li>
+                    <li>Activity participation and group memberships</li>
+                </ul>
+
+                <h6 class="fw-bold">2. How We Use Your Information</h6>
+                <p>We use the information we collect to:</p>
+                <ul>
+                    <li>Provide and improve our services</li>
+                    <li>Send you notifications about activities and messages</li>
+                    <li>Connect you with other community members</li>
+                    <li>Ensure the safety and security of our platform</li>
+                </ul>
+
+                <h6 class="fw-bold">3. Information Sharing</h6>
+                <p>We do not sell your personal information. We may share your information only:</p>
+                <ul>
+                    <li>With your consent</li>
+                    <li>To comply with legal obligations</li>
+                    <li>To protect the rights and safety of our users</li>
+                </ul>
+
+                <h6 class="fw-bold">4. Data Security</h6>
+                <p>We implement appropriate security measures to protect your personal information from unauthorized
+                    access, alteration, or destruction.</p>
+
+                <h6 class="fw-bold">5. Your Rights</h6>
+                <p>You have the right to access, update, or delete your personal information at any time through your
+                    account settings.</p>
+
+                <h6 class="fw-bold">6. Contact Us</h6>
+                <p>If you have any questions about this Privacy Policy, please contact us at privacy@togethersg.com.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
             </div>
         </div>
     </div>
