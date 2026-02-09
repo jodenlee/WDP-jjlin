@@ -3,7 +3,7 @@
 {% block content %}
 <!-- Back to group buttons -->
 <div class="mb-4">
-    <a href="{{ url_for('community.community') }}" class="btn btn-link text-muted px-0">
+    <a href="{{ url_for('community') }}" class="btn btn-link text-muted px-0">
         <i class="fas fa-arrow-left me-1"></i> Back to Groups
     </a>
 </div>
@@ -35,8 +35,7 @@
                     {% else %}
 
                     <!-- Non-Member Action: Join Group -->
-                    <form action="{{ url_for('community.join_group', group_id=group['id']) }}" method="POST"
-                        class="d-inline">
+                    <form action="{{ url_for('join_group', group_id=group['id']) }}" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-sign-in-alt me-1"></i> Join Group
                         </button>
@@ -125,7 +124,7 @@
                                 </div>
                                 <!-- Like Button -->
                                 <div class="ms-auto d-flex align-items-center">
-                                    <form action="{{ url_for('community.toggle_group_post_like', post_id=post['id']) }}"
+                                    <form action="{{ url_for('toggle_group_post_like', post_id=post['id']) }}"
                                         method="POST" class="d-inline">
                                         <button type="submit"
                                             class="btn btn-link p-0 text-decoration-none {% if post['is_liked'] %}text-danger{% else %}text-muted{% endif %}"
@@ -143,10 +142,14 @@
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item small py-1" href="#"
+                                                onclick="toggleEnlarge(event, 'post-{{ post.id }}', this)">
+                                                <i class="fas fa-expand-alt me-2"></i> Enlarge Post
+                                            </a></li>
                                         {% if post['user_id'] == session['user_id'] %}
                                         <li>
                                             <a class="dropdown-item small py-1 text-primary" href="#"
-                                                data-update-url="{{ url_for('community.update_group_post', post_id=post['id']) }}"
+                                                data-update-url="{{ url_for('update_group_post', post_id=post['id']) }}"
                                                 data-post-content="{{ post['content'] }}"
                                                 onclick="openEditPostModal(this)">
                                                 <i class="fas fa-edit me-2"></i> Edit Post
@@ -154,7 +157,7 @@
                                         </li>
                                         <li>
                                             <a class="dropdown-item small py-1 text-danger" href="#"
-                                                data-delete-url="{{ url_for('community.delete_group_post', post_id=post['id']) }}"
+                                                data-delete-url="{{ url_for('delete_group_post', post_id=post['id']) }}"
                                                 onclick="openDeletePostModal(this)">
                                                 <i class="fas fa-trash-alt me-2"></i> Delete Post
                                             </a>
@@ -202,7 +205,7 @@
                                             <ul class="dropdown-menu dropdown-menu-end">
                                                 <li>
                                                     <a class="dropdown-item small py-1 text-primary" href="#"
-                                                        data-update-url="{{ url_for('community.update_group_post_comment', comment_id=comment['id']) }}"
+                                                        data-update-url="{{ url_for('update_group_post_comment', comment_id=comment['id']) }}"
                                                         data-comment-content="{{ comment['content'] }}"
                                                         onclick="openEditCommentModal(this)">
                                                         <i class="fas fa-edit me-2"></i> Edit Comment
@@ -210,7 +213,7 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item small py-1 text-danger" href="#"
-                                                        data-delete-url="{{ url_for('community.delete_group_post_comment', comment_id=comment['id']) }}"
+                                                        data-delete-url="{{ url_for('delete_group_post_comment', comment_id=comment['id']) }}"
                                                         onclick="openDeleteCommentModal(this)">
                                                         <i class="fas fa-trash-alt me-2"></i> Delete Comment
                                                     </a>
@@ -224,7 +227,7 @@
                                 {% endif %}
 
                                 <!-- Add Comment Form -->
-                                <form action="{{ url_for('community.create_group_post_comment', post_id=post['id']) }}"
+                                <form action="{{ url_for('create_group_post_comment', post_id=post['id']) }}"
                                     method="POST" class="d-flex gap-2">
                                     <input type="text" name="content" class="form-control form-control-sm"
                                         placeholder="Write a comment..." required>
@@ -257,7 +260,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('community.delete_group', group_id=group['id']) }}" method="POST">
+                <form action="{{ url_for('delete_group', group_id=group['id']) }}" method="POST">
                     <button type="submit" class="btn btn-danger">Delete Group</button>
                 </form>
             </div>
@@ -278,7 +281,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('community.leave_group', group_id=group['id']) }}" method="POST">
+                <form action="{{ url_for('leave_group', group_id=group['id']) }}" method="POST">
                     <button type="submit" class="btn btn-danger">Leave Group</button>
                 </form>
             </div>
@@ -295,8 +298,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="updateGroupForm" action="{{ url_for('community.update_group', group_id=group['id']) }}"
-                    method="POST" enctype="multipart/form-data">
+                <form id="updateGroupForm" action="{{ url_for('update_group', group_id=group['id']) }}" method="POST"
+                    enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="name" class="form-label fw-bold">Group Name</label>
                         <input type="text" class="form-control" id="name" name="name" value="{{ group['name'] }}"
@@ -357,7 +360,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createPostForm" action="{{ url_for('community.create_group_post', group_id=group['id']) }}"
+                <form id="createPostForm" action="{{ url_for('create_group_post', group_id=group['id']) }}"
                     method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -424,6 +427,17 @@
         }
     }
 
+    function toggleEnlarge(event, postId, btnElement) {
+        event.preventDefault(); // Prevent default anchor behavior
+        var postCard = document.getElementById(postId);
+        postCard.classList.toggle('enlarged-post');
+
+        if (postCard.classList.contains('enlarged-post')) {
+            btnElement.innerHTML = '<i class="fas fa-compress-alt me-2"></i> Shrink Post';
+        } else {
+            btnElement.innerHTML = '<i class="fas fa-expand-alt me-2"></i> Enlarge Post';
+        }
+    }
 
     // Voice Recording Logic
     document.addEventListener('DOMContentLoaded', function () {

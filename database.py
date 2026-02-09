@@ -316,16 +316,11 @@ class Database:
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
 
-        # Add likes and audio_url columns to group_posts if not exists
+        # Add likes column to group_posts if not exists
         try:
             cursor.execute("SELECT likes FROM group_posts LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
-        
-        try:
-            cursor.execute("SELECT audio_url FROM group_posts LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE group_posts ADD COLUMN audio_url TEXT")
 
         # Add notification preference columns if not exists
         try:
