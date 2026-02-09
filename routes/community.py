@@ -38,7 +38,11 @@ def community():
 @login_required
 def create_group():
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form.get('name', '').strip()
+        if not name or len(name) < 5:
+            flash('Group name must be at least 5 characters.', 'danger')
+            return render_template('community/create.html')
+        
         description = request.form.get('description', '')
         user_id = session['user_id']
         
@@ -143,6 +147,18 @@ def join_group(group_id):
     conn = get_conn()
     try:
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
+        
+        # Notify Group Owner
+        group = db.query("SELECT name, created_by FROM groups WHERE id = ?", (group_id,), one=True)
+        if group and group['created_by'] != user_id:
+            user = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            content = f"{user['username']} has joined your group '{group['name']}'!"
+            link = url_for('community.view_group', group_id=group_id)
+            conn.execute(
+                "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
+                (group['created_by'], 'group_join', content, link)
+            )
+        
         conn.commit()
         flash('Joined group!', 'success')
     except:
@@ -207,8 +223,8 @@ def update_group(group_id):
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '')
     
-    if not name:
-        flash('Group name is required.', 'danger')
+    if not name or len(name) < 5:
+        flash('Group name must be at least 5 characters.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
 
     conn = get_conn()

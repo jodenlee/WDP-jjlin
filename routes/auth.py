@@ -786,18 +786,22 @@ def update_notifications():
     return redirect(url_for('auth.profile'))
 
 @auth_bp.route('/profile/update_language', methods=['POST'])
-@login_required
 def update_language():
-    user_id = session['user_id']
+    user_id = session.get('user_id')
     language = request.form.get('language', 'en')
     
-    db = get_db()
-    conn = db.get_connection()
-    conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
-    conn.commit()
+    if user_id:
+        db = get_db()
+        conn = get_db().get_connection()
+        conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
+        conn.commit()
+        conn.close()
     
-    # Update language in session
+    # Update language in session for both guests and logged-in users
     session['language'] = language
+    
+    # Redirect back to the referring page or home
+    return redirect(request.referrer or url_for('main.home'))
     
     return redirect(url_for('auth.profile'))
 

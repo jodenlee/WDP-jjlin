@@ -143,10 +143,6 @@
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item small py-1" href="#"
-                                                onclick="toggleEnlarge(event, 'post-{{ post.id }}', this)">
-                                                <i class="fas fa-expand-alt me-2"></i> Enlarge Post
-                                            </a></li>
                                         {% if post['user_id'] == session['user_id'] %}
                                         <li>
                                             <a class="dropdown-item small py-1 text-primary" href="#"
@@ -428,17 +424,6 @@
         }
     }
 
-    function toggleEnlarge(event, postId, btnElement) {
-        event.preventDefault(); // Prevent default anchor behavior
-        var postCard = document.getElementById(postId);
-        postCard.classList.toggle('enlarged-post');
-
-        if (postCard.classList.contains('enlarged-post')) {
-            btnElement.innerHTML = '<i class="fas fa-compress-alt me-2"></i> Shrink Post';
-        } else {
-            btnElement.innerHTML = '<i class="fas fa-expand-alt me-2"></i> Enlarge Post';
-        }
-    }
 
     // Voice Recording Logic
     document.addEventListener('DOMContentLoaded', function () {

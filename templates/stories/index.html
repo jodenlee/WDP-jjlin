@@ -31,7 +31,7 @@
             </div>
 
             <!-- Tags Filter (Custom Dropdown) -->
-            <div class="col-4 col-md-2 position-relative">
+            <div class="col-6 col-md-2 position-relative">
                 <div class="dropdown">
                     <button class="form-select form-select-lg w-100 text-start" type="button" id="tagsDropdown"
                         data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
@@ -57,7 +57,7 @@
             </div>
 
             <!-- Sorting -->
-            <div class="col-4 col-md-2">
+            <div class="col-6 col-md-2">
                 <select name="sort" class="form-select form-select-lg">
                     <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>{{ _('Newest')
                         }}
@@ -68,7 +68,7 @@
             </div>
 
             <!-- Location -->
-            <div class="col-4 col-md-2">
+            <div class="col-12 col-md-2">
                 <div class="input-group">
                     <input type="text" id="location-filter" name="location" list="singapore-locations"
                         class="form-control form-control-lg" placeholder="{{ _('Location') }}"
