@@ -331,6 +331,16 @@ class Database:
             cursor.execute("ALTER TABLE users ADD COLUMN notify_stories INTEGER DEFAULT 1")
             cursor.execute("ALTER TABLE users ADD COLUMN notify_groups INTEGER DEFAULT 1")
 
+        # UI Translations Cache Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ui_translations (
+                text_key TEXT,
+                language TEXT,
+                translation TEXT,
+                PRIMARY KEY(text_key, language)
+            )
+        ''')
+
         # Add language preference column if not exists
         try:
             cursor.execute("SELECT language FROM users LIMIT 1")

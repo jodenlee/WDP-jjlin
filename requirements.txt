@@ -8,3 +8,5 @@ openai
 gunicorn
 google-genai
 google-cloud-storage
+flask-babel
+google-cloud-translate

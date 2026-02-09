@@ -738,11 +738,14 @@ def add_comment(story_id):
         return redirect(url_for('stories.view_story', story_id=story_id))
     
     # Content Moderation Check
+    print(f"DEBUG: Checking moderation for comment: {content[:20]}...")
     if check_content_moderation(content):
+        print("DEBUG: Comment FLAGGED by moderation.")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': 'Your comment has been flagged by our safety system.'}), 400
         flash('Your comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'danger')
         return redirect(url_for('stories.view_story', story_id=story_id))
+    print("DEBUG: Comment PASSED moderation.")
         
     user_id = session['user_id']
     db = get_db()

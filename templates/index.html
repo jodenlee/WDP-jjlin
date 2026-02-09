@@ -3,12 +3,13 @@
 {% block content %}
 <section class="hero text-center py-5">
     <div class="hero-content">
-        <h1 class="display-4 fw-bold">Welcome to TogetherSG</h1>
-        <p class="lead text-muted">Your space to connect, share, and grow together.</p>
+        <h1 class="display-4 fw-bold">{{ _('Welcome to TogetherSG') }}</h1>
+        <p class="lead text-muted">{{ _('Your space to connect, share, and grow together.') }}</p>
         {% if not session.get('user_id') %}
         <div class="d-flex justify-content-center gap-3 mt-4">
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5 fw-bold">Log In</a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5 fw-bold">Sign Up</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg px-5 fw-bold">{{ _('Log In')
+                }}</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-5 fw-bold">{{ _('Sign Up') }}</a>
         </div>
         {% endif %}
     </div>
@@ -21,8 +22,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">📖</div>
-                    <h5 class="card-title fw-bold">Stories</h5>
-                    <p class="card-text text-muted small">Read & Share</p>
+                    <h5 class="card-title fw-bold">{{ _('Stories') }}</h5>
+                    <p class="card-text text-muted small">{{ _('Read & Share') }}</p>
                 </div>
             </div>
         </a>
@@ -33,8 +34,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">🤝</div>
-                    <h5 class="card-title fw-bold">Community</h5>
-                    <p class="card-text text-muted small">Find your group</p>
+                    <h5 class="card-title fw-bold">{{ _('Community') }}</h5>
+                    <p class="card-text text-muted small">{{ _('Find your group') }}</p>
                 </div>
             </div>
         </a>
@@ -45,8 +46,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">📅</div>
-                    <h5 class="card-title fw-bold">Activities</h5>
-                    <p class="card-text text-muted small">Events & Workshops</p>
+                    <h5 class="card-title fw-bold">{{ _('Activities') }}</h5>
+                    <p class="card-text text-muted small">{{ _('Events & Workshops') }}</p>
                 </div>
             </div>
         </a>
@@ -57,8 +58,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">💬</div>
-                    <h5 class="card-title fw-bold">Messages</h5>
-                    <p class="card-text text-muted small">Chat with friends</p>
+                    <h5 class="card-title fw-bold">{{ _('Messages') }}</h5>
+                    <p class="card-text text-muted small">{{ _('Chat with friends') }}</p>
                 </div>
             </div>
         </a>
@@ -69,8 +70,8 @@
             <div class="card h-100 shadow-sm border-0 text-center hover-card">
                 <div class="card-body py-4">
                     <div class="display-4 mb-3">👤</div>
-                    <h5 class="card-title fw-bold">Profile</h5>
-                    <p class="card-text text-muted small">Manage account</p>
+                    <h5 class="card-title fw-bold">{{ _('Profile') }}</h5>
+                    <p class="card-text text-muted small">{{ _('Manage account') }}</p>
                 </div>
             </div>
         </a>
@@ -80,7 +81,7 @@
 <!-- Preview Sections below for engagement -->
 <div class="row g-4 pt-4 border-top">
     <section class="col-md-6">
-        <h3 class="h4 mb-3 fw-bold">Newest Stories</h3>
+        <h3 class="h4 mb-3 fw-bold">{{ _('Newest Stories') }}</h3>
         <div class="list-group list-group-flush">
             {% if stories %}
             {% for story in stories %}
@@ -91,13 +92,13 @@
             </a>
             {% endfor %}
             {% else %}
-            <p class="text-muted">Start sharing today!</p>
+            <p class="text-muted">{{ _('Start sharing today!') }}</p>
             {% endif %}
         </div>
     </section>
 
     <section class="col-md-6">
-        <h3 class="h4 mb-3 fw-bold">Upcoming Activities</h3>
+        <h3 class="h4 mb-3 fw-bold">{{ _('Upcoming Activities') }}</h3>
         <div class="list-group list-group-flush">
             {% if activities %}
             {% for activity in activities %}
@@ -108,7 +109,7 @@
             </a>
             {% endfor %}
             {% else %}
-            <p class="text-muted">Check out what's on.</p>
+            <p class="text-muted">{{ _('Check out what\'s on.') }}</p>
             {% endif %}
         </div>
     </section>

@@ -641,6 +641,7 @@ def update_profile():
     user_id = session['user_id']
     full_name = request.form.get('full_name', '')
     bio = request.form.get('bio', '')
+    language = request.form.get('language', 'en')
     
     # Handle Profile Pic Upload
     from werkzeug.utils import secure_filename
@@ -672,8 +673,8 @@ def update_profile():
     db = get_db()
     conn = db.get_connection()
     
-    query = "UPDATE users SET full_name = ?, bio = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
-    params = [full_name, bio, notify_messages, notify_activities, notify_stories, notify_groups]
+    query = "UPDATE users SET full_name = ?, bio = ?, language = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
+    params = [full_name, bio, language, notify_messages, notify_activities, notify_stories, notify_groups]
     
     if profile_pic_path:
         query += ", profile_pic = ?"
@@ -706,6 +707,22 @@ def update_notifications():
         WHERE id = ?
     """, (notify_messages, notify_activities, notify_stories, notify_groups, user_id))
     conn.commit()
+    
+    return redirect(url_for('auth.profile'))
+
+@auth_bp.route('/profile/update_language', methods=['POST'])
+@login_required
+def update_language():
+    user_id = session['user_id']
+    language = request.form.get('language', 'en')
+    
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
+    conn.commit()
+    
+    # Update language in session
+    session['language'] = language
     
     return redirect(url_for('auth.profile'))
 

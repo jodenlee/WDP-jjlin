@@ -4,10 +4,10 @@
 <section class="mb-5">
     <!-- Header Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold text-dark mb-3 mb-md-0">Community Groups</h1>
+        <h1 class="fw-bold text-dark mb-3 mb-md-0">{{ _('Community Groups') }}</h1>
         <div class="d-flex gap-2">
             <a href="{{ url_for('community.create_group') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus me-1"></i> New Group
+                <i class="fas fa-plus me-1"></i> {{ _('New Group') }}
             </a>
         </div>
     </div>
@@ -18,7 +18,7 @@
             <!-- Search -->
             <div class="col-12 col-md-10 position-relative">
                 <input type="text" name="search" class="form-control form-control-lg pe-5"
-                    placeholder="Search groups..." value="{{ request.args.get('search', '') }}">
+                    placeholder="{{ _('Search groups...') }}" value="{{ request.args.get('search', '') }}">
             </div>
             <!-- Search Button -->
             <div class="col-12 col-md-2 d-grid">
@@ -54,11 +54,11 @@
                     %}...{% endif %}</p>
                 <!-- Member Count -->
                 <p class="text-muted mb-3">
-                    <i class="fas fa-user-friends me-1"></i> {{ group['member_count'] or 0 }} members
+                    <i class="fas fa-user-friends me-1"></i> {{ group['member_count'] or 0 }} {{ _('members') }}
                 </p>
                 <!-- View Group Button -->
-                <a href="{{ url_for('community.view_group', group_id=group['id']) }}"
-                    class="btn btn-primary btn-lg">View Group</a>
+                <a href="{{ url_for('community.view_group', group_id=group['id']) }}" class="btn btn-primary btn-lg">{{
+                    _('View Group') }}</a>
             </div>
         </div>
     </div>
@@ -68,14 +68,14 @@
     <div class="col-12 text-center py-5">
         {% if request.args.get('search') %}
         <i class="fas fa-search fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">No groups found matching "{{ request.args.get('search') }}"</h5>
+        <h5 class="text-muted">{{ _('No groups found matching') }} "{{ request.args.get('search') }}"</h5>
         <a href="{{ url_for('community.community') }}" class="btn btn-primary btn-lg mt-3">
-            <i class="fas fa-arrow-left me-2"></i>Back to All Groups
+            <i class="fas fa-arrow-left me-2"></i>{{ _('Back to All Groups') }}
         </a>
         {% else %}
         <i class="fas fa-users fa-3x text-muted mb-3"></i>
-        <p class="text-muted fs-5">No groups yet. Start a community!</p>
-        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary btn-lg">Create Group</a>
+        <p class="text-muted fs-5">{{ _('No groups yet. Start a community!') }}</p>
+        <a href="{{ url_for('community.create_group') }}" class="btn btn-primary btn-lg">{{ _('Create Group') }}</a>
         {% endif %}
     </div>
     {% endif %}

@@ -41,15 +41,123 @@ def check_content_moderation(text):
     
     load_dotenv()
     api_key = os.getenv('OPENAI_API_KEY')
+    print(f"DEBUG: Moderation API Key found: {'Yes' if api_key else 'No'}")
     
     if not api_key or not text:
+        if not api_key:
+            print("DEBUG: Moderation API Key is MISSING in environment.")
         return False  # Fail open if no API key or empty text
     
     try:
         client = OpenAI(api_key=api_key)
+        print(f"DEBUG: Sending moderation request for: {text[:20]}...")
         response = client.moderations.create(input=text)
-        return response.results[0].flagged
+        is_flagged = response.results[0].flagged
+        print(f"DEBUG: Moderation result: flagged={is_flagged}")
+        return is_flagged
     except Exception as e:
-        # Silently fail open on errors in production
+        print(f"DEBUG: Moderation API error: {e}")
         return False
 
+
+def auto_translate(text, target_lang=None):
+    """
+    Automated translation with local caching.
+    """
+    from flask import g
+    from google.cloud import translate_v2 as translate
+    import html
+
+    if not text or not text.strip():
+        return text
+
+    # If target_lang not specified, get from g.user or default to en
+    if not target_lang:
+        target_lang = 'en'
+        if hasattr(g, 'user') and g.user and 'language' in g.user.keys():
+            target_lang = g.user['language']
+    
+
+    # For English, just return original text
+    if target_lang == 'en':
+        return text
+
+    # Normalise language code for Google/Cache
+    if target_lang == 'zh_CN':
+        target_lang = 'zh-CN'
+
+    db = get_db()
+    
+    # Check cache
+    cache = db.query("SELECT translation FROM ui_translations WHERE text_key = ? AND language = ?", (text, target_lang), one=True)
+    if cache:
+        return cache['translation']
+
+    # Translate using Google API
+    try:
+        import requests
+        api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+        if not api_key:
+            return text
+            
+        url = f"https://translation.googleapis.com/language/translate/v2?key={api_key}"
+        payload = {
+            "q": text,
+            "target": target_lang,
+            "format": "text" # Use text format to avoid excessive escaping
+        }
+        
+        response = requests.post(url, json=payload)
+        response_data = response.json()
+        
+        if 'data' in response_data and 'translations' in response_data['data']:
+            translated_text = html.unescape(response_data['data']['translations'][0]['translatedText'])
+            
+            # Save to cache
+            conn = db.get_connection()
+            conn.execute("INSERT OR REPLACE INTO ui_translations (text_key, language, translation) VALUES (?, ?, ?)", 
+                         (text, target_lang, translated_text))
+            conn.commit()
+            
+            return translated_text
+        else:
+            return text
+            
+    except Exception as e:
+        return text
+
+def translate_text(text, target_lang='en'):
+    """
+    Translates text using Google Cloud Translation REST API.
+    """
+    import os
+    import requests
+    import html
+    
+    if not text:
+        return ""
+        
+    try:
+        api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+        if not api_key:
+            return text
+            
+        # Normalize language codes for Google
+        if target_lang == 'zh_CN':
+            target_lang = 'zh-CN'
+            
+        url = f"https://translation.googleapis.com/language/translate/v2?key={api_key}"
+        payload = {
+            "q": text,
+            "target": target_lang
+        }
+        
+        response = requests.post(url, json=payload)
+        response_data = response.json()
+        
+        if 'data' in response_data and 'translations' in response_data['data']:
+            return html.unescape(response_data['data']['translations'][0]['translatedText'])
+        return text
+            
+    except Exception as e:
+        return text  # Fallback to original text

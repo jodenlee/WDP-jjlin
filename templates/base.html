@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ user_lang }}">
 
 <head>
     <meta charset="UTF-8">
@@ -31,20 +31,20 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto align-items-center">
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('main.home') }}">Home</a></li>
+                                href="{{ url_for('main.home') }}">{{ _('Home') }}</a></li>
 
                         {% if g.user %}
                         <!-- Logged in user navigation -->
 
 
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('stories.stories_list') }}">Stories</a></li>
+                                href="{{ url_for('stories.stories_list') }}">{{ _('Stories') }}</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('community.community') }}">Community</a></li>
+                                href="{{ url_for('community.community') }}">{{ _('Community') }}</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('activities.activities_list') }}">Activities</a></li>
+                                href="{{ url_for('activities.activities_list') }}">{{ _('Activities') }}</a></li>
                         <li class="nav-item"><a class="nav-link fs-5 fw-semibold text-dark"
-                                href="{{ url_for('messages.messages_list') }}">Messages</a></li>
+                                href="{{ url_for('messages.messages_list') }}">{{ _('Messages') }}</a></li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
                                 role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -65,28 +65,29 @@
                                 {% if g.user and g.user['is_admin'] %}
                                 <li><a class="dropdown-item text-danger fw-bold"
                                         href="{{ url_for('admin.admin_dashboard') }}">
-                                        <i class="fas fa-shield-alt me-2"></i> Admin Dashboard</a></li>
+                                        <i class="fas fa-shield-alt me-2"></i> {{ _('Admin Dashboard') }}</a></li>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
                                 {% endif %}
                                 <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
-                                        <i class="fas fa-cog me-2"></i> Settings</a></li>
+                                        <i class="fas fa-cog me-2"></i> {{ _('Settings') }}</a></li>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
                                 <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
-                                        <i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+                                        <i class="fas fa-sign-out-alt me-2"></i> {{ _('Logout') }}</a></li>
                             </ul>
                         </li>
                         {% else %}
                         <!-- Guest navigation -->
                         <li class="nav-item">
-                            <a class="nav-link fs-5 fw-semibold text-dark" href="{{ url_for('auth.login') }}">Login</a>
+                            <a class="nav-link fs-5 fw-semibold text-dark" href="{{ url_for('auth.login') }}">{{
+                                _('Login') }}</a>
                         </li>
                         <li class="nav-item">
-                            <a class="btn btn-primary ms-2 fs-5 fw-semibold" href="{{ url_for('auth.register') }}">Sign
-                                Up</a>
+                            <a class="btn btn-primary ms-2 fs-5 fw-semibold" href="{{ url_for('auth.register') }}">{{
+                                _('Sign Up') }}</a>
                         </li>
                         {% endif %}
                     </ul>
@@ -129,7 +130,7 @@
 
     <footer class="bg-light text-center py-4 mt-5 border-top" style="min-height: 80px;">
         <div class="container h-100 d-flex align-items-center justify-content-center">
-            <p class="mb-0 text-muted">&copy; 2026 TogetherSG. Connecting hearts across ages.</p>
+            <p class="mb-0 text-muted">&copy; 2026 TogetherSG. {{ _('Connecting hearts across ages.') }}</p>
         </div>
     </footer>
 
@@ -139,14 +140,15 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-dark fs-4" id="globalSuccessModalLabel">Success!</h5>
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="globalSuccessModalLabel">{{ _('Success!') }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-secondary fs-5 py-3" id="globalSuccessModalBody">
-                    Action completed successfully.
+                    {{ _('Action completed successfully.') }}
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
-                    <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
+                    <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">{{ _('Okay')
+                        }}</button>
                 </div>
             </div>
         </div>

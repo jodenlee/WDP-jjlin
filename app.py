@@ -1,6 +1,7 @@
 from flask import Flask, g, request
 import os
 from dotenv import load_dotenv
+from flask_babel import Babel, _
 from authlib.integrations.flask_client import OAuth
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -9,6 +10,17 @@ load_dotenv()
 
 # Global OAuth instance
 oauth = OAuth()
+# Global Babel instance
+babel = Babel()
+
+def get_locale():
+    from flask import g
+    from flask import request
+    # 1. Try to get locale from logged in user preference
+    if hasattr(g, 'user') and g.user and 'language' in g.user.keys():
+        return g.user['language']
+    # 2. Try to get locale from request (browser settings)
+    return request.accept_languages.best_match(['en', 'zh_CN'])
 
 def create_app():
     app = Flask(__name__)
@@ -50,6 +62,9 @@ def create_app():
     # Store oauth on app for access from blueprints
     app.oauth = oauth
 
+    # Initialize Babel
+    babel.init_app(app, locale_selector=get_locale)
+
     # Initialize Flask-Mail
     try:
         from email_utils import init_mail
@@ -60,7 +75,13 @@ def create_app():
     # Inject common variables into all templates
     @app.context_processor
     def inject_globals():
-        return {'GOOGLE_MAPS_API_KEY': GOOGLE_MAPS_API_KEY}
+        from utils import auto_translate
+        # Use our automated translation as the '_' helper
+        return {
+            'GOOGLE_MAPS_API_KEY': GOOGLE_MAPS_API_KEY,
+            '_': auto_translate,
+            'user_lang': g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en'
+        }
 
     from utils import get_db, get_current_user
 
@@ -81,6 +102,7 @@ def create_app():
     from routes.main import main_bp
     from routes.community import community_bp
     from routes.admin import admin_bp
+    from routes.translate import translate_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(stories_bp)
@@ -89,6 +111,7 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(community_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(translate_bp)
 
     return app
 

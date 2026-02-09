@@ -22,14 +22,14 @@
             <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">← Back to Stories</a>
         </div>
         <div class="form-container">
-            <h1 class="mb-4">Post a New Story</h1>
+            <h1 class="mb-4">{{ _('Post a New Story') }}</h1>
             <form method="POST" class="story-form" enctype="multipart/form-data" novalidate>
                 <div class="mb-3">
-                    <label for="title" class="form-label fw-bold fs-5">Title</label>
+                    <label for="title" class="form-label fw-bold fs-5">{{ _('Title') }}</label>
                     <div class="input-group">
                         <input type="text" id="title" name="title" class="form-control form-control-lg" required
                             minlength="3" maxlength="100" value="{{ form.title if form else '' }}"
-                            placeholder="Give your story a title">
+                            placeholder="{{ _('Give your story a title') }}">
                         <select class="form-select lang-selector border-start-0" id="title-lang">
                             <option value="en-SG" selected>EN</option>
                             <option value="zh-CN">中</option>
@@ -44,15 +44,15 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div class="form-text">Title must be between 3 and 100 characters.</div>
+                    <div class="form-text">{{ _('Title must be between 3 and 100 characters.') }}</div>
                 </div>
 
                 <div class="mb-3">
-                    <label for="content" class="form-label fw-bold fs-5">Story Content</label>
+                    <label for="content" class="form-label fw-bold fs-5">{{ _('Story Content') }}</label>
                     <div class="input-group">
                         <textarea id="content" name="content" rows="6" class="form-control form-control-lg" required
                             minlength="10"
-                            placeholder="Share your memory...">{{ form.content if form else '' }}</textarea>
+                            placeholder="{{ _('Share your memory...') }}">{{ form.content if form else '' }}</textarea>
                         <div class="d-flex flex-column border rounded-end bg-light overflow-hidden"
                             style="width: 45px;">
                             <button type="button" class="btn btn-outline-secondary border-0 clear-btn py-2"
@@ -74,11 +74,11 @@
                             </button>
                         </div>
                     </div>
-                    <div class="form-text">Share at least 10 characters about your story.</div>
+                    <div class="form-text">{{ _('Share at least 10 characters about your story.') }}</div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold fs-5">Upload Images</label>
+                    <label class="form-label fw-bold fs-5">{{ _('Upload Images') }}</label>
                     <div class="d-flex flex-wrap gap-3 mb-3" id="images-gallery">
                         <!-- Container for new image previews -->
                         <div id="new-images-container" class="d-flex flex-wrap gap-3"></div>
@@ -89,9 +89,10 @@
                         multiple>
 
                     <button type="button" id="add-image-btn" class="btn btn-primary d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i> Add Media
+                        <i class="fas fa-plus"></i> {{ _('Add Media') }}
                     </button>
-                    <div class="form-text mt-2">Add images or videos to your story. Supported: jpg, png, webm, mp4.
+                    <div class="form-text mt-2">{{ _('Add images or videos to your story. Supported: jpg, png, webm,
+                        mp4.') }}
                     </div>
                 </div>
 
@@ -158,7 +159,7 @@
                                         ${isVideo ? '<div class="position-absolute top-0 start-0 m-1"><span class="badge bg-dark opacity-75"><i class="fas fa-video"></i></span></div>' : ''}
                                     </div>
                                     <button type="button" class="btn btn-danger btn-sm remove-new-image-btn" style="width: 150px;">
-                                        Remove
+                                        {{ _('Remove') }}
                                     </button>
                                 `;
                                 newImagesContainer.appendChild(div);
@@ -201,14 +202,14 @@
 
 
                 <div class="mb-3">
-                    <label for="location" class="form-label fw-bold fs-5">Location</label>
+                    <label for="location" class="form-label fw-bold fs-5">{{ _('Location') }}</label>
                     <div class="input-group">
                         <input type="text" id="location" name="location" list="singapore-locations"
                             class="form-control form-control-lg" maxlength="100"
                             value="{{ form.location if form else '' }}" placeholder="e.g. Toa Payoh Public Library">
                         <button type="button" id="use-location-btn" class="btn btn-outline-secondary"
                             onclick="populateLocationField('location', 'use-location-btn')">
-                            <i class="fas fa-crosshairs"></i> Use My Location
+                            <i class="fas fa-crosshairs"></i> {{ _('Use My Location') }}
                         </button>
                     </div>
                     {% include 'partials/locations.html' %}
@@ -217,16 +218,18 @@
 
                 <!-- Tags Input -->
                 <div class="mb-3">
-                    <label for="tags" class="form-label fw-bold fs-5">Tags</label>
+                    <label for="tags" class="form-label fw-bold fs-5">{{ _('Tags') }}</label>
                     <input type="text" id="tags" name="tags" class="form-control form-control-lg" maxlength="200"
                         value="{{ form.tags if form else '' }}"
                         placeholder="e.g. Food, Heritage, Nature (comma-separated, max 5)">
-                    <div class="form-text">Add up to 5 tags to help others find your story. Separate with commas.</div>
+                    <div class="form-text">{{ _('Add up to 5 tags to help others find your story. Separate with
+                        commas.') }}</div>
                 </div>
 
                 <div class="d-flex gap-2 justify-content-end">
-                    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-lg btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-lg btn-primary">Post Story</button>
+                    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-lg btn-outline-secondary">{{
+                        _('Cancel') }}</a>
+                    <button type="submit" class="btn btn-lg btn-primary">{{ _('Post Story') }}</button>
                 </div>
             </form>
         </div>

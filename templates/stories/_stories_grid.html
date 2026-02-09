@@ -21,7 +21,8 @@
 
                     <div
                         class="position-absolute top-0 start-0 w-100 h-100 p-3 d-flex justify-content-end align-items-start header-overlay-gradient pointer-events-none">
-                        <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">YOUTH</span>
+                        <span class="badge bg-info text-white rounded-pill px-3 py-2 fw-bold shadow-sm">{{ _('YOUTH')
+                            }}</span>
                     </div>
                 </div>
             </a>
@@ -34,7 +35,8 @@
                     <button type="button"
                         class="btn p-0 border-0 bg-transparent fs-2 text-warning lh-1 position-relative z-2 ajax-bookmark"
                         data-story-id="{{ story['id'] }}"
-                        data-url="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" title="Favourite">
+                        data-url="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}"
+                        title="{{ _('Favourite') }}">
                         <span class="bookmark-icon">{% if story['id'] in bookmarked_story_ids %}★{% else %}☆{% endif
                             %}</span>
                     </button>
@@ -82,7 +84,8 @@
                         <img src="{{ story.profile_pic or 'https://ui-avatars.com/api/?name=' + (story.username or 'User') + '&background=random' }}"
                             alt="Profile" class="w-100 h-100 object-fit-cover">
                     </div>
-                    <span class="fs-5">Posted by <span class="fw-bold">{{ story.username or 'Unknown' }}</span></span>
+                    <span class="fs-5">{{ _('Posted by') }} <span class="fw-bold">{{ story.username or _('Unknown')
+                            }}</span></span>
                 </div>
             </div>
         </div>
@@ -91,7 +94,7 @@
     {% endfor %}
     {% else %}
     <div class="col-12 text-center py-5">
-        <p class="leads text-muted">No stories found. Be the first to share!</p>
+        <p class="leads text-muted">{{ _('No stories found. Be the first to share!') }}</p>
     </div>
     {% endif %}
 </div>
@@ -103,7 +106,7 @@
         <!-- Prev Button -->
         <a class="btn btn-outline-secondary text-center {% if page <= 1 %}disabled{% endif %}" style="min-width: 130px;"
             href="{{ url_for('stories.stories_list', page=page-1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort'), tags=request.args.getlist('tags')) }}">
-            &larr; Previous
+            &larr; {{ _('Previous') }}
         </a>
 
         <!-- Page List -->
@@ -115,7 +118,7 @@
                     {{ p }}
                     </a>
                     {% elif p == 4 and total_pages > 6 %}
-                    <span class="btn btn-outline-secondary disabled">...</span>
+                    <span class="btn btn-outline-secondary disabled">{{ _('...') }}</span>
                     {% endif %}
                     {% endfor %}
         </div>
@@ -124,7 +127,7 @@
         <a class="btn btn-outline-secondary text-center {% if page >= total_pages %}disabled{% endif %}"
             style="min-width: 130px;"
             href="{{ url_for('stories.stories_list', page=page+1, search=request.args.get('search'), location=request.args.get('location'), sort=request.args.get('sort'), tags=request.args.getlist('tags')) }}">
-            Next &rarr;
+            {{ _('Next') }} &rarr;
         </a>
     </div>
 </nav>

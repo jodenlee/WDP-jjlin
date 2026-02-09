@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% set user_lang = g.user.language if (g.user and g.user.language) else 'en' %}
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
         <div class="mb-3">
@@ -81,7 +82,13 @@
             <div class="card-body p-4 p-md-5">
                 <!-- Header Section -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <h1 class="fw-bold display-6 mb-0" id="story-title">{{ story['title'] }}</h1>
+                        <button class="btn btn-outline-info btn-sm rounded-pill translate-btn"
+                            onclick="translateContent('story-title', '{{ user_lang }}')">
+                            <i class="fas fa-language"></i> {{ _('Translate') }}
+                        </button>
+                    </div>
                     <div class="d-flex align-items-center gap-3">
                         <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST">
                             <button type="submit"
@@ -101,7 +108,13 @@
                     </div>
                 </div>
 
-                <p class="lead text-dark mb-4">{{ story['content'] }}</p>
+                <div class="mb-4">
+                    <p class="lead text-dark mb-2" id="story-content">{{ story['content'] }}</p>
+                    <button class="btn btn-link p-0 text-info text-decoration-none translate-btn"
+                        onclick="translateContent('story-content', '{{ user_lang }}')">
+                        <i class="fas fa-language"></i> {{ _('Translate Content') }}
+                    </button>
+                </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                     <div class="d-flex flex-wrap gap-2">
@@ -604,5 +617,56 @@
             });
         });
     });
+
+    /**
+     * Translates content of a specific element using the AJAX API.
+     * @param {string} elementId - ID of the element containing text to translate.
+     * @param {string} targetLang - The target language code (e.g., 'en', 'zh_CN').
+     */
+    function translateContent(elementId, targetLang) {
+        const element = document.getElementById(elementId);
+        const btn = event.currentTarget;
+        const originalText = element.innerText;
+        const originalBtnHtml = btn.innerHTML;
+
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Translating...';
+
+        fetch('/translate', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: originalText,
+                target_lang: targetLang
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.translated_text) {
+                    element.innerText = data.translated_text;
+                    btn.innerHTML = '<i class="fas fa-undo"></i> Show Original';
+                    btn.onclick = () => {
+                        element.innerText = originalText;
+                        btn.innerHTML = originalBtnHtml;
+                        btn.onclick = () => translateContent(elementId, targetLang);
+                    };
+                } else {
+                    alert('Translation failed. Please try again later.');
+                    btn.innerHTML = originalBtnHtml;
+                }
+            })
+            .catch(err => {
+                console.error('Translation error:', err);
+                alert('Error connecting to translation service.');
+                btn.innerHTML = originalBtnHtml;
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+    }
 </script>
 {% endblock %}

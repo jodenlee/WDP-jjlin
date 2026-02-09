@@ -3,7 +3,8 @@
 {% block content %}
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-comments me-2"></i> Messages</h2>
+    <h2 class="fw-bold" style="color: var(--primary-color);"><i class="fas fa-comments me-2"></i> {{ _('Messages') }}
+    </h2>
 </div>
 
 <div class="row">
@@ -37,14 +38,14 @@
         {% else %}
         <div class="text-center py-5">
             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-            <p class="text-muted">No messages yet.</p>
-            <p class="text-muted small">Start a conversation with someone from the community!</p>
+            <p class="text-muted">{{ _('No messages yet.') }}</p>
+            <p class="text-muted small">{{ _('Start a conversation with someone from the community!') }}</p>
         </div>
         {% endif %}
 
         <!-- Users to message -->
         <div class="mt-4">
-            <h5 class="fw-bold mb-3">Start a Conversation</h5>
+            <h5 class="fw-bold mb-3">{{ _('Start a Conversation') }}</h5>
             <div class="row g-3">
                 {% for user in users %}
                 <div class="col-6 col-md-4">
@@ -55,7 +56,7 @@
                                 <i class="fas fa-user" style="color: var(--primary-color);"></i>
                             </div>
                             <span class="fw-bold small text-dark">{{ user['username'] }}</span>
-                            <span class="badge bg-light text-muted">{{ user['role'] }}</span>
+                            <span class="badge bg-light text-muted">{{ _(user['role']) }}</span>
                         </div>
                     </a>
                 </div>
