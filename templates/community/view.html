@@ -169,7 +169,7 @@
                             <p class="card-text" id="postContent-{{ post['id'] }}">{{ post['content'] }}</p>
                             <!-- Read Aloud Button -->
                             <button type="button" class="btn btn-sm btn-outline-secondary mb-2"
-                                onclick="readAloud('postContent-{{ post['id'] }}', this)">
+                                onclick="readAloud('postContent-{{ post.id }}', this)">
                                 <i class="fas fa-volume-up"></i> Read Aloud
                             </button>
                             {% if post['image_url'] %}
