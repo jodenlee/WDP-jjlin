@@ -218,6 +218,7 @@ class Database:
                 user_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 image_url TEXT,
+                audio_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (group_id) REFERENCES groups (id),
                 FOREIGN KEY (user_id) REFERENCES users (id)
@@ -255,6 +256,12 @@ class Database:
             cursor.execute("SELECT likes FROM group_posts LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
+
+        # Add audio_url column to group_posts if not exists
+        try:
+            cursor.execute("SELECT audio_url FROM group_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_posts ADD COLUMN audio_url TEXT")
         
         conn.commit()
         conn.close()

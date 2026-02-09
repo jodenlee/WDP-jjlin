@@ -11,7 +11,7 @@ app.secret_key = 'togethersg-secret-key-change-in-production'  # Change this in 
 
 # Upload Configuration
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'mp3', 'wav', 'ogg', 'm4a'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Ensure upload directory exists
@@ -1052,16 +1052,35 @@ def create_group_post(group_id):
         content (str): The text content of the post.
     """
     user_id = session['user_id']
-    content = request.form['content']
+    content = request.form.get('content', '')
     
     # Image upload removed as per user request
     image_url = None
 
+    # Handle audio upload
+    audio_url = None
+    if 'audio' in request.files:
+        audio_file = request.files['audio']
+        if audio_file and audio_file.filename:
+            # We can trust the browser to send a blob with a filename, or we can set one
+            filename = secure_filename(audio_file.filename)
+            # If filename is empty or 'blob', give it a proper name
+            if not filename or filename == 'blob':
+                import time
+                filename = f"audio_{int(time.time())}.wav" # Default to wav if blob
+            else:
+                 import time
+                 filename = f"audio_{int(time.time())}_{filename}"
+
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            audio_file.save(filepath)
+            audio_url = f"uploads/{filename}"
+
     db = get_db()
     conn = db.get_connection()
     conn.execute(
-        "INSERT INTO group_posts (group_id, user_id, content, image_url) VALUES (?, ?, ?, ?)",
-        (group_id, user_id, content, image_url)
+        "INSERT INTO group_posts (group_id, user_id, content, image_url, audio_url) VALUES (?, ?, ?, ?, ?)",
+        (group_id, user_id, content, image_url, audio_url)
     )
     conn.commit()
     flash('Post created!', 'success')
