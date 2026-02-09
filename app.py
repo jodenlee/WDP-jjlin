@@ -1,4 +1,4 @@
-from flask import Flask, g, request
+from flask import Flask, render_template, g, session, request, redirect, url_for, flash
 import os
 from dotenv import load_dotenv
 from flask_babel import Babel, _
@@ -14,12 +14,14 @@ oauth = OAuth()
 babel = Babel()
 
 def get_locale():
-    from flask import g
-    from flask import request
-    # 1. Try to get locale from logged in user preference
+    from flask import g, session, request
+    # 1. Try to get locale from session (set by language selector)
+    if 'language' in session:
+        return session['language']
+    # 2. Try to get locale from logged in user preference
     if hasattr(g, 'user') and g.user and 'language' in g.user.keys():
         return g.user['language']
-    # 2. Try to get locale from request (browser settings)
+    # 3. Try to get locale from request (browser settings)
     return request.accept_languages.best_match(['en', 'zh_CN'])
 
 def create_app():
@@ -80,7 +82,7 @@ def create_app():
         return {
             'GOOGLE_MAPS_API_KEY': GOOGLE_MAPS_API_KEY,
             '_': auto_translate,
-            'user_lang': g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en'
+            'user_lang': session.get('language') or (g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en')
         }
 
     from utils import get_db, get_current_user
