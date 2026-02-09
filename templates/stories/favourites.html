@@ -4,8 +4,8 @@
 <section class="mb-5">
     <div class="d-flex flex-column gap-3">
         <div class="d-flex align-items-center position-relative">
-            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg me-3">← Back</a>
-            <h1 class="fw-bold mb-0">My Favourites</h1>
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg me-3">← {{ _('Back') }}</a>
+            <h1 class="fw-bold mb-0">{{ _('My Favourites') }}</h1>
         </div>
 
         <!-- Search & Filters -->
@@ -15,7 +15,7 @@
                 <!-- Search -->
                 <div class="col-12 col-md-5 position-relative">
                     <input type="text" name="search" id="fav-search-input" class="form-control form-control-lg pe-5"
-                        placeholder="Search your favourites..." value="{{ request.args.get('search', '') }}">
+                        placeholder="{{ _('Search your favourites...') }}" value="{{ request.args.get('search', '') }}">
                     <i class="fas fa-times position-absolute top-50 end-0 translate-middle-y me-4 text-muted cursor-pointer"
                         id="fav-clear-search" style="cursor: pointer; display: none;"></i>
                 </div>
@@ -27,7 +27,7 @@
                             data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
                             <span class="fav-tags-display text-truncate d-block">{% if selected_tags %}{{ selected_tags
                                 |
-                                join(', ') }}{% else %}Tags{% endif %}</span>
+                                join(', ') }}{% else %}{{ _('Tags') }}{% endif %}</span>
                         </button>
                         <ul class="dropdown-menu p-2" style="min-width: 200px; max-height: 400px; overflow-y: auto;"
                             aria-labelledby="favTagsDropdown">
@@ -40,7 +40,7 @@
                                 </label>
                             </li>
                             {% else %}
-                            <li class="dropdown-item text-muted">No tags available</li>
+                            <li class="dropdown-item text-muted">{{ _('No tags available') }}</li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -49,9 +49,11 @@
                 <!-- Sorting -->
                 <div class="col-4 col-md-2">
                     <select name="sort" class="form-select form-select-lg">
-                        <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>Newest
+                        <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>{{
+                            _('Newest') }}
                         </option>
-                        <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>Popular
+                        <option value="likes" {% if request.args.get('sort')=='likes' %}selected{% endif %}>{{
+                            _('Popular') }}
                         </option>
                     </select>
                 </div>
@@ -60,16 +62,16 @@
                 <div class="col-4 col-md-2">
                     <div class="input-group">
                         <input type="text" id="fav-location-filter" name="location" list="singapore-locations"
-                            class="form-control form-control-lg" placeholder="Location"
+                            class="form-control form-control-lg" placeholder="{{ _('Location') }}"
                             value="{{ request.args.get('location', '') }}">
                         <!-- Clear Location Button -->
                         <button type="button" class="btn btn-outline-secondary border-start-0 border"
-                            id="fav-clear-location" style="display: none;" title="Clear Location">
+                            id="fav-clear-location" style="display: none;" title="{{ _('Clear Location') }}">
                             <i class="fas fa-times"></i>
                         </button>
                         <button type="button" id="fav-use-location-btn" class="btn btn-outline-secondary"
                             onclick="populateLocationField('fav-location-filter', 'fav-use-location-btn')"
-                            title="Use My Location">
+                            title="{{ _('Use My Location') }}">
                             <i class="fas fa-crosshairs"></i>
                         </button>
                     </div>
@@ -87,7 +89,7 @@
                     const checkboxes = document.querySelectorAll('#favTagsDropdown + .dropdown-menu input[type="checkbox"]:checked');
                     const display = document.querySelector('.fav-tags-display');
                     if (checkboxes.length === 0) {
-                        display.textContent = 'Tags';
+                        display.textContent = "{{ _('Tags') }}";
                     } else {
                         const tags = Array.from(checkboxes).map(cb => cb.value);
                         display.textContent = tags.join(', ');

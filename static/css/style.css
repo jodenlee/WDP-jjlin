@@ -331,3 +331,87 @@ h6 {
 .detail-carousel .nav-arrow:hover {
     background: rgba(0, 0, 0, 0.6);
 }
+
+/* Speech to Text Styles */
+.listening-pulse {
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+
+.lang-selector {
+    max-width: 80px;
+    font-size: 0.85rem;
+    padding: 0 0.2rem;
+    border-radius: 0;
+    cursor: pointer;
+    text-align: center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none !important;
+    /* Hide arrow to save space in narrow panel */
+}
+
+.clear-btn {
+    transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+    color: #dc3545 !important;
+}
+
+/* Notification Styles */
+#notification-badge {
+    padding: 0.25em 0.4em;
+    font-weight: 600;
+}
+
+.dropdown-item.whitespace-normal {
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item.whitespace-normal:hover {
+    background-color: var(--accent-color);
+}
+
+#notifications-list {
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+body.dark-theme #notifications-list {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border) !important;
+}
+
+body.dark-theme #notifications-list .dropdown-item {
+    color: var(--text-color);
+}
+
+body.dark-theme #notifications-list .dropdown-item:hover {
+    background-color: var(--hover-bg);
+}
+
+body.dark-theme #notifications-list .border-bottom {
+    border-bottom: 1px solid var(--card-border) !important;
+}
+
+body.dark-theme #notifications-list .border-top {
+    border-top: 1px solid var(--card-border) !important;
+}

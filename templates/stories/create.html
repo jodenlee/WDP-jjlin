@@ -1,5 +1,20 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<!-- SortableJS for media rearrangement -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<style>
+    .new-image-container:hover {
+        cursor: move;
+    }
+
+    .sortable-ghost {
+        opacity: 0.4;
+        border: 2px dashed var(--primary-color);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-md-8 col-lg-6">
@@ -7,74 +22,194 @@
             <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">← Back to Stories</a>
         </div>
         <div class="form-container">
-            <h1 class="mb-4">Post a New Story</h1>
+            <h1 class="mb-4">{{ _('Post a New Story') }}</h1>
             <form method="POST" class="story-form" enctype="multipart/form-data" novalidate>
                 <div class="mb-3">
-                    <label for="title" class="form-label fw-bold fs-5">Title</label>
-                    <input type="text" id="title" name="title" class="form-control form-control-lg" required
-                        minlength="3" maxlength="100" value="{{ form.title if form else '' }}"
-                        placeholder="Give your story a title">
-                    <div class="form-text">Title must be between 3 and 100 characters.</div>
+                    <label for="title" class="form-label fw-bold fs-5">{{ _('Title') }}</label>
+                    <div class="input-group">
+                        <input type="text" id="title" name="title" class="form-control form-control-lg" required
+                            minlength="3" maxlength="100" value="{{ form.title if form else '' }}"
+                            placeholder="{{ _('Give your story a title') }}">
+                        <select class="form-select lang-selector border-start-0" id="title-lang">
+                            <option value="en-SG" selected>EN</option>
+                            <option value="zh-CN">中</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-secondary" id="title-stt-btn"
+                            onclick="toggleSpeechRecognition('title-stt-btn', 'title', 'title-lang')"
+                            title="Speak Title">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary clear-btn" onclick="clearInput('title')"
+                            title="Clear Title">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">{{ _('Title must be between 3 and 100 characters.') }}</div>
                 </div>
 
                 <div class="mb-3">
-                    <label for="content" class="form-label fw-bold fs-5">Story Content</label>
-                    <textarea id="content" name="content" rows="6" class="form-control form-control-lg" required
-                        minlength="10" placeholder="Share your memory...">{{ form.content if form else '' }}</textarea>
-                    <div class="form-text">Share at least 10 characters about your story.</div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold fs-5">Upload Images</label>
-                    <div id="image-inputs-container">
-                        <div class="input-group mb-2">
-                            <input type="file" name="images" class="form-control form-control-lg" accept="image/*">
-                            <button type="button" class="btn btn-outline-danger remove-image-btn"
-                                style="display:none;">&times;</button>
+                    <label for="content" class="form-label fw-bold fs-5">{{ _('Story Content') }}</label>
+                    <div class="input-group">
+                        <textarea id="content" name="content" rows="6" class="form-control form-control-lg" required
+                            minlength="10"
+                            placeholder="{{ _('Share your memory...') }}">{{ form.content if form else '' }}</textarea>
+                        <div class="d-flex flex-column border rounded-end bg-light overflow-hidden"
+                            style="width: 45px;">
+                            <button type="button" class="btn btn-outline-secondary border-0 clear-btn py-2"
+                                onclick="clearInput('content')" title="Clear Content"
+                                style="border-bottom: 1px solid #dee2e6 !important; border-radius: 0;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="flex-grow-1 d-flex align-items-center justify-content-center border-bottom">
+                                <select class="form-select border-0 bg-transparent lang-selector p-0 text-center"
+                                    id="content-lang" style="box-shadow: none; height: 35px;">
+                                    <option value="en-SG" selected>EN</option>
+                                    <option value="zh-CN">中</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary border-0 py-3" id="content-stt-btn"
+                                onclick="toggleSpeechRecognition('content-stt-btn', 'content', 'content-lang')"
+                                title="Speak Story Content">
+                                <i class="fas fa-microphone"></i>
+                            </button>
                         </div>
                     </div>
-                    <button type="button" id="add-image-btn"
-                        class="btn btn-outline-primary d-flex align-items-center gap-2">
-                        <i class="fas fa-plus"></i> Add Another Image
+                    <div class="form-text">{{ _('Share at least 10 characters about your story.') }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold fs-5">{{ _('Upload Images') }}</label>
+                    <div class="d-flex flex-wrap gap-3 mb-3" id="images-gallery">
+                        <!-- Container for new image previews -->
+                        <div id="new-images-container" class="d-flex flex-wrap gap-3"></div>
+                    </div>
+
+                    <!-- Hidden file input -->
+                    <input type="file" id="hidden-image-input" name="images" class="d-none" accept="image/*,video/*"
+                        multiple>
+
+                    <button type="button" id="add-image-btn" class="btn btn-primary d-flex align-items-center gap-2">
+                        <i class="fas fa-plus"></i> {{ _('Add Media') }}
                     </button>
-                    <div class="form-text mt-2">Add images one by one to create a gallery carousel. Supported: jpg, png,
-                        webp.
+                    <div class="form-text mt-2">{{ _('Add images or videos to your story. Supported: jpg, png, webm,
+                        mp4.') }}
                     </div>
                 </div>
 
                 <!-- script for dynamic inputs -->
                 <script>
                     document.addEventListener('DOMContentLoaded', function () {
-                        const container = document.getElementById('image-inputs-container');
                         const addBtn = document.getElementById('add-image-btn');
+                        const hiddenInput = document.getElementById('hidden-image-input');
+                        const newImagesContainer = document.getElementById('new-images-container');
 
-                        addBtn.addEventListener('click', function () {
-                            const div = document.createElement('div');
-                            div.className = 'input-group mb-2';
-                            div.innerHTML = `
-                        <input type="file" name="images" class="form-control form-control-lg" accept="image/*">
-                        <button type="button" class="btn btn-outline-danger remove-image-btn">&times;</button>
-                    `;
-                            container.appendChild(div);
+                        // Initialize SortableJS
+                        const sortable = new Sortable(newImagesContainer, {
+                            animation: 150,
+                            ghostClass: 'sortable-ghost',
+                            draggable: '.new-image-container'
                         });
 
-                        container.addEventListener('click', function (e) {
-                            if (e.target.classList.contains('remove-image-btn')) {
-                                e.target.parentElement.remove();
+                        // Store all selected files
+                        let selectedFiles = [];
+
+                        // Click "Add Image" opens file picker
+                        addBtn.addEventListener('click', function () {
+                            hiddenInput.click();
+                        });
+
+                        // When files are selected, show previews
+                        hiddenInput.addEventListener('change', function (e) {
+                            const files = Array.from(e.target.files);
+
+                            files.forEach((file, index) => {
+                                // Allow both images and videos
+                                const isImage = file.type.startsWith('image/');
+                                const isVideo = file.type.startsWith('video/');
+
+                                if (!isImage && !isVideo) return;
+
+                                const fileIndex = selectedFiles.length;
+                                selectedFiles.push(file);
+
+                                const div = document.createElement('div');
+                                div.className = 'd-flex flex-column align-items-center gap-2 new-image-container';
+                                div.dataset.fileIndex = fileIndex;
+
+                                let previewHtml = '';
+                                if (isImage) {
+                                    const reader = new FileReader();
+                                    reader.onload = function (event) {
+                                        const img = div.querySelector('img');
+                                        if (img) img.src = event.target.result;
+                                    };
+                                    reader.readAsDataURL(file);
+                                    previewHtml = `<img src="" class="w-100 h-100 object-fit-cover" alt="New Image">`;
+                                } else {
+                                    // Video preview
+                                    const fileURL = URL.createObjectURL(file);
+                                    previewHtml = `
+                                        <video src="${fileURL}" class="w-100 h-100 object-fit-cover bg-black" controls muted></video>
+                                    `;
+                                }
+
+                                div.innerHTML = `
+                                    <div class="border rounded p-1 position-relative" style="width: 150px; height: 150px;">
+                                        ${previewHtml}
+                                        ${isVideo ? '<div class="position-absolute top-0 start-0 m-1"><span class="badge bg-dark opacity-75"><i class="fas fa-video"></i></span></div>' : ''}
+                                    </div>
+                                    <button type="button" class="btn btn-danger btn-sm remove-new-image-btn" style="width: 150px;">
+                                        {{ _('Remove') }}
+                                    </button>
+                                `;
+                                newImagesContainer.appendChild(div);
+                            });
+
+                            // Clear the input so the same file can be selected again
+                            hiddenInput.value = '';
+                        });
+
+                        // Remove new image preview
+                        newImagesContainer.addEventListener('click', function (e) {
+                            if (e.target.classList.contains('remove-new-image-btn')) {
+                                const container = e.target.closest('.new-image-container');
+                                const fileIndex = parseInt(container.dataset.fileIndex);
+                                selectedFiles[fileIndex] = null; // Mark as removed
+                                container.remove();
                             }
+                        });
+
+                        // Before form submit, update the file input with selected files
+                        const form = document.querySelector('.story-form');
+                        form.addEventListener('submit', function (e) {
+                            // Create a new DataTransfer to hold selected files in visual order
+                            const dt = new DataTransfer();
+                            const containers = Array.from(newImagesContainer.querySelectorAll('.new-image-container'));
+
+                            containers.forEach(container => {
+                                const fileIndex = parseInt(container.dataset.fileIndex);
+                                const file = selectedFiles[fileIndex];
+                                if (file) {
+                                    dt.items.add(file);
+                                }
+                            });
+
+                            hiddenInput.files = dt.files;
                         });
                     });
                 </script>
+                <script src="{{ url_for('static', filename='js/speech.js') }}"></script>
+
 
                 <div class="mb-3">
-                    <label for="location" class="form-label fw-bold fs-5">Location</label>
+                    <label for="location" class="form-label fw-bold fs-5">{{ _('Location') }}</label>
                     <div class="input-group">
                         <input type="text" id="location" name="location" list="singapore-locations"
                             class="form-control form-control-lg" maxlength="100"
                             value="{{ form.location if form else '' }}" placeholder="e.g. Toa Payoh Public Library">
                         <button type="button" id="use-location-btn" class="btn btn-outline-secondary"
                             onclick="populateLocationField('location', 'use-location-btn')">
-                            <i class="fas fa-crosshairs"></i> Use My Location
+                            <i class="fas fa-crosshairs"></i> {{ _('Use My Location') }}
                         </button>
                     </div>
                     {% include 'partials/locations.html' %}
@@ -83,16 +218,18 @@
 
                 <!-- Tags Input -->
                 <div class="mb-3">
-                    <label for="tags" class="form-label fw-bold fs-5">Tags</label>
+                    <label for="tags" class="form-label fw-bold fs-5">{{ _('Tags') }}</label>
                     <input type="text" id="tags" name="tags" class="form-control form-control-lg" maxlength="200"
                         value="{{ form.tags if form else '' }}"
                         placeholder="e.g. Food, Heritage, Nature (comma-separated, max 5)">
-                    <div class="form-text">Add up to 5 tags to help others find your story. Separate with commas.</div>
+                    <div class="form-text">{{ _('Add up to 5 tags to help others find your story. Separate with
+                        commas.') }}</div>
                 </div>
 
                 <div class="d-flex gap-2 justify-content-end">
-                    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-lg btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-lg btn-primary">Post Story</button>
+                    <a href="{{ url_for('stories.stories_list') }}" class="btn btn-lg btn-outline-secondary">{{
+                        _('Cancel') }}</a>
+                    <button type="submit" class="btn btn-lg btn-primary">{{ _('Post Story') }}</button>
                 </div>
             </form>
         </div>

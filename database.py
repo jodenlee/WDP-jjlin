@@ -105,11 +105,45 @@ class Database:
                 story_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
+                likes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (story_id) REFERENCES stories (id),
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
+
+        # Add likes column to comments if not exists
+        try:
+            cursor.execute("SELECT likes FROM comments LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE comments ADD COLUMN likes INTEGER DEFAULT 0")
+
+        # Comment Likes Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comment_likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                comment_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (comment_id) REFERENCES comments (id),
+                UNIQUE(user_id, comment_id)
+            )
+        ''')
+
+        # Comment Replies Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comment_replies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (comment_id) REFERENCES comments (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
 
         # Groups Table (Community)
         cursor.execute('''
@@ -225,10 +259,17 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 story_id INTEGER NOT NULL,
                 image_path TEXT NOT NULL,
+                position INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (story_id) REFERENCES stories (id)
             )
         ''')
+
+        # Add position column to story_images if not exists
+        try:
+            cursor.execute("SELECT position FROM story_images LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE story_images ADD COLUMN position INTEGER DEFAULT 0")
 
         # Story Tags Table (Up to 5 tags per story)
         cursor.execute('''
@@ -275,11 +316,16 @@ class Database:
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
 
-        # Add likes column to group_posts if not exists
+        # Add likes and audio_url columns to group_posts if not exists
         try:
             cursor.execute("SELECT likes FROM group_posts LIMIT 1")
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
+        
+        try:
+            cursor.execute("SELECT audio_url FROM group_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_posts ADD COLUMN audio_url TEXT")
 
         # Add notification preference columns if not exists
         try:
@@ -289,6 +335,16 @@ class Database:
             cursor.execute("ALTER TABLE users ADD COLUMN notify_activities INTEGER DEFAULT 1")
             cursor.execute("ALTER TABLE users ADD COLUMN notify_stories INTEGER DEFAULT 1")
             cursor.execute("ALTER TABLE users ADD COLUMN notify_groups INTEGER DEFAULT 1")
+
+        # UI Translations Cache Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ui_translations (
+                text_key TEXT,
+                language TEXT,
+                translation TEXT,
+                PRIMARY KEY(text_key, language)
+            )
+        ''')
 
         # Add language preference column if not exists
         try:

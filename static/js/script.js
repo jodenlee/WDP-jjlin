@@ -112,37 +112,61 @@ function checkAlertsForModals() {
         {
             keywords: ['already reported this story'],
             title: 'Already Reported',
-            body: 'You have already reported this story. We are reviewing it.'
+            body: 'You have already reported this story. We are reviewing it.',
+            btnClass: 'btn-primary'
         },
         {
             keywords: ['Welcome back!'],
             title: 'Login Successful',
-            body: 'Welcome back to TogetherSG!'
+            body: 'Welcome back to TogetherSG!',
+            btnClass: 'btn-primary'
         },
         {
             keywords: ['Account created successfully!'],
             title: 'Welcome to TogetherSG!',
-            body: 'Your account has been created successfully. Please log in to continue.'
+            body: 'Your account has been created successfully. Please log in to continue.',
+            btnClass: 'btn-primary'
         },
         {
             keywords: ['You have been logged out.'],
             title: 'Logged Out',
-            body: 'You have been successfully logged out. See you again soon!'
+            body: 'You have been successfully logged out. See you again soon!',
+            btnClass: 'btn-primary'
         },
         {
             keywords: ['Comment posted successfully!'],
             title: 'Comment Posted',
-            body: 'Your comment has been added to the story.'
+            body: 'Your comment has been added to the story.',
+            btnClass: 'btn-primary'
         },
         {
             keywords: ['Comment deleted.'],
             title: 'Comment Deleted',
-            body: 'Your comment has been successfully removed.'
+            body: 'Your comment has been successfully removed.',
+            btnClass: 'btn-primary'
+        },
+        {
+            keywords: ['Story deleted successfully.'],
+            title: 'Story Deleted',
+            body: 'Your story has been permanently removed.',
+            btnClass: 'btn-primary'
+        },
+        {
+            keywords: ['Reply deleted.'],
+            title: 'Reply Deleted',
+            body: 'Your reply has been successfully removed.',
+            btnClass: 'btn-primary'
+        },
+        {
+            keywords: ['flagged by our safety system'],
+            title: 'Safety Warning',
+            body: 'Your content has been flagged by our safety system. Please ensure it follows community guidelines.',
+            btnClass: 'btn-danger'
         }
     ];
 
-    // Select all alerts (success and info)
-    const alerts = document.querySelectorAll('.alert-success, .alert-info');
+    // Select all alerts (success, info, and warning)
+    const alerts = document.querySelectorAll('.alert-success, .alert-info, .alert-warning');
 
     alerts.forEach(function (alert) {
         const text = alert.textContent.trim();
@@ -165,6 +189,12 @@ function checkAlertsForModals() {
                     modalTitle.textContent = trigger.title;
                     modalBody.textContent = trigger.body;
 
+                    // Update Button Theme
+                    const modalBtn = document.getElementById('globalSuccessModalBtn');
+                    if (modalBtn) {
+                        modalBtn.className = 'btn px-5 fw-bold ' + (trigger.btnClass || 'btn-primary');
+                    }
+
                     // Show the modal
                     var myModal = new bootstrap.Modal(document.getElementById('globalSuccessModal'));
                     myModal.show();
@@ -175,3 +205,104 @@ function checkAlertsForModals() {
         }
     });
 }
+
+
+
+// ============================================================================
+// REAL-TIME NOTIFICATIONS
+// ============================================================================
+let notificationPollingInterval = null;
+
+function startNotificationPolling() {
+    // Only poll if user is logged in (check if notification bell exists)
+    const notifDropdown = document.getElementById('notificationsDropdown');
+    if (!notifDropdown) return;
+
+    // Poll immediately, then every 30 seconds
+    fetchNotifications();
+    notificationPollingInterval = setInterval(fetchNotifications, 30000);
+}
+
+function fetchNotifications() {
+    fetch('/api/notifications')
+        .then(response => {
+            if (!response.ok) throw new Error('Not logged in');
+            return response.json();
+        })
+        .then(data => {
+            updateNotificationUI(data);
+        })
+        .catch(err => {
+            // User not logged in or error - stop polling
+            if (notificationPollingInterval) {
+                clearInterval(notificationPollingInterval);
+            }
+        });
+}
+
+function updateNotificationUI(data) {
+    // Update badge count
+    const badge = document.getElementById('notification-badge');
+    if (badge) {
+        if (data.unread_count > 0) {
+            badge.textContent = data.unread_count;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Update dropdown content
+    const notificationsItems = document.getElementById('notifications-items');
+    if (!notificationsItems) return;
+
+    if (data.notifications.length > 0) {
+        let html = '';
+        data.notifications.forEach(notif => {
+            html += `
+                <li>
+                    <div class="dropdown-item p-3 border-bottom whitespace-normal" style="white-space: normal;">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-light text-primary border" style="font-size: 0.85rem;">${notif.type}</span>
+                            <small class="text-muted" style="font-size: 0.85rem;">${notif.created_at}</small>
+                        </div>
+                        <p class="mb-3 fw-semibold text-dark fs-6">${notif.content}</p>
+                        <div class="d-flex justify-content-end gap-3 mt-1">
+                            ${notif.link ? `<a href="${notif.link}" class="btn btn-sm btn-outline-primary py-1 px-3" style="font-size: 0.85rem;">View</a>` : ''}
+                            <button onclick="markAsRead(${notif.id}, this)" class="btn btn-sm btn-link p-0 text-muted text-decoration-none" style="font-size: 0.85rem;">Dismiss</button>
+                        </div>
+                    </div>
+                </li>
+            `;
+        });
+        notificationsItems.innerHTML = html;
+    } else {
+        notificationsItems.innerHTML = `
+            <li class="p-4 text-center text-muted">
+                <i class="fas fa-bell-slash mb-2 d-block fa-2x"></i>
+                <span class="small">No new notifications</span>
+            </li>
+        `;
+    }
+}
+
+function markAsRead(id, btn) {
+    fetch(`/notifications/mark_read/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => {
+            if (response.ok) {
+                // Re-fetch to update UI
+                fetchNotifications();
+            }
+        })
+        .catch(err => console.error('Error marking as read:', err));
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    startNotificationPolling();
+});

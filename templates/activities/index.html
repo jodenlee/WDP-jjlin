@@ -4,9 +4,10 @@
 <section class="mb-5">
     <!-- Header Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold text-dark mb-3 mb-md-0">Activities Feed</h1>
+        <h1 class="fw-bold text-dark mb-3 mb-md-0">{{ _('Activities Feed') }}</h1>
         <div class="d-flex gap-2">
-            <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary btn-lg">+ New Activity</a>
+            <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary btn-lg">+ {{ _('New Activity')
+                }}</a>
         </div>
     </div>
 
@@ -20,28 +21,29 @@
         <form action="{{ url_for('activities.activities_list') }}" method="get" class="row g-2 align-items-center">
             <!-- Search -->
             <div class="col-12 col-md-5">
-                <input type="text" name="q" class="form-control form-control-lg" placeholder="Search activities..."
-                    value="{{ q }}">
+                <input type="text" name="q" class="form-control form-control-lg"
+                    placeholder="{{ _('Search activities...') }}" value="{{ q }}">
             </div>
 
             <!-- Location -->
             <div class="col-6 col-md-3">
-                <input type="text" name="location" class="form-control form-control-lg" placeholder="Location"
-                    value="{{ loc_q }}">
+                <input type="text" name="location" class="form-control form-control-lg"
+                    placeholder="{{ _('Location') }}" value="{{ loc_q }}">
             </div>
 
             <!-- Sorting -->
             <div class="col-6 col-md-2">
                 <select name="sort" class="form-select form-select-lg">
-                    <option value="newest" {{ 'selected' if s=='newest' else '' }}>Newest</option>
-                    <option value="upcoming" {{ 'selected' if s=='upcoming' else '' }}>Upcoming</option>
-                    <option value="oldest" {{ 'selected' if s=='oldest' else '' }}>Oldest</option>
+                    <option value="newest" {{ 'selected' if s=='newest' else '' }}>{{ _('Newest') }}</option>
+                    <option value="upcoming" {{ 'selected' if s=='upcoming' else '' }}>{{ _('Upcoming') }}</option>
+                    <option value="oldest" {{ 'selected' if s=='oldest' else '' }}>{{ _('Oldest') }}</option>
                 </select>
             </div>
 
             <!-- Search Button -->
             <div class="col-12 col-md-2 d-grid">
-                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> Search</button>
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> {{ _('Search')
+                    }}</button>
             </div>
         </form>
     </div>
@@ -52,9 +54,9 @@
     {% if activities and activities|length > 0 %}
     {% for activity in activities %}
 
-    {% set title = activity['title'] if activity['title'] else 'Untitled' %}
+    {% set title = activity['title'] if activity['title'] else _('Untitled') %}
     {% set desc = activity['description'] if activity['description'] else '' %}
-    {% set typ = activity['type'] if activity['type'] else 'Event' %}
+    {% set typ = activity['type'] if activity['type'] else _('Event') %}
     {% set date = activity['event_date'] %}
     {% set loc = activity['location'] %}
     {% set rsvp = activity['rsvp_count'] if activity['rsvp_count'] else 0 %}
@@ -92,7 +94,7 @@
                             <li>
                                 <a class="dropdown-item"
                                     href="{{ url_for('activities.edit_activity', activity_id=activity['id']) }}">
-                                    <i class="fas fa-edit me-2 text-primary"></i> Edit
+                                    <i class="fas fa-edit me-2 text-primary"></i> {{ _('Edit') }}
                                 </a>
                             </li>
                             <li>
@@ -100,7 +102,7 @@
                                     method="POST"
                                     onsubmit="return confirm('Delete this activity? This cannot be undone.');">
                                     <button type="submit" class="dropdown-item text-danger">
-                                        <i class="fas fa-trash-alt me-2"></i> Delete
+                                        <i class="fas fa-trash-alt me-2"></i> {{ _('Delete') }}
                                     </button>
                                 </form>
                             </li>
@@ -113,14 +115,14 @@
                     {% if desc %}
                     {{ desc[:100] }}{% if desc|length > 100 %}...{% endif %}
                     {% else %}
-                    <span class="fst-italic">No description provided.</span>
+                    <span class="fst-italic">{{ _('No description provided.') }}</span>
                     {% endif %}
                 </p>
 
                 <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
                     <div class="d-flex align-items-center gap-1">
                         <i class="fas fa-users text-primary"></i>
-                        <span>{{ rsvp }} attending</span>
+                        <span>{{ rsvp }} {{ _('attending') }}</span>
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <i class="fas fa-map-marker-alt text-danger"></i>
@@ -131,18 +133,18 @@
                 <div class="d-flex gap-2">
                     <a href="{{ url_for('activities.view_activity', activity_id=activity['id']) }}"
                         class="btn btn-outline-primary flex-grow-1">
-                        View Details
+                        {{ _('View Details') }}
                     </a>
                     {% if activity['id'] in user_joined_ids %}
                     <form action="{{ url_for('activities.leave_activity', activity_id=activity['id']) }}" method="POST">
                         <button class="btn btn-success" type="submit" title="Click to leave">
-                            <i class="fas fa-check me-1"></i> Joined
+                            <i class="fas fa-check me-1"></i> {{ _('Joined') }}
                         </button>
                     </form>
                     {% else %}
                     <form action="{{ url_for('activities.join_activity', activity_id=activity['id']) }}" method="POST">
                         <button class="btn btn-primary" type="submit">
-                            <i class="fas fa-check me-1"></i> Join
+                            <i class="fas fa-check me-1"></i> {{ _('Join') }}
                         </button>
                     </form>
                     {% endif %}
@@ -156,10 +158,10 @@
     <div class="col-12">
         <div class="text-center py-5">
             <div class="mb-3" style="font-size: 64px; opacity: 0.3;">📅</div>
-            <h3 class="fw-bold mb-2">No activities yet</h3>
-            <p class="text-muted mb-4">Create the first activity and invite others to join!</p>
+            <h3 class="fw-bold mb-2">{{ _('No activities yet') }}</h3>
+            <p class="text-muted mb-4">{{ _('Create the first activity and invite others to join!') }}</p>
             <a href="{{ url_for('activities.create_activity') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus me-2"></i> Create Activity
+                <i class="fas fa-plus me-2"></i> {{ _('Create Activity') }}
             </a>
         </div>
     </div>

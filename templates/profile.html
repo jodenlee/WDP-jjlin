@@ -21,16 +21,16 @@
                 </div>
                 <nav class="nav flex-column">
                     <a class="nav-link active py-3 px-4 border-bottom" href="#profile-info" data-section="profile-info">
-                        <i class="fas fa-user me-2"></i>Profile Info
+                        <i class="fas fa-user me-2"></i>{{ _('Profile Info') }}
                     </a>
                     <a class="nav-link py-3 px-4 border-bottom" href="#notifications" data-section="notifications">
-                        <i class="fas fa-bell me-2"></i>Notifications
+                        <i class="fas fa-bell me-2"></i>{{ _('Notifications') }}
                     </a>
                     <a class="nav-link py-3 px-4 border-bottom" href="#appearance" data-section="appearance">
-                        <i class="fas fa-palette me-2"></i>Appearance
+                        <i class="fas fa-palette me-2"></i>{{ _('Appearance') }}
                     </a>
                     <a class="nav-link py-3 px-4" href="#privacy" data-section="privacy">
-                        <i class="fas fa-shield-alt me-2"></i>Privacy & Security
+                        <i class="fas fa-shield-alt me-2"></i>{{ _('Privacy & Security') }}
                     </a>
                 </nav>
             </div>
@@ -42,33 +42,34 @@
         <!-- Profile Info Section -->
         <div class="card nav-card-minimal mb-4" id="profile-info">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-user me-2"
-                        style="color: var(--primary-color);"></i><span>Profile Info</span></h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-user me-2" style="color: var(--primary-color);"></i><span>{{
+                        _('Profile Info') }}</span></h5>
             </div>
             <div class="card-body p-4">
                 <form action="{{ url_for('auth.update_profile') }}" method="POST" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="full_name" class="form-label fw-bold">Full Name</label>
+                            <label for="full_name" class="form-label fw-bold">{{ _('Full Name') }}</label>
                             <input type="text" class="form-control" id="full_name" name="full_name"
                                 value="{{ user.full_name }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="username" class="form-label fw-bold">Username</label>
+                            <label for="username" class="form-label fw-bold">{{ _('Username') }}</label>
                             <input type="text" class="form-control" id="username" name="username"
-                                value="{{ user.username }}" readonly>
+                                value="{{ user.username }}" required pattern="[a-zA-Z0-9_]{3,20}">
+                            <div class="form-text">{{ _('3-20 characters, letters, numbers, and underscores only.') }}
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="bio" class="form-label fw-bold">Bio</label>
+                        <label for="bio" class="form-label fw-bold">{{ _('Bio') }}</label>
                         <textarea class="form-control" id="bio" name="bio" rows="3"
-                            placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+                            placeholder="{{ _('Tell us about yourself...') }}">{{ user.bio or '' }}</textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="profile_pic" class="form-label fw-bold">Profile
-                            Picture</label>
+                        <label for="profile_pic" class="form-label fw-bold">{{ _('Profile Picture') }}</label>
                         <input type="file" class="form-control" id="profile_pic" name="profile_pic" accept="image/*">
-                        <div class="form-text">Upload a new photo to update your profile picture.</div>
+                        <div class="form-text">{{ _('Upload a new photo to update your profile picture.') }}</div>
                     </div>
 
                     <!-- Hidden notification fields (will be handled by checkboxes below visually but we need them in form) -->
@@ -87,7 +88,7 @@
                     <!-- WAIT, the backend expects everything in one POST. -->
                     <!-- We should combine them. -->
 
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Save Changes') }}</button>
 
                     <!-- We need to include notification settings in this POST if the backend expects them. -->
                     <!-- Current backend code resets them to 0 if missing. -->
@@ -101,8 +102,8 @@
         <!-- Notifications Section -->
         <div class="card nav-card-minimal mb-4" id="notifications">
             <div class="card-header bg-transparent border-bottom py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2"
-                        style="color: var(--primary-color);"></i><span>Notifications</span></h5>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2" style="color: var(--primary-color);"></i><span>{{
+                        _('Notifications') }}</span></h5>
             </div>
             <div class="card-body p-4">
                 <form action="{{ url_for('auth.update_notifications') }}" method="POST" id="notificationForm">
@@ -116,40 +117,37 @@
                         <input class="form-check-input" type="checkbox" id="notify_messages" name="notify_messages"
                             {{ 'checked' if user.notify_messages else '' }}>
                         <label class="form-check-label" for="notify_messages">
-                            <strong>New Messages</strong>
-                            <br><small class="text-muted">Get notified when you receive
-                                new messages</small>
+                            <strong>{{ _('New Messages') }}</strong>
+                            <br><small class="text-muted">{{ _('Get notified when you receive new messages') }}</small>
                         </label>
                     </div>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="notify_activities" name="notify_activities"
                             {{ 'checked' if user.notify_activities else '' }}>
                         <label class="form-check-label" for="notify_activities">
-                            <strong>Activity Reminders</strong>
-                            <br><small class="text-muted">Reminders for activities
-                                you've joined</small>
+                            <strong>{{ _('Activity Reminders') }}</strong>
+                            <br><small class="text-muted">{{ _("Reminders for activities you've joined") }}</small>
                         </label>
                     </div>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="notify_stories" name="notify_stories"
                             {{ 'checked' if user.notify_stories else '' }}>
                         <label class="form-check-label" for="notify_stories">
-                            <strong>Story Interactions</strong>
-                            <br><small class="text-muted">When someone likes or
-                                comments on your stories</small>
+                            <strong>{{ _('Story Interactions') }}</strong>
+                            <br><small class="text-muted">{{ _('When someone likes or comments on your stories')
+                                }}</small>
                         </label>
                     </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="notify_groups" name="notify_groups"
                             {{ 'checked' if user.notify_groups else '' }}>
                         <label class="form-check-label" for="notify_groups">
-                            <strong>Group Updates</strong>
-                            <br><small class="text-muted">Updates from groups you've
-                                joined</small>
+                            <strong>{{ _('Group Updates') }}</strong>
+                            <br><small class="text-muted">{{ _('When you join a group or someone joins your group')
+                                }}</small>
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-primary mt-3">Save
-                        Notification Settings</button>
+                    <button type="submit" class="btn btn-primary mt-3">{{ _('Save Notification Settings') }}</button>
                 </form>
             </div>
         </div>
@@ -158,27 +156,44 @@
         <div class="card nav-card-minimal mb-4" id="appearance">
             <div class="card-header bg-transparent border-bottom py-3">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-palette me-2"
-                        style="color: var(--primary-color);"></i><span>Appearance</span></h5>
+                        style="color: var(--primary-color);"></i><span>{{ _('Appearance') }}</span></h5>
             </div>
             <div class="card-body p-4">
                 <div class="mb-4">
-                    <label class="form-label fw-bold">Theme</label>
+                    <label class="form-label fw-bold">{{ _('Theme') }}</label>
                     <div class="d-flex gap-3">
                         <div class="form-check">
                             <input class="form-check-input topic-theme-btn" type="radio" name="theme" id="theme_light"
                                 value="light" onclick="setTheme('light')">
                             <label class="form-check-label" for="theme_light">
-                                <i class="fas fa-sun me-1"></i><span>Light</span>
+                                <i class="fas fa-sun me-1"></i><span>{{ _('Light') }}</span>
                             </label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input topic-theme-btn" type="radio" name="theme" id="theme_dark"
                                 value="dark" onclick="setTheme('dark')">
                             <label class="form-check-label" for="theme_dark">
-                                <i class="fas fa-moon me-1"></i><span>Dark</span>
+                                <i class="fas fa-moon me-1"></i><span>{{ _('Dark') }}</span>
                             </label>
                         </div>
                     </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">{{ _('Language') }}</label>
+                    <form action="{{ url_for('auth.update_language') }}" method="POST"
+                        class="d-flex gap-2 align-items-center">
+                        <select name="language" class="form-select" style="max-width: 200px;"
+                            onchange="this.form.submit()">
+                            <option value="en" {{ 'selected' if user.language=='en' or not user.language else '' }}>🇬🇧
+                                {{ _('English') }}</option>
+                            <option value="zh_CN" {{ 'selected' if user.language=='zh_CN' else '' }}>🇨🇳 {{
+                                _('Chinese') }}</option>
+                        </select>
+                        <noscript><button type="submit" class="btn btn-sm btn-primary">{{ _('Save')
+                                }}</button></noscript>
+                    </form>
+                    <div class="form-text">{{ _('Select your preferred language for the interface.') }}</div>
                 </div>
             </div>
         </div>
@@ -187,41 +202,40 @@
         <div class="card nav-card-minimal mb-4" id="privacy">
             <div class="card-header bg-transparent border-bottom py-3">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-shield-alt me-2"
-                        style="color: var(--primary-color);"></i><span>Privacy &
-                        Security</span></h5>
+                        style="color: var(--primary-color);"></i><span>{{ _('Privacy & Security') }}</span></h5>
             </div>
             <div class="card-body p-4">
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="profile_public" checked>
                     <label class="form-check-label" for="profile_public">
-                        <strong>Public Profile</strong>
-                        <br><small class="text-muted">Allow others to see your profile and stories</small>
+                        <strong>{{ _('Public Profile') }}</strong>
+                        <br><small class="text-muted">{{ _('Allow others to see your profile and stories') }}</small>
                     </label>
                 </div>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="show_online" checked>
                     <label class="form-check-label" for="show_online">
-                        <strong>Show Online Status</strong>
-                        <br><small class="text-muted">Let others see when you're active</small>
+                        <strong>{{ _('Show Online Status') }}</strong>
+                        <br><small class="text-muted">{{ _("Let others see when you're active") }}</small>
                     </label>
                 </div>
                 <div class="form-check form-switch mb-4">
                     <input class="form-check-input" type="checkbox" id="allow_messages" checked>
                     <label class="form-check-label" for="allow_messages">
-                        <strong>Allow Messages</strong>
-                        <br><small class="text-muted">Receive messages from other community members</small>
+                        <strong>{{ _('Allow Messages') }}</strong>
+                        <br><small class="text-muted">{{ _('Receive messages from other community members') }}</small>
                     </label>
                 </div>
                 <hr>
                 <div class="mt-3">
                     <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-secondary me-2">
-                        <i class="fas fa-key me-1"></i> Change Password
+                        <i class="fas fa-key me-1"></i> {{ _('Change Password') }}
                     </a>
                     <form action="{{ url_for('auth.delete_account') }}" method="POST"
                         onsubmit="return confirm('WARNING: Are you sure you want to delete your account? This action cannot be undone.');"
                         style="display:inline;">
-                        <button type="submit" class="btn btn-outline-danger"><i class="fas fa-trash me-1"></i> Delete
-                            Account</button>
+                        <button type="submit" class="btn btn-outline-danger"><i class="fas fa-trash me-1"></i> {{
+                            _('Delete Account') }}</button>
                     </form>
                 </div>
             </div>

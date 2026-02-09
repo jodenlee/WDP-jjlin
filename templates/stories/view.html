@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% set user_lang = g.user.language if (g.user and g.user.language) else 'en' %}
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
         <div class="mb-3">
@@ -9,34 +10,57 @@
         <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
             <!-- Image Carousel -->
+            {% set total_images = (1 if story['image_url'] else 0) + (story_images|length if story_images else 0) %}
             {% if story['image_url'] or story_images %}
-            <div id="storyCarousel" class="carousel slide bg-light" data-bs-ride="carousel" style="height: 350px;">
+            <div id="storyCarousel" class="carousel slide bg-light" data-bs-interval="false" style="height: 350px;">
                 <div class="carousel-inner h-100">
                     <!-- Main Image -->
                     {% if story['image_url'] %}
                     <div class="carousel-item h-100 active bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
+                            {% if story['image_url'].lower().endswith(('.mp4', '.mov', '.avi', '.webm')) %}
+                            <video src="{{ story['image_url'] | safe }}"
+                                class="d-block mw-100 mh-100 object-fit-contain" controls autoplay muted loop></video>
+                            {% else %}
                             <img src="{{ story['image_url'] | safe }}"
                                 class="d-block mw-100 mh-100 object-fit-contain cursor-pointer"
                                 alt="{{ story['title'] }}" onclick="openLightbox(this.src)">
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
 
                     <!-- Additional Images -->
                     {% for img_path in story_images %}
+                    {% if img_path %}
                     <div
                         class="carousel-item h-100 {% if not story['image_url'] and loop.first %}active{% endif %} bg-black">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">
+                            {% if img_path.lower().endswith(('.mp4', '.mov', '.avi', '.webm')) %}
+                            {% if img_path.startswith('http') %}
+                            <video src="{{ img_path }}" class="d-block mw-100 mh-100 object-fit-contain"
+                                controls></video>
+                            {% else %}
+                            <video src="{{ url_for('static', filename=img_path) }}"
+                                class="d-block mw-100 mh-100 object-fit-contain" controls></video>
+                            {% endif %}
+                            {% else %}
+                            {% if img_path.startswith('http') %}
+                            <img src="{{ img_path }}" class="d-block mw-100 mh-100 object-fit-contain cursor-pointer"
+                                alt="Story Image" onclick="openLightbox(this.src)">
+                            {% else %}
                             <img src="{{ url_for('static', filename=img_path) }}"
                                 class="d-block mw-100 mh-100 object-fit-contain cursor-pointer" alt="Story Image"
                                 onclick="openLightbox(this.src)">
+                            {% endif %}
+                            {% endif %}
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
 
-                {% if (story['image_url'] and story_images) or (story_images|length > 1) %}
+                {% if total_images > 1 %}
                 <button class="carousel-control-prev" type="button" data-bs-target="#storyCarousel"
                     data-bs-slide="prev">
                     <span class="nav-arrow" aria-hidden="true">
@@ -58,7 +82,13 @@
             <div class="card-body p-4 p-md-5">
                 <!-- Header Section -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h1 class="fw-bold display-6 mb-0">{{ story['title'] }}</h1>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <h1 class="fw-bold display-6 mb-0" id="story-title">{{ story['title'] }}</h1>
+                        <button class="btn btn-outline-info btn-sm rounded-pill translate-btn"
+                            onclick="translateContent('story-title', '{{ user_lang }}')">
+                            <i class="fas fa-language"></i> {{ _('Translate') }}
+                        </button>
+                    </div>
                     <div class="d-flex align-items-center gap-3">
                         <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST">
                             <button type="submit"
@@ -78,7 +108,13 @@
                     </div>
                 </div>
 
-                <p class="lead text-dark mb-4">{{ story['content'] }}</p>
+                <div class="mb-4">
+                    <p class="lead text-dark mb-2" id="story-content">{{ story['content'] }}</p>
+                    <button class="btn btn-link p-0 text-info text-decoration-none translate-btn"
+                        onclick="translateContent('story-content', '{{ user_lang }}')">
+                        <i class="fas fa-language"></i> {{ _('Translate Content') }}
+                    </button>
+                </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
                     <div class="d-flex flex-wrap gap-2">
@@ -188,117 +224,156 @@
                     <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
                             comments|length }}</span></h2>
 
-                    <form action="{{ url_for('stories.add_comment', story_id=story['id']) }}" method="POST" class="mb-4"
-                        id="commentForm" novalidate>
-                        <textarea name="content" id="commentContent" class="form-control mb-2" rows="3"
-                            placeholder="Leave a comment!" required></textarea>
-                        <div class="d-flex align-items-center">
-                            <button type="submit" class="btn btn-primary px-4 fw-bold ms-auto">Post</button>
-                        </div>
+                    <!-- Add Comment Form -->
+                    <form action="{{ url_for('stories.add_comment', story_id=story['id']) }}" method="POST"
+                        class="d-flex gap-2 mb-4" id="commentForm" novalidate>
+                        <input type="text" name="content" id="commentContent" class="form-control form-control-lg"
+                            placeholder="Write a comment..." required>
+                        <button type="submit" class="btn btn-primary">Post</button>
                     </form>
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function () {
-                            const commentForm = document.getElementById('commentForm');
-                            if (commentForm) {
-                                commentForm.addEventListener('submit', function (e) {
-                                    const content = document.getElementById('commentContent').value.trim();
 
-                                    if (!content) {
-                                        e.preventDefault();
-                                        const errorList = document.getElementById('validation-errors');
-                                        if (errorList) {
-                                            errorList.innerHTML = '<li>Comment content is required.</li>';
-                                            const modal = new bootstrap.Modal(document.getElementById('validationModal'));
-                                            modal.show();
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    </script>
 
-                    <div class="comments-list">
-                        {% for comment in comments %}
-                        <div class="card mb-3 border-0 shadow-sm bg-light rounded-4">
-                            <div class="card-body p-3">
-                                <div class="d-flex gap-3">
-                                    <img src="{{ comment['profile_pic'] or 'https://ui-avatars.com/api/?name=' + (comment['username'] or 'User') + '&background=random' }}"
-                                        alt="Profile" class="rounded-circle border border-white shadow-sm"
-                                        style="width: 45px; height: 45px; object-fit: cover;">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <strong class="text-dark">{{ comment['username'] or 'User' }}</strong>
-                                                {% if comment['role'] == 'youth' %}
-                                                <span
-                                                    class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2"
-                                                    style="font-size: 0.7em;">YOUTH</span>
-                                                {% else %}
-                                                <span
-                                                    class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2"
-                                                    style="font-size: 0.7em;">SENIOR</span>
-                                                {% endif %}
-                                            </div>
-                                            <div class="d-flex align-items-center">
-                                                <small class="text-muted opacity-75 me-2" style="font-size: 0.85rem;">{{
-                                                    comment['created_at'] }}</small>
-                                                {% if session.get('user_id') == comment['user_id'] or
-                                                session.get('user_id') == story['author_id'] %}
-                                                <div class="dropdown">
-                                                    <button class="btn btn-link btn-sm text-secondary p-0" type="button"
-                                                        data-bs-toggle="dropdown" aria-expanded="false"
-                                                        style="font-size: 1.2rem;">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
-                                                        {% if session.get('user_id') == comment['user_id'] %}
-                                                        <li>
-                                                            <button class="dropdown-item" data-bs-toggle="collapse"
-                                                                data-bs-target="#editComment{{ comment['id'] }}">
-                                                                <i class="fas fa-edit me-2 text-primary"></i> Edit
-                                                            </button>
-                                                        </li>
-                                                        {% endif %}
-                                                        <li>
-                                                            <button type="button" class="dropdown-item text-danger"
-                                                                data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
-                                                                onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
-                                                                <i class="fas fa-trash-alt me-2"></i> Delete
-                                                            </button>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <p class="text-dark mb-0 fs-5" style="line-height: 1.5;">{{ comment['content']
-                                            }}</p>
-
-                                        <!-- Edit Form (Hidden by default) -->
-                                        <div class="collapse mt-3" id="editComment{{ comment['id'] }}">
-                                            <div class="card card-body border-0 bg-white">
-                                                <form
-                                                    action="{{ url_for('stories.edit_comment', comment_id=comment['id']) }}"
-                                                    method="POST">
-                                                    <textarea name="content" class="form-control mb-2"
-                                                        rows="2">{{ comment['content'] }}</textarea>
-                                                    <div class="d-flex justify-content-end gap-2">
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                            data-bs-toggle="collapse"
-                                                            data-bs-target="#editComment{{ comment['id'] }}">Cancel</button>
-                                                        <button type="submit" class="btn btn-sm btn-primary">Save
-                                                            Changes</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
+                    {% if comments %}
+                    {% for comment in comments %}
+                    <div class="card mb-3 border-0 shadow-sm bg-light rounded-4" id="comment-{{ comment['id'] }}">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="{{ comment['profile_pic'] or 'https://ui-avatars.com/api/?name=' + (comment['username'] or 'User') }}"
+                                    class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                <div>
+                                    <h6 class="fw-bold mb-0">{{ comment['username'] or 'User' }}</h6>
+                                    <small class="text-muted">{{ comment['created_at'] }}</small>
                                 </div>
+                                <!-- Like Button -->
+                                <div class="ms-auto d-flex align-items-center">
+                                    <form
+                                        action="{{ url_for('stories.toggle_comment_like', comment_id=comment['id']) }}"
+                                        method="POST" class="d-inline comment-like-form">
+                                        <button type="submit"
+                                            class="btn btn-link p-0 text-decoration-none {% if comment.get('is_liked') %}text-danger{% else %}text-muted{% endif %}"
+                                            title="Like">
+                                            <i
+                                                class="{% if comment.get('is_liked') %}fas{% else %}far{% endif %} fa-heart fa-lg"></i>
+                                        </button>
+                                    </form>
+                                    <span class="ms-1 text-muted small">{{ comment.get('likes', 0) }}</span>
+                                </div>
+                                <!-- More Options Dropdown -->
+                                {% if session.get('user_id') == comment['user_id'] or session.get('user_id') ==
+                                story['author_id'] %}
+                                <div class="dropdown ms-3">
+                                    <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown"
+                                        aria-expanded="false" style="font-size: 1.2rem;">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                        {% if session.get('user_id') == comment['user_id'] %}
+                                        <li>
+                                            <button class="dropdown-item small py-1 text-primary"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#editComment{{ comment['id'] }}">
+                                                <i class="fas fa-edit me-2"></i> Edit Comment
+                                            </button>
+                                        </li>
+                                        {% endif %}
+                                        <li>
+                                            <button type="button" class="dropdown-item small py-1 text-danger"
+                                                data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
+                                                onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
+                                                <i class="fas fa-trash-alt me-2"></i> Delete Comment
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <p class="card-text fs-5" style="line-height: 1.5;">{{ comment['content'] }}</p>
+
+                            <!-- Edit Form (Hidden by default) -->
+                            <div class="collapse mb-3" id="editComment{{ comment['id'] }}">
+                                <form action="{{ url_for('stories.edit_comment', comment_id=comment['id']) }}"
+                                    method="POST" class="d-flex gap-2">
+                                    <input type="text" name="content" class="form-control form-control-lg"
+                                        value="{{ comment['content'] }}" required>
+                                    <button type="button" class="btn btn-secondary" data-bs-toggle="collapse"
+                                        data-bs-target="#editComment{{ comment['id'] }}">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </form>
+                            </div>
+
+                            <!-- Replies Section -->
+                            <div class="mt-3">
+                                {% if comment.get('replies') %}
+                                <div class="ps-3 border-start mb-2">
+                                    {% for reply in comment['replies'] %}
+                                    <div class="mb-3 d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <strong>{{ reply['username'] }}</strong>
+                                                <small class="text-muted">{{ reply['created_at'] }}</small>
+                                            </div>
+                                            <p class="mb-0 fs-5" id="reply-content-{{ reply['id'] }}">{{
+                                                reply['content'] }}</p>
+                                        </div>
+                                        {% if reply['user_id'] == session['user_id'] %}
+                                        <div class="dropdown ms-2">
+                                            <button class="btn btn-link text-muted p-0" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false"
+                                                style="font-size: 1rem;">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                                <li>
+                                                    <button class="dropdown-item small py-1 text-primary"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#editReply{{ reply['id'] }}">
+                                                        <i class="fas fa-edit me-2"></i> Edit Reply
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button type="button" class="dropdown-item small py-1 text-danger"
+                                                        data-delete-url="{{ url_for('stories.delete_comment_reply', reply_id=reply['id']) }}"
+                                                        onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
+                                                        <i class="fas fa-trash-alt me-2"></i> Delete Reply
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <!-- Edit Reply Form (Hidden by default) -->
+                                    <div class="collapse mb-3 ms-4" id="editReply{{ reply['id'] }}">
+                                        <form action="{{ url_for('stories.edit_comment_reply', reply_id=reply['id']) }}"
+                                            method="POST" class="d-flex gap-2 reply-edit-form">
+                                            <input type="text" name="content" class="form-control"
+                                                value="{{ reply['content'] }}" required>
+                                            <button type="button" class="btn btn-secondary btn-sm"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#editReply{{ reply['id'] }}">Cancel</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+
+                                <!-- Add Reply Form -->
+                                <form action="{{ url_for('stories.add_comment_reply', comment_id=comment['id']) }}"
+                                    method="POST" class="d-flex gap-2 reply-form">
+                                    <input type="text" name="content" class="form-control form-control-lg"
+                                        placeholder="Write a reply..." required>
+                                    <button type="submit" class="btn btn-primary">Post</button>
+                                </form>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted text-center py-4 bg-light rounded fs-5">No comments yet. Be the first to
+                        comment!</p>
+                    {% endif %}
                 </div>
+
 
 
 
@@ -365,55 +440,301 @@
             </div>
         </div>
     </div>
-    <!-- Validation Modal -->
-    <div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-secondary fs-5 py-3">
-                    <p class="mb-2">Please fix the following issues:</p>
-                    <ul id="validation-errors" class="text-danger mb-0"></ul>
-                </div>
-                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
-                    <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
-                </div>
+</div>
+<!-- Validation Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary fs-5 py-3">
+                <p class="mb-2">Please fix the following issues:</p>
+                <ul id="validation-errors" class="text-danger mb-0"></ul>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Delete Comment Modal -->
-    <div class="modal fade" id="deleteCommentModal" tabindex="-1" aria-labelledby="deleteCommentModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-dark fs-4" id="deleteCommentModalLabel">Confirm Delete?</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-secondary fs-5 py-3">
-                    Are you sure you want to delete this comment?
-                </div>
-                <div class="modal-footer border-top-0 pt-0 pb-4">
-                    <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal"
-                        style="background-color: #6c757d; border: none;">Cancel</button>
-                    <form id="deleteCommentForm" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-danger px-4 fw-bold"
-                            style="background-color: #dc3545; border: none;">Delete</button>
-                    </form>
-                </div>
+<!-- Delete Comment Modal -->
+<div class="modal fade" id="deleteCommentModal" tabindex="-1" aria-labelledby="deleteCommentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark fs-4" id="deleteCommentModalLabel">Confirm Delete?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary fs-5 py-3">
+                Are you sure you want to delete this comment?
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal"
+                    style="background-color: #6c757d; border: none;">Cancel</button>
+                <form id="deleteCommentForm" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger px-4 fw-bold"
+                        style="background-color: #dc3545; border: none;">Delete</button>
+                </form>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        function openDeleteCommentModal(url) {
-            document.getElementById('deleteCommentForm').action = url;
-            var myModal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
-            myModal.show();
+<script>
+    function openDeleteCommentModal(url) {
+        document.getElementById('deleteCommentForm').action = url;
+        var myModal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
+        myModal.show();
+    }
+
+    // AJAX handlers for comment, like, and reply
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle main comment form submission
+        const commentForm = document.getElementById('commentForm');
+        if (commentForm) {
+            commentForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const content = formData.get('content').trim();
+
+                if (!content) {
+                    const errorList = document.getElementById('validation-errors');
+                    if (errorList) {
+                        errorList.innerHTML = '<li>Comment content is required.</li>';
+                        const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                        modal.show();
+                    }
+                    return;
+                }
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Clear the form
+                            document.getElementById('commentContent').value = '';
+                            // Reload to show new comment (or implement dynamic insert)
+                            location.reload();
+                        } else {
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
+                        }
+                    })
+                    .catch(() => location.reload());
+            });
         }
-    </script>
-    {% endblock %}
+
+        // Handle like button clicks
+        document.querySelectorAll('.comment-like-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const btn = this.querySelector('button');
+                const icon = btn.querySelector('i');
+                const countSpan = this.nextElementSibling;
+
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update UI
+                            if (data.is_liked) {
+                                icon.classList.remove('far');
+                                icon.classList.add('fas');
+                                btn.classList.remove('text-muted');
+                                btn.classList.add('text-danger');
+                            } else {
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                                btn.classList.remove('text-danger');
+                                btn.classList.add('text-muted');
+                            }
+                            countSpan.textContent = data.likes;
+                        }
+                    })
+                    .catch(() => location.reload());
+            });
+        });
+
+        // Handle reply form submissions
+        document.querySelectorAll('.reply-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const input = this.querySelector('input[name="content"]');
+
+                if (!formData.get('content').trim()) return;
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            input.value = '';
+                            // Reload to show new reply
+                            location.reload();
+                        } else {
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
+                        }
+                    })
+                    .catch(() => location.reload());
+            });
+        });
+
+        // Handle comment edit form submissions
+        document.querySelectorAll('.comment-edit-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const commentId = this.dataset.commentId || this.id.split('-').pop();
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update UI
+                            const contentElem = document.getElementById(`comment-content-${commentId}`);
+                            if (contentElem) contentElem.textContent = data.content;
+                            // Close modal
+                            const modalId = `editCommentModal-${commentId}`;
+                            const modalElem = document.getElementById(modalId);
+                            if (modalElem) {
+                                const modal = bootstrap.Modal.getInstance(modalElem);
+                                if (modal) modal.hide();
+                                else {
+                                    const m = new bootstrap.Modal(modalElem);
+                                    m.hide();
+                                }
+                            }
+                            checkAlertsForModals();
+                        } else {
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
+                        }
+                    });
+            });
+        });
+
+        // Handle reply edit form submissions
+        document.querySelectorAll('.reply-edit-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const replyId = this.action.split('/').slice(-2, -1)[0];
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update UI
+                            const contentElem = document.getElementById(`reply-content-${replyId}`);
+                            if (contentElem) contentElem.textContent = data.content;
+
+                            // Close collapse
+                            const collapseId = `editReply${replyId}`;
+                            const collapseElem = document.getElementById(collapseId);
+                            if (collapseElem) {
+                                const bsCollapse = bootstrap.Collapse.getInstance(collapseElem) || new bootstrap.Collapse(collapseElem);
+                                bsCollapse.hide();
+                            }
+
+                            checkAlertsForModals();
+                        } else {
+                            const errorBanner = document.createElement('div');
+                            errorBanner.className = 'alert alert-info show d-none';
+                            errorBanner.textContent = data.error;
+                            document.body.appendChild(errorBanner);
+                            checkAlertsForModals();
+                            errorBanner.remove();
+                        }
+                    });
+            });
+        });
+    });
+
+    /**
+     * Translates content of a specific element using the AJAX API.
+     * @param {string} elementId - ID of the element containing text to translate.
+     * @param {string} targetLang - The target language code (e.g., 'en', 'zh_CN').
+     */
+    function translateContent(elementId, targetLang) {
+        const element = document.getElementById(elementId);
+        const btn = event.currentTarget;
+        const originalText = element.innerText;
+        const originalBtnHtml = btn.innerHTML;
+
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Translating...';
+
+        fetch('/translate', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: originalText,
+                target_lang: targetLang
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.translated_text) {
+                    element.innerText = data.translated_text;
+                    btn.innerHTML = '<i class="fas fa-undo"></i> Show Original';
+                    btn.onclick = () => {
+                        element.innerText = originalText;
+                        btn.innerHTML = originalBtnHtml;
+                        btn.onclick = () => translateContent(elementId, targetLang);
+                    };
+                } else {
+                    alert('Translation failed. Please try again later.');
+                    btn.innerHTML = originalBtnHtml;
+                }
+            })
+            .catch(err => {
+                console.error('Translation error:', err);
+                alert('Error connecting to translation service.');
+                btn.innerHTML = originalBtnHtml;
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+    }
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g, current_app, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from utils import get_db, login_required
+from utils import get_db, login_required, get_conn, get_current_user
 from datetime import datetime, timedelta
 import re
 import os
@@ -87,7 +87,7 @@ def login():
                 otp_code = generate_otp()
                 expires_at = get_otp_expiry()
                 
-                conn = db.get_connection()
+                conn = get_conn()
                 conn.execute(
                     """INSERT INTO login_otps (user_id, email, code, expires_at) 
                        VALUES (?, ?, ?, ?)""",
@@ -151,24 +151,13 @@ def google_callback():
         user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
         
         if not user:
-            # Create new user from Google account
-            username = email.split('@')[0].lower()
-            existing = db.query("SELECT id FROM users WHERE username = ?", (username,), one=True)
-            if existing:
-                import time
-                username = f"{username}_{int(time.time()) % 10000}"
-            
-            conn = db.get_connection()
-            conn.execute(
-                """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
-                   VALUES (?, ?, ?, ?, ?, 1)""",
-                (username, email, '', 'youth', name)
-            )
-            conn.commit()
-            conn.close()
-            user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+            # New user - redirect to account setup page
+            session['google_setup_email'] = email
+            session['google_setup_name'] = name
+            session['google_setup_suggested_username'] = email.split('@')[0].lower()
+            return redirect(url_for('auth.google_setup'))
         
-        # Google OAuth provides secure authentication - skip 2FA and log in directly
+        # Existing user - log them in directly
         session['user_id'] = user['id']
         session['username'] = user['username']
         
@@ -194,6 +183,92 @@ def google_callback():
         print(f"Google OAuth error: {e}")
         flash('Google login failed. Please try again.', 'danger')
         return redirect(url_for('auth.login'))
+
+@auth_bp.route('/auth/google/setup')
+def google_setup():
+    """Display account setup page for new Google users"""
+    email = session.get('google_setup_email')
+    if not email:
+        flash('Please start the Google login process again.', 'warning')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/google_setup.html',
+                          email=email,
+                          name=session.get('google_setup_name', ''),
+                          suggested_username=session.get('google_setup_suggested_username', ''))
+
+@auth_bp.route('/auth/google/setup/complete', methods=['POST'])
+def complete_google_setup():
+    """Handle account setup form submission"""
+    email = session.get('google_setup_email')
+    if not email:
+        flash('Session expired. Please start the Google login process again.', 'warning')
+        return redirect(url_for('auth.login'))
+    
+    full_name = request.form.get('full_name', '').strip()
+    username = request.form.get('username', '').strip().lower()
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
+    role = request.form.get('role', 'youth')
+    
+    error = None
+    
+    # Validate username
+    if not username or not re.match(r'^[a-zA-Z0-9_]{3,20}$', username):
+        error = 'Username must be 3-20 characters with only letters, numbers, and underscores.'
+    
+    # Check if username is taken
+    db = get_db()
+    if not error:
+        existing = db.query("SELECT id FROM users WHERE username = ?", (username,), one=True)
+        if existing:
+            error = 'That username is already taken. Please choose another.'
+    
+    # Validate password
+    if not error and len(password) < 8:
+        error = 'Password must be at least 8 characters.'
+    
+    if not error and password != confirm_password:
+        error = 'Passwords do not match.'
+    
+    # Validate role
+    if not error and role not in ['youth', 'senior']:
+        error = 'Please select a valid role.'
+    
+    if error:
+        return render_template('auth/google_setup.html',
+                              email=email,
+                              name=full_name,
+                              suggested_username=username,
+                              error=error)
+    
+    # Create the user account
+    password_hash = generate_password_hash(password)
+    
+    conn = get_conn()
+    conn.execute(
+        """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
+           VALUES (?, ?, ?, ?, ?, 1)""",
+        (username, email, password_hash, role, full_name)
+    )
+    conn.commit()
+    conn.close()
+    
+    # Get the newly created user
+    user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
+    
+    # Clear setup session vars
+    session.pop('google_setup_email', None)
+    session.pop('google_setup_name', None)
+    session.pop('google_setup_suggested_username', None)
+    
+    # Log them in directly
+    session['user_id'] = user['id']
+    session['username'] = user['username']
+    
+    flash(f'Welcome to TogetherSG, {full_name or username}!', 'success')
+    return redirect(url_for('main.home'))
+
 
 # ============================================================================
 # REGISTER ROUTE
@@ -259,7 +334,7 @@ def register():
         if not errors:
             password_hash = generate_password_hash(password)
             db = get_db()
-            conn = db.get_connection()
+            conn = get_conn()
             try:
                 conn.execute(
                     """INSERT INTO users (username, email, password_hash, role, full_name, is_verified) 
@@ -321,7 +396,7 @@ def verify_email():
             )
             
             if verification:
-                conn = db.get_connection()
+                conn = get_conn()
                 conn.execute("UPDATE email_verifications SET is_used = 1 WHERE id = ?", (verification['id'],))
                 conn.execute("UPDATE users SET is_verified = 1 WHERE email = ?", (email,))
                 conn.commit()
@@ -346,7 +421,7 @@ def resend_verification():
     expires_at = get_otp_expiry()
     
     db = get_db()
-    conn = db.get_connection()
+    conn = get_conn()
     conn.execute(
         """INSERT INTO email_verifications (email, code, expires_at) 
            VALUES (?, ?, ?)""",
@@ -393,7 +468,7 @@ def verify_login_otp():
             )
             
             if otp_record:
-                conn = db.get_connection()
+                conn = get_conn()
                 conn.execute("UPDATE login_otps SET is_used = 1 WHERE id = ?", (otp_record['id'],))
                 conn.commit()
                 conn.close()
@@ -641,6 +716,7 @@ def update_profile():
     user_id = session['user_id']
     full_name = request.form.get('full_name', '')
     bio = request.form.get('bio', '')
+    language = request.form.get('language', 'en')
     
     # Handle Profile Pic Upload
     from werkzeug.utils import secure_filename
@@ -672,8 +748,8 @@ def update_profile():
     db = get_db()
     conn = db.get_connection()
     
-    query = "UPDATE users SET full_name = ?, bio = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
-    params = [full_name, bio, notify_messages, notify_activities, notify_stories, notify_groups]
+    query = "UPDATE users SET full_name = ?, bio = ?, language = ?, notify_messages = ?, notify_activities = ?, notify_stories = ?, notify_groups = ?"
+    params = [full_name, bio, language, notify_messages, notify_activities, notify_stories, notify_groups]
     
     if profile_pic_path:
         query += ", profile_pic = ?"
@@ -709,6 +785,22 @@ def update_notifications():
     
     return redirect(url_for('auth.profile'))
 
+@auth_bp.route('/profile/update_language', methods=['POST'])
+@login_required
+def update_language():
+    user_id = session['user_id']
+    language = request.form.get('language', 'en')
+    
+    db = get_db()
+    conn = db.get_connection()
+    conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
+    conn.commit()
+    
+    # Update language in session
+    session['language'] = language
+    
+    return redirect(url_for('auth.profile'))
+
 @auth_bp.route('/profile/delete', methods=['POST'])
 @login_required
 def delete_account():
@@ -741,23 +833,3 @@ def delete_account():
     flash('Your account has been permanently deleted.', 'info')
     return redirect(url_for('auth.login'))
 
-# ============================================================================
-# NOTIFICATION ROUTES
-# ============================================================================
-@auth_bp.route('/notifications/mark_read/<int:notif_id>', methods=['POST'])
-@login_required
-def mark_notification_read(notif_id):
-    db = get_db()
-    conn = db.get_connection()
-    conn.execute("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?", (notif_id, session['user_id']))
-    conn.commit()
-    return "OK", 200
-
-@auth_bp.route('/notifications/clear_all', methods=['POST'])
-@login_required
-def clear_all_notifications():
-    db = get_db()
-    conn = db.get_connection()
-    conn.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (session['user_id'],))
-    conn.commit()
-    return redirect(request.referrer)
