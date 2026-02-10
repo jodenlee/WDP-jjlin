@@ -400,6 +400,37 @@ def delete_batch_messages():
     conn.commit()
     return jsonify({'status': 'success'})
 
+@messages_bp.route('/messages/edit/<int:message_id>', methods=['POST'])
+@login_required
+def edit_message(message_id):
+    uid, conn = session['user_id'], get_conn()
+    content = request.form.get('content')
+    
+    if not content:
+        return jsonify({'status': 'error', 'message': 'Content is required'})
+
+    msg = get_db().query("SELECT * FROM messages WHERE id = ?", (message_id,), one=True)
+    if not msg:
+        return jsonify({'status': 'error', 'message': 'Message not found'})
+    
+    if msg['sender_id'] != uid:
+        return jsonify({'status': 'error', 'message': 'Unauthorized'})
+
+    # Update content
+    conn.execute("UPDATE messages SET content = ? WHERE id = ?", (content, message_id))
+    conn.commit()
+    
+    # Emit event
+    update_data = {'id': message_id, 'content': content, 'group_id': msg['group_id']}
+    
+    if msg['group_id']:
+        socketio.emit('message_update', update_data, room=f"group_{msg['group_id']}")
+    else:
+        socketio.emit('message_update', update_data, room=f"user_{msg['receiver_id']}")
+        socketio.emit('message_update', update_data, room=f"user_{uid}")
+        
+    return jsonify({'status': 'success'})
+
 @messages_bp.route('/messages/delete-chat/<int:user_id>', methods=['POST'])
 @login_required
 def delete_chat_conversation(user_id):
