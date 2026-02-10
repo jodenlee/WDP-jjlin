@@ -212,25 +212,17 @@ class Database:
             )
         ''')
 
-        # Messages Table (Enhanced)
+        # Messages Table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sender_id INTEGER NOT NULL,
                 receiver_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
-                reply_to INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                read_at TIMESTAMP,
                 is_read INTEGER DEFAULT 0,
-                is_delivered INTEGER DEFAULT 0,
-                is_pinned INTEGER DEFAULT 0,
-                is_deleted_sender INTEGER DEFAULT 0,
-                is_deleted_receiver INTEGER DEFAULT 0,
-                group_id INTEGER,
                 FOREIGN KEY (sender_id) REFERENCES users (id),
-                FOREIGN KEY (receiver_id) REFERENCES users (id),
-                FOREIGN KEY (reply_to) REFERENCES messages (id)
+                FOREIGN KEY (receiver_id) REFERENCES users (id)
             )
         ''')
 
@@ -412,161 +404,6 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
-
-        # Message Reactions Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS message_reactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                message_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                reaction TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (message_id) REFERENCES messages (id),
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                UNIQUE(message_id, user_id, reaction)
-            )
-        ''')
-
-        # Call Signals Table (WebRTC Signaling)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS call_signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                type TEXT NOT NULL, -- 'offer', 'answer', 'candidate', 'end'
-                data TEXT NOT NULL, -- JSON data
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (sender_id) REFERENCES users (id),
-                FOREIGN KEY (receiver_id) REFERENCES users (id)
-            )
-        ''')
-
-        # Calls History Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS calls (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                caller_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                call_type TEXT NOT NULL CHECK(call_type IN ('voice', 'video')),
-                status TEXT NOT NULL CHECK(status IN ('completed', 'missed', 'rejected', 'ongoing')),
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                ended_at TIMESTAMP,
-                duration INTEGER DEFAULT 0,
-                FOREIGN KEY (caller_id) REFERENCES users (id),
-                FOREIGN KEY (receiver_id) REFERENCES users (id)
-            )
-        ''')
-
-        # Archived Chats Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS archived_chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                archived_user_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (archived_user_id) REFERENCES users (id),
-                UNIQUE(user_id, archived_user_id)
-            )
-        ''')
-
-        # Pinned Chats Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pinned_chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                pinned_user_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (pinned_user_id) REFERENCES users (id),
-                UNIQUE(user_id, pinned_user_id)
-            )
-        ''')
-
-        # Pinned Groups Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pinned_groups (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                group_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (group_id) REFERENCES groups (id),
-                UNIQUE(user_id, group_id)
-            )
-        ''')
-
-        # Nicknames Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS nicknames (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                target_user_id INTEGER NOT NULL,
-                nickname TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (target_user_id) REFERENCES users (id),
-                UNIQUE(user_id, target_user_id)
-            )
-        ''')
-
-        # Muted Chats Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS muted_chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                muted_user_id INTEGER NOT NULL,
-                expires_at TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (muted_user_id) REFERENCES users (id),
-                UNIQUE(user_id, muted_user_id)
-            )
-        ''')
-
-        # --- Manual Migrations (Add missing columns to existing tables) ---
-
-        # Messages table migrations
-        columns_to_add = [
-            ("reply_to", "INTEGER"),
-            ("read_at", "TIMESTAMP"),
-            ("is_delivered", "INTEGER DEFAULT 0"),
-            ("is_pinned", "INTEGER DEFAULT 0"),
-            ("is_deleted_sender", "INTEGER DEFAULT 0"),
-            ("is_deleted_receiver", "INTEGER DEFAULT 0"),
-            ("group_id", "INTEGER")
-        ]
-        for col_name, col_type in columns_to_add:
-            try:
-                cursor.execute(f"SELECT {col_name} FROM messages LIMIT 1")
-            except sqlite3.OperationalError:
-                cursor.execute(f"ALTER TABLE messages ADD COLUMN {col_name} {col_type}")
-
-        # Users table migrations
-        try:
-            cursor.execute("SELECT last_activity FROM users LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE users ADD COLUMN last_activity TIMESTAMP")
-
-        # Calls table migration (fix for a specific schema issue seen in asherdb)
-        try:
-            cursor.execute("SELECT started_at FROM calls LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("DROP TABLE IF EXISTS calls")
-            cursor.execute('''
-                CREATE TABLE calls (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    caller_id INTEGER NOT NULL,
-                    receiver_id INTEGER NOT NULL,
-                    call_type TEXT NOT NULL CHECK(call_type IN ('voice', 'video')),
-                    status TEXT NOT NULL CHECK(status IN ('completed', 'missed', 'rejected', 'ongoing')),
-                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    ended_at TIMESTAMP,
-                    duration INTEGER DEFAULT 0,
-                    FOREIGN KEY (caller_id) REFERENCES users (id),
-                    FOREIGN KEY (receiver_id) REFERENCES users (id)
-                )
-            ''')
 
         # Settings Table
         cursor.execute('''
