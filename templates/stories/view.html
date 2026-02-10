@@ -240,7 +240,7 @@
                                     class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
                                 <div>
                                     <h6 class="fw-bold mb-0">{{ comment['username'] or 'User' }}</h6>
-                                    <small class="text-muted">{{ comment['created_at'] }}</small>
+                                    <small class="text-muted">{{ comment['created_at']|to_sgt }}</small>
                                 </div>
                                 <!-- Like Button -->
                                 <div class="ms-auto d-flex align-items-center">
@@ -257,12 +257,11 @@
                                     <span class="ms-1 text-muted small">{{ comment.get('likes', 0) }}</span>
                                 </div>
                                 <!-- More Options Dropdown -->
-                                {% if session.get('user_id') == comment['user_id'] or session.get('user_id') ==
-                                story['author_id'] %}
+                                {% if session.get('user_id') %}
                                 <div class="dropdown ms-3">
-                                    <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown"
-                                        aria-expanded="false" style="font-size: 1.2rem;">
-                                        <i class="fas fa-ellipsis-v"></i>
+                                    <button class="btn btn-link text-dark p-0 text-decoration-none" type="button"
+                                        data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 1.2rem;">
+                                        <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
                                         {% if session.get('user_id') == comment['user_id'] %}
@@ -270,17 +269,33 @@
                                             <button class="dropdown-item small py-1 text-primary"
                                                 data-bs-toggle="collapse"
                                                 data-bs-target="#editComment{{ comment['id'] }}">
-                                                <i class="fas fa-edit me-2"></i> Edit Comment
+                                                <i class="fas fa-edit me-2"></i> {{ _('Edit Comment') }}
                                             </button>
                                         </li>
-                                        {% endif %}
                                         <li>
                                             <button type="button" class="dropdown-item small py-1 text-danger"
                                                 data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
                                                 onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
-                                                <i class="fas fa-trash-alt me-2"></i> Delete Comment
+                                                <i class="fas fa-trash-alt me-2"></i> {{ _('Delete Comment') }}
                                             </button>
                                         </li>
+                                        {% else %}
+                                        <li>
+                                            <button type="button" class="dropdown-item small py-1 text-danger"
+                                                onclick="openReportCommentModal('{{ comment.id }}')">
+                                                <i class="fas fa-flag me-2"></i> {{ _('Report Comment') }}
+                                            </button>
+                                        </li>
+                                        {% if session.get('user_id') == story['author_id'] %}
+                                        <li>
+                                            <button type="button" class="dropdown-item small py-1 text-danger"
+                                                data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
+                                                onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
+                                                <i class="fas fa-trash-alt me-2"></i> {{ _('Delete Comment (Author)') }}
+                                            </button>
+                                        </li>
+                                        {% endif %}
+                                        {% endif %}
                                     </ul>
                                 </div>
                                 {% endif %}
@@ -308,7 +323,7 @@
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center gap-2 mb-1">
                                                 <strong>{{ reply['username'] }}</strong>
-                                                <small class="text-muted">{{ reply['created_at'] }}</small>
+                                                <small class="text-muted">{{ reply['created_at']|to_sgt }}</small>
                                             </div>
                                             <p class="mb-0 fs-5">{{ _(reply['content']) }}</p>
                                         </div>
@@ -485,6 +500,13 @@
     function openDeleteCommentModal(url) {
         document.getElementById('deleteCommentForm').action = url;
         var myModal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
+        myModal.show();
+    }
+
+    function openReportCommentModal(commentId) {
+        var form = document.querySelector('#reportCommentModal form');
+        form.action = "/comment/" + commentId + "/report";
+        var myModal = new bootstrap.Modal(document.getElementById('reportCommentModal'));
         myModal.show();
     }
 

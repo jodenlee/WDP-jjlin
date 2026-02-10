@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
-from utils import get_db, login_required, allowed_file, check_content_moderation
+from utils import get_db, login_required, allowed_file, check_content_moderation, create_notification
 import os
 import time
 import math
@@ -277,7 +277,7 @@ def view_story(story_id):
     # Fetch comments with like counts
     comments_query = """
         SELECT c.id, c.story_id, c.user_id, c.content, c.likes,
-               datetime(c.created_at, '+8 hours') as created_at,
+                c.created_at,
                u.username, u.role, u.profile_pic 
         FROM comments c 
         JOIN users u ON c.user_id = u.id 
@@ -302,7 +302,7 @@ def view_story(story_id):
         # Fetch replies for this comment
         replies_query = """
             SELECT cr.id, cr.user_id, cr.content, u.username,
-                   datetime(cr.created_at, '+8 hours') as created_at
+                   cr.created_at
             FROM comment_replies cr
             JOIN users u ON cr.user_id = u.id
             WHERE cr.comment_id = ?
@@ -456,6 +456,18 @@ def toggle_like(story_id):
         is_liked = True
         
     conn.commit()
+    
+    # Notify Story Author if liked (and not by themselves)
+    if is_liked:
+        story_info = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
+        if story_info and story_info['author_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            create_notification(
+                story_info['author_id'],
+                'Like',
+                f"{sender['username']} liked your story: {story_info['title']}",
+                url_for('stories.view_story', story_id=story_id)
+            )
     
     # Get updated like count
     story = db.query("SELECT likes FROM stories WHERE id = ?", (story_id,), one=True)
@@ -677,6 +689,33 @@ def delete_main_image(story_id):
     flash('Main image deleted.', 'success')
     return redirect(url_for('stories.edit_story', story_id=story_id))
 
+# REPORT COMMENT ACTION: Allows users to report a comment
+@stories_bp.route('/comment/<int:comment_id>/report', methods=['POST'])
+@login_required
+def report_comment(comment_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(request.referrer)
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'comment' AND target_id = ?", 
+                       (user_id, comment_id), one=True)
+    
+    if existing:
+        flash('You have already reported this comment.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'comment', ?, ?)",
+                    (user_id, comment_id, reason))
+        conn.commit()
+        flash('Comment reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(request.referrer)
+
 # REPORT STORY ACTION: Allows users to flag inappropriate content
 @stories_bp.route('/stories/<int:story_id>/report', methods=['POST'])
 @login_required
@@ -750,6 +789,17 @@ def add_comment(story_id):
     cursor = conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
     comment_id = cursor.lastrowid
     conn.commit()
+    
+    # Notify Story Author (if not by themselves)
+    story_info = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
+    if story_info and story_info['author_id'] != user_id:
+        sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+        create_notification(
+            story_info['author_id'],
+            'Comment',
+            f"{sender['username']} commented on your story: {story_info['title']}",
+            url_for('stories.view_story', story_id=story_id)
+        )
     
     # Check if AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -854,6 +904,21 @@ def toggle_comment_like(comment_id):
     
     conn.commit()
     
+    # Notify Comment Author if liked (and not by themselves)
+    if is_liked:
+        comment_info = db.query("SELECT user_id, story_id FROM comments WHERE id = ?", (comment_id,), one=True)
+        if comment_info and comment_info['user_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            # Find story title for better context
+            story = db.query("SELECT title FROM stories WHERE id = ?", (comment_info['story_id'],), one=True)
+            story_title = story['title'] if story else "your story"
+            create_notification(
+                comment_info['user_id'],
+                'Like',
+                f"{sender['username']} liked your comment on {story_title}",
+                url_for('stories.view_story', story_id=comment_info['story_id'])
+            )
+    
     # Get updated like count
     comment = db.query("SELECT likes FROM comments WHERE id = ?", (comment_id,), one=True)
     new_likes = comment['likes'] if comment else 0
@@ -883,6 +948,17 @@ def add_comment_reply(comment_id):
                 (comment_id, user_id, content))
     reply_id = cursor.lastrowid
     conn.commit()
+    
+    # Notify Parent Comment Author (if not by themselves)
+    comment_info = db.query("SELECT user_id, story_id FROM comments WHERE id = ?", (comment_id,), one=True)
+    if comment_info and comment_info['user_id'] != user_id:
+        sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+        create_notification(
+            comment_info['user_id'],
+            'Reply',
+            f"{sender['username']} replied to your comment",
+            url_for('stories.view_story', story_id=comment_info['story_id'])
+        )
     
     # Check if AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

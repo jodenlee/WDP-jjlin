@@ -20,7 +20,15 @@
             </div>
 
             <div class="card-body p-4 p-md-5">
-                <h1 class="fw-bold display-6 mb-4">{{ activity['title'] }}</h1>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="fw-bold display-6 mb-0">{{ activity['title'] }}</h1>
+                    {% if session.get('user_id') and activity['organizer_id'] != session['user_id'] %}
+                    <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" data-bs-toggle="modal"
+                        data-bs-target="#reportActivityModal">
+                        <i class="fas fa-flag me-1"></i> {{ _('Report') }}
+                    </button>
+                    {% endif %}
+                </div>
 
                 <!-- Details Section -->
                 <div class="row mb-4">
@@ -55,6 +63,37 @@
                                 <small class="text-muted d-block">Attendees</small>
                                 <span class="fw-bold">{{ rsvp_count }} attending</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Activity Modal -->
+                <div class="modal fade" id="reportActivityModal" tabindex="-1"
+                    aria-labelledby="reportActivityModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header border-bottom-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="reportActivityModalLabel">{{
+                                    _('Report
+                                    Activity') }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <form action="{{ url_for('activities.report_activity', activity_id=activity['id']) }}"
+                                method="POST">
+                                <div class="modal-body text-secondary fs-5 py-3">
+                                    <p class="mb-2">{{ _('Why are you reporting this activity?') }}</p>
+                                    <textarea name="reason" class="form-control" rows="4"
+                                        placeholder="{{ _('Please describe the issue...') }}" required></textarea>
+                                </div>
+                                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                                    <button type="button" class="btn btn-secondary px-4 fw-bold"
+                                        data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                                    <button type="submit" class="btn btn-danger px-4 fw-bold">{{ _('Submit Report')
+                                        }}</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

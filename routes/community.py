@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from utils import get_db, login_required
+from utils import get_db, login_required, create_notification
 from werkzeug.utils import secure_filename
 import os
 import time
@@ -51,26 +51,65 @@ def create_group():
                     flash('Only image files are allowed.', 'danger')
                     return render_template('community/create.html')
                 filename = secure_filename(file.filename)
+                # Ensure unique filename
                 filename = f"group_{int(time.time())}_{filename}"
-                from flask import current_app
-                filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                image_url = f"uploads/{filename}"
-
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Ensure unique filename
+                filename = f"{int(time.time())}_{filename}"
+                file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename))
+                image_url = f"uploads/groups/{filename}"
+                
         db = get_db()
         conn = db.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO groups (name, description, image_url, created_by) VALUES (?, ?, ?, ?)",
-            (name, description, image_url, user_id)
-        )
-        group_id = cursor.lastrowid
-        cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
-        conn.commit()
-        flash('Group created successfully!', 'success')
-        return redirect(url_for('community.community'))
-    
+        try:
+            cursor = conn.execute(
+                "INSERT INTO groups (name, description, creator_id, image_url) VALUES (?, ?, ?, ?)",
+                (name, description, user_id, image_url)
+            )
+            group_id = cursor.lastrowid
+            
+            # Add creator as a member and admin
+            conn.execute(
+                "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')",
+                (group_id, user_id)
+            )
+            conn.commit()
+            flash('Group created successfully!', 'success')
+            return redirect(url_for('community.view_group', group_id=group_id))
+        except Exception as e:
+            flash(f'Error creating group: {e}', 'danger')
+            return redirect(url_for('community.create_group'))
+            
     return render_template('community/create.html')
+
+# REPORT GROUP ACTION: Allows users to report a community group
+@community_bp.route('/community/group/<int:group_id>/report', methods=['POST'])
+@login_required
+def report_group(group_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(request.referrer)
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'group' AND target_id = ?", 
+                       (user_id, group_id), one=True)
+    
+    if existing:
+        flash('You have already reported this group.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'group', ?, ?)",
+                    (user_id, group_id, reason))
+        conn.commit()
+        flash('Group reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(request.referrer)
+
 
 @community_bp.route('/community/<int:group_id>')
 def view_group(group_id):
@@ -326,6 +365,18 @@ def toggle_group_post_like(post_id):
         conn.execute("UPDATE group_posts SET likes = likes + 1 WHERE id = ?", (post_id,))
         
     conn.commit()
+    
+    # Notify Post Author (if liked and not by themselves)
+    if not like: # This means it was just liked
+        if post['user_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            create_notification(
+                post['user_id'],
+                'Like',
+                f"{sender['username']} liked your post",
+                url_for('community.view_group', group_id=post['group_id'])
+            )
+    
     return redirect(url_for('community.view_group', group_id=post['group_id']))
 
 @community_bp.route('/community/post/<int:post_id>/comment', methods=['POST'])
@@ -343,6 +394,17 @@ def create_group_post_comment(post_id):
             (post_id, user_id, content)
         )
         conn.commit()
+        
+        # Notify Post Author (if not by themselves)
+        post_info = db.query("SELECT user_id, group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
+        if post_info and post_info['user_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            create_notification(
+                post_info['user_id'],
+                'Comment',
+                f"{sender['username']} commented on your post",
+                url_for('community.view_group', group_id=post_info['group_id'])
+            )
     
     if post:
         return redirect(url_for('community.view_group', group_id=post['group_id']))

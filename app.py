@@ -85,6 +85,26 @@ def create_app():
             'user_lang': session.get('language') or (g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en')
         }
 
+    # Jinja filter to convert UTC timestamps to GMT+8 (Singapore Time)
+    @app.template_filter('to_sgt')
+    def to_sgt_filter(value):
+        from datetime import datetime, timedelta, timezone
+        if not value:
+            return value
+        try:
+            # Handle if value is already a string
+            ts_str = str(value)[:19]
+            # Try to parse standard format
+            utc_time = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S')
+            # Assume input is UTC
+            utc_time = utc_time.replace(tzinfo=timezone.utc)
+            # Convert to Singapore Time (GMT+8)
+            sgt = timezone(timedelta(hours=8))
+            sgt_time = utc_time.astimezone(sgt)
+            return sgt_time.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            return value
+
     from utils import get_db, get_current_user
 
     @app.before_request

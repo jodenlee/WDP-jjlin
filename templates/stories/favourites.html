@@ -14,7 +14,8 @@
                 id="fav-search-form">
                 <!-- Search -->
                 <div class="col-12 col-md-5 position-relative">
-                    <input type="text" name="search" id="fav-search-input" class="form-control form-control-lg pe-5"
+                    <input type="text" name="search" id="fav-search-input"
+                        class="form-control form-control-lg pe-5 search-bar-text"
                         placeholder="{{ _('Search your favourites...') }}" value="{{ request.args.get('search', '') }}">
                     <i class="fas fa-times position-absolute top-50 end-0 translate-middle-y me-4 text-muted cursor-pointer"
                         id="fav-clear-search" style="cursor: pointer; display: none;"></i>
@@ -23,8 +24,9 @@
                 <!-- Tags Filter (Custom Dropdown) -->
                 <div class="col-4 col-md-2 position-relative">
                     <div class="dropdown">
-                        <button class="form-select form-select-lg w-100 text-start" type="button" id="favTagsDropdown"
-                            data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                        <button class="form-select form-select-lg w-100 text-start search-bar-text" type="button"
+                            id="favTagsDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+                            data-bs-auto-close="outside">
                             <span class="fav-tags-display text-truncate d-block">{% if selected_tags %}{{ selected_tags
                                 |
                                 join(', ') }}{% else %}{{ _('Tags') }}{% endif %}</span>
@@ -48,7 +50,7 @@
 
                 <!-- Sorting -->
                 <div class="col-4 col-md-2">
-                    <select name="sort" class="form-select form-select-lg">
+                    <select name="sort" class="form-select form-select-lg search-bar-text">
                         <option value="newest" {% if request.args.get('sort')=='newest' %}selected{% endif %}>{{
                             _('Newest') }}
                         </option>
@@ -62,7 +64,7 @@
                 <div class="col-4 col-md-2">
                     <div class="input-group">
                         <input type="text" id="fav-location-filter" name="location" list="singapore-locations"
-                            class="form-control form-control-lg" placeholder="{{ _('Location') }}"
+                            class="form-control form-control-lg search-bar-text" placeholder="{{ _('Location') }}"
                             value="{{ request.args.get('location', '') }}">
                         <!-- Clear Location Button -->
                         <button type="button" class="btn btn-outline-secondary border-start-0 border"

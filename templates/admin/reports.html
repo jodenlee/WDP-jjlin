@@ -120,7 +120,7 @@
                                         </span>
                                     </td>
                                     <td>{{ report['reporter_name'] or 'Unknown' }}</td>
-                                    <td><small class="text-muted">{{ report['created_at'][:16] }}</small></td>
+                                    <td><small class="text-muted">{{ report['created_at'][:16]|to_sgt }}</small></td>
                                     <td class="text-end pe-4">
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ url_for('admin.view_reported_item', target_type=report['target_type'], target_id=report['target_id']) }}"
@@ -199,7 +199,7 @@
                                     </td>
                                     <td>{{ report['reason'] }}</td>
                                     <td>{{ report['reporter_name'] or 'Unknown' }}</td>
-                                    <td><small class="text-muted">{{ report['created_at'][:16] }}</small></td>
+                                    <td><small class="text-muted">{{ report['created_at'][:16]|to_sgt }}</small></td>
                                 </tr>
                                 {% endfor %}
                                 {% else %}

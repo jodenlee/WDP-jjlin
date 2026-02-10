@@ -3,7 +3,7 @@ import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
-from utils import get_db, login_required, allowed_file
+from utils import get_db, login_required, allowed_file, create_notification
 
 activities_bp = Blueprint('activities', __name__)
 
@@ -236,6 +236,17 @@ def join_activity(activity_id):
     try:
         db.query("INSERT INTO activity_rsvps (activity_id, user_id) VALUES (?, ?)", (activity_id, user_id))
         flash('Successfully joined the activity!', 'success')
+        
+        # Notify Organizer (if not by themselves)
+        activity = db.query("SELECT organizer_id, title FROM activities WHERE id = ?", (activity_id,), one=True)
+        if activity and activity['organizer_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            create_notification(
+                activity['organizer_id'],
+                'Activity',
+                f"{sender['username']} joined your activity: {activity['title']}",
+                url_for('activities.view_activity', activity_id=activity_id)
+            )
     except:
         pass
     return redirect(request.referrer or url_for('activities.activities_list'))
@@ -248,4 +259,31 @@ def leave_activity(activity_id):
     db.query("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
     flash('You have left the activity.', 'info')
     return redirect(request.referrer or url_for('activities.activities_list'))
+
+# REPORT ACTIVITY ACTION: Allows users to report an activity
+@activities_bp.route('/activities/<int:activity_id>/report', methods=['POST'])
+@login_required
+def report_activity(activity_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(request.referrer)
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'activity' AND target_id = ?", 
+                       (user_id, activity_id), one=True)
+    
+    if existing:
+        flash('You have already reported this activity.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'activity', ?, ?)",
+                    (user_id, activity_id, reason))
+        conn.commit()
+        flash('Activity reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(request.referrer)
 

@@ -34,7 +34,7 @@
                         <p class="mb-1">{{ msg['content'] }}</p>
                         <small
                             class="{% if msg['sender_id'] == current_user_id %}text-white-50{% else %}text-muted{% endif %}">{{
-                            msg['created_at'] }}</small>
+                            msg['created_at']|to_sgt }}</small>
                     </div>
                 </div>
                 {% endfor %}
