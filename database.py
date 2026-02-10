@@ -1,9 +1,10 @@
 import sqlite3
 
 class Database:
+    _db_initialized = False
+
     def __init__(self, db_file="app.db"):
         self.db_file = db_file
-        self.init_db()
 
     def get_connection(self):
         """Returns a connection to the SQLite database with optimized settings."""
@@ -19,8 +20,11 @@ class Database:
             
         return conn
 
-    def init_db(self):
+    def init_db(self, force=False):
         """Initializes the database with necessary tables."""
+        if Database._db_initialized and not force:
+            return
+        
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -578,26 +582,53 @@ class Database:
 
         conn.commit()
         conn.close()
+        Database._db_initialized = True
 
     def query(self, query, args=(), one=False):
         """Helper method to execute queries."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(query, args)
-        rv = cursor.fetchall()
-        conn.commit()
-        conn.close()
-        return (rv[0] if rv else None) if one else rv
+        from flask import g, has_app_context
+        # Use shared connection if in request context
+        use_g = has_app_context()
+        if use_g and hasattr(g, 'db_conn'):
+            conn = g.db_conn
+            should_close = False
+        else:
+            conn = self.get_connection()
+            should_close = True
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute(query, args)
+            rv = cursor.fetchall()
+            # Only commit/close if we opened it here or it's not a read-only query
+            # sqlite3 needs commit for writes but for consistency we commit if we opened it
+            if should_close:
+                conn.commit()
+            return (rv[0] if rv else None) if one else rv
+        finally:
+            if should_close:
+                conn.close()
     def set_setting(self, key, value):
         """Sets a value in the settings table."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO settings (key, value) VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value
-        """, (key, value))
-        conn.commit()
-        conn.close()
+        from flask import g, has_app_context
+        use_g = has_app_context()
+        if use_g and hasattr(g, 'db_conn'):
+            conn = g.db_conn
+            should_close = False
+        else:
+            conn = self.get_connection()
+            should_close = True
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """, (key, value))
+            conn.commit()
+        finally:
+            if should_close:
+                conn.close()
 
     def get_setting(self, key):
         """Gets a value from the settings table."""
