@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // HERO SECTION UPDATE: Update the main title with the personalized greeting
     const heroTitle = document.querySelector('.hero h1');
     if (heroTitle) {
-        heroTitle.innerText = `${greeting}! ` + heroTitle.innerText;
+        heroTitle.innerText = greeting + heroTitle.innerText;
     }
 
     // MOBILE NAVIGATION TOGGLE: Handles the hamburger menu for small screens

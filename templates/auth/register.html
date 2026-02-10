@@ -6,8 +6,8 @@
         <div class="card nav-card-minimal shadow">
             <div class="card-body p-5">
                 <div class="text-center mb-4">
-                    <h2 class="fw-bold" style="color: var(--primary-color);">Create Account</h2>
-                    <p class="text-muted">Join the TogetherSG community</p>
+                    <h2 class="fw-bold" style="color: var(--primary-color);">{{ _('Create Account') }}</h2>
+                    <p class="text-muted">{{ _('Join the TogetherSG community') }}</p>
                 </div>
 
                 {% if error %}
@@ -29,25 +29,25 @@
 
                 <form action="{{ url_for('auth.register') }}" method="POST" id="registerForm" novalidate>
                     <div class="mb-3">
-                        <label for="full_name" class="form-label fw-bold">Full Name <span
+                        <label for="full_name" class="form-label fw-bold">{{ _('Full Name') }} <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="full_name" name="full_name"
-                            placeholder="Your full name" value="{{ form.full_name or '' }}" required>
-                        <div class="invalid-feedback">Please enter your full name.</div>
+                            placeholder="{{ _('Your full name') }}" value="{{ form.full_name or '' }}" required>
+                        <div class="invalid-feedback">{{ _('Please enter your full name.') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="username" class="form-label fw-bold">Username <span
+                        <label for="username" class="form-label fw-bold">{{ _('Username') }} <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="username" name="username"
-                            placeholder="Choose a username" value="{{ form.username or '' }}" required
+                            placeholder="{{ _('Choose a username') }}" value="{{ form.username or '' }}" required
                             pattern="^[a-zA-Z0-9_]{3,20}$">
-                        <div class="form-text">3-20 characters, letters, numbers, and underscores only.</div>
-                        <div class="invalid-feedback">Invalid username format.</div>
+                        <div class="form-text">{{ _('3-20 characters, letters, numbers, and underscores only.') }}</div>
+                        <div class="invalid-feedback">{{ _('Invalid username format.') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label fw-bold">Gmail Address <span
+                        <label for="email" class="form-label fw-bold">{{ _('Gmail Address') }} <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">
@@ -63,59 +63,60 @@
                                 </svg>
                             </span>
                             <input type="email" class="form-control" id="email" name="email"
-                                placeholder="yourname@gmail.com" value="{{ form.email or '' }}" required
+                                placeholder="{{ _('yourname@gmail.com') }}" value="{{ form.email or '' }}" required
                                 pattern="[a-zA-Z0-9._%+-]+@gmail\.com$">
                         </div>
-                        <div class="form-text"><i class="fas fa-info-circle me-1"></i>Only Gmail addresses are accepted.
+                        <div class="form-text"><i class="fas fa-info-circle me-1"></i>{{ _('Only Gmail addresses are
+                            accepted.') }}
                         </div>
-                        <div class="invalid-feedback">Please enter a valid Gmail address (@gmail.com).</div>
+                        <div class="invalid-feedback">{{ _('Please enter a valid Gmail address (@gmail.com).') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="password" class="form-label fw-bold">Password <span
+                        <label for="password" class="form-label fw-bold">{{ _('Password') }} <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="password" name="password"
-                                placeholder="Create a password" required minlength="6">
+                                placeholder="{{ _('Create a password') }}" required minlength="6">
                             <button class="btn btn-outline-secondary" type="button"
                                 onclick="togglePassword('password', this)">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
-                        <div class="form-text">Minimum 6 characters, 1 capital letter, 1 number.</div>
-                        <div class="invalid-feedback">Password must be at least 6 characters.</div>
+                        <div class="form-text">{{ _('Minimum 6 characters, 1 capital letter, 1 number.') }}</div>
+                        <div class="invalid-feedback">{{ _('Password must be at least 6 characters.') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="confirm_password" class="form-label fw-bold">Confirm Password <span
+                        <label for="confirm_password" class="form-label fw-bold">{{ _('Confirm Password') }} <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password"
-                                placeholder="Confirm password" required>
+                                placeholder="{{ _('Confirm password') }}" required>
                             <button class="btn btn-outline-secondary" type="button"
                                 onclick="togglePassword('confirm_password', this)">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
-                        <div class="invalid-feedback">Passwords do not match.</div>
+                        <div class="invalid-feedback">{{ _('Passwords do not match.') }}</div>
                     </div>
 
                     <div class="mb-4">
-                        <label for="role" class="form-label fw-bold">I am a... <span
+                        <label for="role" class="form-label fw-bold">{{ _('I am a...') }} <span
                                 class="text-danger">*</span></label>
                         <div class="d-flex gap-4">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="role" id="role_senior" value="senior"
                                     {{ 'checked' if form.role=='senior' else '' }} required>
                                 <label class="form-check-label" for="role_senior">
-                                    <i class="fas fa-user-tie me-1"></i> Senior (50+)
+                                    <i class="fas fa-user-tie me-1"></i> {{ _('Senior (50+)') }}
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="role" id="role_youth" value="youth"
                                     {{ 'checked' if form.role=='youth' else '' }}>
                                 <label class="form-check-label" for="role_youth">
-                                    <i class="fas fa-user-graduate me-1"></i> Youth
+                                    <i class="fas fa-user-graduate me-1"></i> {{ _('Youth') }}
                                 </label>
                             </div>
                         </div>
@@ -124,17 +125,17 @@
                     <div class="form-check mb-4">
                         <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
                         <label class="form-check-label" for="terms">
-                            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#tosModal"
-                                style="color: var(--primary-color);">Terms of Service</a> and
+                            {{ _('I agree to the') }} <a href="#" data-bs-toggle="modal" data-bs-target="#tosModal"
+                                style="color: var(--primary-color);">{{ _('Terms of Service') }}</a> {{ _('and') }}
                             <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal"
-                                style="color: var(--primary-color);">Privacy Policy</a>
+                                style="color: var(--primary-color);">{{ _('Privacy Policy') }}</a>
                         </label>
-                        <div class="invalid-feedback">You must agree to the terms.</div>
+                        <div class="invalid-feedback">{{ _('You must agree to the terms.') }}</div>
                     </div>
 
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-user-plus me-2"></i>Create Account
+                            <i class="fas fa-user-plus me-2"></i>{{ _('Create Account') }}
                         </button>
                     </div>
                 </form>
@@ -142,10 +143,10 @@
                 <hr class="my-4">
 
                 <div class="text-center">
-                    <p class="text-muted mb-0">Already have an account?</p>
+                    <p class="text-muted mb-0">{{ _('Already have an account?') }}</p>
                     <a href="{{ url_for('auth.login') }}" class="fw-bold text-decoration-none"
                         style="color: var(--primary-color);">
-                        Sign In <i class="fas fa-arrow-right ms-1"></i>
+                        {{ _('Sign In') }} <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
             </div>
@@ -158,46 +159,49 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header" style="background-color: var(--primary-color); color: white;">
-                <h5 class="modal-title" id="tosModalLabel"><i class="fas fa-file-contract me-2"></i>Terms of Service
+                <h5 class="modal-title" id="tosModalLabel"><i class="fas fa-file-contract me-2"></i>{{ _('Terms of
+                    Service') }}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <h6 class="fw-bold">1. Acceptance of Terms</h6>
-                <p>By accessing and using TogetherSG, you accept and agree to be bound by the terms and provisions of
-                    this agreement.</p>
+                <h6 class="fw-bold">{{ _('1. Acceptance of Terms') }}</h6>
+                <p>{{ _('By accessing and using TogetherSG, you accept and agree to be bound by the terms and provisions
+                    of this agreement.') }}</p>
 
-                <h6 class="fw-bold">2. Use of Service</h6>
-                <p>You agree to use TogetherSG only for lawful purposes. You must not use this service to:</p>
+                <h6 class="fw-bold">{{ _('2. Use of Service') }}</h6>
+                <p>{{ _('You agree to use TogetherSG only for lawful purposes. You must not use this service to:') }}
+                </p>
                 <ul>
-                    <li>Post harmful, offensive, or inappropriate content</li>
-                    <li>Harass or bully other users</li>
-                    <li>Share false or misleading information</li>
-                    <li>Violate any applicable laws or regulations</li>
+                    <li>{{ _('Post harmful, offensive, or inappropriate content') }}</li>
+                    <li>{{ _('Harass or bully other users') }}</li>
+                    <li>{{ _('Share false or misleading information') }}</li>
+                    <li>{{ _('Violate any applicable laws or regulations') }}</li>
                 </ul>
 
-                <h6 class="fw-bold">3. User Accounts</h6>
-                <p>You are responsible for maintaining the confidentiality of your account credentials and for all
-                    activities that occur under your account.</p>
+                <h6 class="fw-bold">{{ _('3. User Accounts') }}</h6>
+                <p>{{ _('You are responsible for maintaining the confidentiality of your account credentials and for all
+                    activities that occur under your account.') }}</p>
 
-                <h6 class="fw-bold">4. Content Guidelines</h6>
-                <p>All content you post must be respectful and appropriate for all ages. We reserve the right to remove
-                    any content that violates these guidelines.</p>
+                <h6 class="fw-bold">{{ _('4. Content Guidelines') }}</h6>
+                <p>{{ _('All content you post must be respectful and appropriate for all ages. We reserve the right to
+                    remove any content that violates these guidelines.') }}</p>
 
-                <h6 class="fw-bold">5. Community Standards</h6>
-                <p>TogetherSG is designed to connect youth and seniors in meaningful ways. We expect all users to treat
-                    each other with respect and kindness.</p>
+                <h6 class="fw-bold">{{ _('5. Community Standards') }}</h6>
+                <p>{{ _('TogetherSG is designed to connect youth and seniors in meaningful ways. We expect all users to
+                    treat each other with respect and kindness.') }}</p>
 
-                <h6 class="fw-bold">6. Modifications</h6>
-                <p>We reserve the right to modify these terms at any time. Continued use of the service constitutes
-                    acceptance of any changes.</p>
+                <h6 class="fw-bold">{{ _('6. Modifications') }}</h6>
+                <p>{{ _('We reserve the right to modify these terms at any time. Continued use of the service
+                    constitutes acceptance of any changes.') }}</p>
 
-                <h6 class="fw-bold">7. Contact</h6>
-                <p>If you have any questions about these Terms, please contact us at support@togethersg.com.</p>
+                <h6 class="fw-bold">{{ _('7. Contact') }}</h6>
+                <p>{{ _('If you have any questions about these Terms, please contact us at support@togethersg.com.') }}
+                </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ _('I Understand') }}</button>
             </div>
         </div>
     </div>
@@ -208,50 +212,52 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header" style="background-color: var(--primary-color); color: white;">
-                <h5 class="modal-title" id="privacyModalLabel"><i class="fas fa-shield-alt me-2"></i>Privacy Policy</h5>
+                <h5 class="modal-title" id="privacyModalLabel"><i class="fas fa-shield-alt me-2"></i>{{ _('Privacy
+                    Policy') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <h6 class="fw-bold">1. Information We Collect</h6>
-                <p>We collect information you provide directly to us, such as:</p>
+                <h6 class="fw-bold">{{ _('1. Information We Collect') }}</h6>
+                <p>{{ _('We collect information you provide directly to us, such as:') }}</p>
                 <ul>
-                    <li>Name, email address, and username</li>
-                    <li>Profile information and bio</li>
-                    <li>Stories, comments, and messages you share</li>
-                    <li>Activity participation and group memberships</li>
+                    <li>{{ _('Name, email address, and username') }}</li>
+                    <li>{{ _('Profile information and bio') }}</li>
+                    <li>{{ _('Stories, comments, and messages you share') }}</li>
+                    <li>{{ _('Activity participation and group memberships') }}</li>
                 </ul>
 
-                <h6 class="fw-bold">2. How We Use Your Information</h6>
-                <p>We use the information we collect to:</p>
+                <h6 class="fw-bold">{{ _('2. How We Use Your Information') }}</h6>
+                <p>{{ _('We use the information we collect to:') }}</p>
                 <ul>
-                    <li>Provide and improve our services</li>
-                    <li>Send you notifications about activities and messages</li>
-                    <li>Connect you with other community members</li>
-                    <li>Ensure the safety and security of our platform</li>
+                    <li>{{ _('Provide and improve our services') }}</li>
+                    <li>{{ _('Send you notifications about activities and messages') }}</li>
+                    <li>{{ _('Connect you with other community members') }}</li>
+                    <li>{{ _('Ensure the safety and security of our platform') }}</li>
                 </ul>
 
-                <h6 class="fw-bold">3. Information Sharing</h6>
-                <p>We do not sell your personal information. We may share your information only:</p>
+                <h6 class="fw-bold">{{ _('3. Information Sharing') }}</h6>
+                <p>{{ _('We do not sell your personal information. We may share your information only:') }}</p>
                 <ul>
-                    <li>With your consent</li>
-                    <li>To comply with legal obligations</li>
-                    <li>To protect the rights and safety of our users</li>
+                    <li>{{ _('With your consent') }}</li>
+                    <li>{{ _('To comply with legal obligations') }}</li>
+                    <li>{{ _('To protect the rights and safety of our users') }}</li>
                 </ul>
 
-                <h6 class="fw-bold">4. Data Security</h6>
-                <p>We implement appropriate security measures to protect your personal information from unauthorized
-                    access, alteration, or destruction.</p>
+                <h6 class="fw-bold">{{ _('4. Data Security') }}</h6>
+                <p>{{ _('We implement appropriate security measures to protect your personal information from
+                    unauthorized access, alteration, or destruction.') }}</p>
 
-                <h6 class="fw-bold">5. Your Rights</h6>
-                <p>You have the right to access, update, or delete your personal information at any time through your
-                    account settings.</p>
+                <h6 class="fw-bold">{{ _('5. Your Rights') }}</h6>
+                <p>{{ _('You have the right to access, update, or delete your personal information at any time through
+                    your account settings.') }}</p>
 
-                <h6 class="fw-bold">6. Contact Us</h6>
-                <p>If you have any questions about this Privacy Policy, please contact us at privacy@togethersg.com.</p>
+                <h6 class="fw-bold">{{ _('6. Contact Us') }}</h6>
+                <p>{{ _('If you have any questions about this Privacy Policy, please contact us at
+                    privacy@togethersg.com.') }}</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I Understand</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ _('I Understand') }}</button>
             </div>
         </div>
     </div>
