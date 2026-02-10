@@ -10,8 +10,8 @@
                         style="width: 80px; height: 80px; background-color: var(--accent-color);">
                         <i class="fas fa-user-plus fa-2x" style="color: var(--primary-color);"></i>
                     </div>
-                    <h3 class="fw-bold">Complete Your Account</h3>
-                    <p class="text-muted">Welcome! Let's set up your account.</p>
+                    <h3 class="fw-bold">{{ _('Complete Your Account') }}</h3>
+                    <p class="text-muted">{{ _("Welcome! Let's set up your account.") }}</p>
                 </div>
 
                 {% if error %}
@@ -20,46 +20,47 @@
 
                 <form action="{{ url_for('auth.complete_google_setup') }}" method="POST">
                     <div class="mb-3">
-                        <label for="email" class="form-label fw-bold">Email</label>
+                        <label for="email" class="form-label fw-bold">{{ _('Email') }}</label>
                         <input type="email" class="form-control bg-light" id="email" value="{{ email }}" readonly>
-                        <div class="form-text"><i class="fab fa-google me-1"></i>Logged in via Google</div>
+                        <div class="form-text"><i class="fab fa-google me-1"></i>{{ _('Logged in via Google') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="full_name" class="form-label fw-bold">Full Name</label>
+                        <label for="full_name" class="form-label fw-bold">{{ _('Full Name') }}</label>
                         <input type="text" class="form-control" id="full_name" name="full_name" value="{{ name }}"
                             required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="username" class="form-label fw-bold">Username <span
+                        <label for="username" class="form-label fw-bold">{{ _('Username') }} <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="username" name="username"
-                            placeholder="Choose a username" value="{{ suggested_username }}" required
+                            placeholder="{{ _('Choose a username') }}" value="{{ suggested_username }}" required
                             pattern="[a-zA-Z0-9_]{3,20}">
-                        <div class="form-text">3-20 characters, letters, numbers, and underscores only.</div>
+                        <div class="form-text">{{ _('3-20 characters, letters, numbers, and underscores only.') }}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="password" class="form-label fw-bold">Password <span
+                        <label for="password" class="form-label fw-bold">{{ _('Password') }} <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="password" name="password"
-                                placeholder="Create a password" required minlength="8">
+                                placeholder="{{ _('Create a password') }}" required minlength="8">
                             <button class="btn btn-outline-secondary" type="button"
                                 onclick="togglePassword('password', this)">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
-                        <div class="form-text">Minimum 8 characters. Used for logging in without Google.</div>
+                        <div class="form-text">{{ _('Minimum 8 characters. Used for logging in without Google.') }}
+                        </div>
                     </div>
 
                     <div class="mb-4">
-                        <label for="confirm_password" class="form-label fw-bold">Confirm Password <span
+                        <label for="confirm_password" class="form-label fw-bold">{{ _('Confirm Password') }} <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password"
-                                placeholder="Confirm your password" required minlength="8">
+                                placeholder="{{ _('Confirm your password') }}" required minlength="8">
                             <button class="btn btn-outline-secondary" type="button"
                                 onclick="togglePassword('confirm_password', this)">
                                 <i class="fas fa-eye"></i>
@@ -68,20 +69,20 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">I am a:</label>
+                        <label class="form-label fw-bold">{{ _('I am a:') }}</label>
                         <div class="d-flex gap-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="role" id="role_youth" value="youth"
                                     checked>
                                 <label class="form-check-label" for="role_youth">
-                                    <i class="fas fa-user-graduate me-1"></i>Youth
+                                    <i class="fas fa-user-graduate me-1"></i>{{ _('Youth') }}
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="role" id="role_senior"
                                     value="senior">
                                 <label class="form-check-label" for="role_senior">
-                                    <i class="fas fa-user me-1"></i>Senior
+                                    <i class="fas fa-user me-1"></i>{{ _('Senior') }}
                                 </label>
                             </div>
                         </div>
@@ -89,7 +90,7 @@
 
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-check me-2"></i>Complete Setup
+                            <i class="fas fa-check me-2"></i>{{ _('Complete Setup') }}
                         </button>
                     </div>
                 </form>

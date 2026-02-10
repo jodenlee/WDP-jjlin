@@ -9,8 +9,8 @@
                     <div class="mb-3">
                         <i class="fas fa-shield-alt fa-3x" style="color: var(--primary-color);"></i>
                     </div>
-                    <h2 class="fw-bold" style="color: var(--primary-color);">Login Verification</h2>
-                    <p class="text-muted">Enter the 6-digit code sent to</p>
+                    <h2 class="fw-bold" style="color: var(--primary-color);">{{ _('Login Verification') }}</h2>
+                    <p class="text-muted">{{ _('Enter the 6-digit code sent to') }}</p>
                     <p class="fw-bold">{{ email }}</p>
                 </div>
 
@@ -22,7 +22,7 @@
 
                 <form action="{{ url_for('auth.verify_login_otp') }}" method="POST" novalidate>
                     <div class="mb-4">
-                        <label for="code" class="form-label fw-bold">Verification Code</label>
+                        <label for="code" class="form-label fw-bold">{{ _('Verification Code') }}</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
                                 <i class="fas fa-lock text-muted"></i>
@@ -31,7 +31,7 @@
                                 name="code" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autofocus
                                 style="letter-spacing: 0.5em;">
                         </div>
-                        <small class="text-muted">Code expires in 5 minutes</small>
+                        <small class="text-muted">{{ _('Code expires in 5 minutes') }}</small>
                     </div>
 
                     <div class="mb-4">
@@ -39,15 +39,15 @@
                             <input class="form-check-input" type="checkbox" id="trust_device" name="trust_device"
                                 value="1">
                             <label class="form-check-label" for="trust_device">
-                                <i class="fas fa-laptop me-1"></i>Trust this device for 30 days
+                                <i class="fas fa-laptop me-1"></i>{{ _('Trust this device for 30 days') }}
                             </label>
                         </div>
-                        <small class="text-muted ms-4">Skip OTP on future logins from this browser</small>
+                        <small class="text-muted ms-4">{{ _('Skip OTP on future logins from this browser') }}</small>
                     </div>
 
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-sign-in-alt me-2"></i>Verify & Login
+                            <i class="fas fa-sign-in-alt me-2"></i>{{ _('Verify & Login') }}
                         </button>
                     </div>
                 </form>
@@ -55,17 +55,17 @@
                 <hr class="my-4">
 
                 <div class="text-center">
-                    <p class="text-muted mb-2">Didn't receive the code?</p>
+                    <p class="text-muted mb-2">{{ _("Didn't receive the code?") }}</p>
                     <form action="{{ url_for('auth.resend_login_otp') }}" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-outline-secondary">
-                            <i class="fas fa-redo me-2"></i>Resend Code
+                            <i class="fas fa-redo me-2"></i>{{ _('Resend Code') }}
                         </button>
                     </form>
                 </div>
 
                 <div class="text-center mt-3">
                     <a href="{{ url_for('auth.login') }}" class="text-decoration-none text-muted">
-                        <i class="fas fa-arrow-left me-1"></i>Back to Login
+                        <i class="fas fa-arrow-left me-1"></i>{{ _('Back to Login') }}
                     </a>
                 </div>
             </div>
