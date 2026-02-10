@@ -117,10 +117,15 @@ def auto_translate(text, target_lang=None):
         return text
 
     # If target_lang not specified, get from g.user or default to en
+    # If target_lang not specified, try session then g.user then default
     if not target_lang:
-        target_lang = 'en'
+        target_lang = session.get('language')
+        
+    if not target_lang:
         if hasattr(g, 'user') and g.user and 'language' in g.user.keys():
             target_lang = g.user['language']
+        else:
+            target_lang = 'en'
     
 
     # For English, just return original text

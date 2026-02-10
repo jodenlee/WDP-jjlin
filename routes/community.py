@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
-from utils import get_db, login_required, allowed_file, check_content_moderation, create_notification, get_conn
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from utils import get_db, login_required, create_notification
 from werkzeug.utils import secure_filename
 import os
 import time
@@ -38,11 +38,7 @@ def community():
 @login_required
 def create_group():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        if not name or len(name) < 5:
-            flash('Group name must be at least 5 characters.', 'danger')
-            return render_template('community/create.html')
-        
+        name = request.form['name']
         description = request.form.get('description', '')
         user_id = session['user_id']
         
@@ -55,26 +51,65 @@ def create_group():
                     flash('Only image files are allowed.', 'danger')
                     return render_template('community/create.html')
                 filename = secure_filename(file.filename)
+                # Ensure unique filename
                 filename = f"group_{int(time.time())}_{filename}"
-                from flask import current_app
-                filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                image_url = f"uploads/{filename}"
-
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Ensure unique filename
+                filename = f"{int(time.time())}_{filename}"
+                file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename))
+                image_url = f"uploads/groups/{filename}"
+                
         db = get_db()
-        conn = get_conn()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO groups (name, description, image_url, created_by) VALUES (?, ?, ?, ?)",
-            (name, description, image_url, user_id)
-        )
-        group_id = cursor.lastrowid
-        cursor.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
-        conn.commit()
-        flash('Group created successfully!', 'success')
-        return redirect(url_for('community.community'))
-    
+        conn = db.get_connection()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO groups (name, description, creator_id, image_url) VALUES (?, ?, ?, ?)",
+                (name, description, user_id, image_url)
+            )
+            group_id = cursor.lastrowid
+            
+            # Add creator as a member and admin
+            conn.execute(
+                "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')",
+                (group_id, user_id)
+            )
+            conn.commit()
+            flash('Group created successfully!', 'success')
+            return redirect(url_for('community.view_group', group_id=group_id))
+        except Exception as e:
+            flash(f'Error creating group: {e}', 'danger')
+            return redirect(url_for('community.create_group'))
+            
     return render_template('community/create.html')
+
+# REPORT GROUP ACTION: Allows users to report a community group
+@community_bp.route('/community/group/<int:group_id>/report', methods=['POST'])
+@login_required
+def report_group(group_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(request.referrer)
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'group' AND target_id = ?", 
+                       (user_id, group_id), one=True)
+    
+    if existing:
+        flash('You have already reported this group.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'group', ?, ?)",
+                    (user_id, group_id, reason))
+        conn.commit()
+        flash('Group reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(request.referrer)
+
 
 @community_bp.route('/community/<int:group_id>')
 def view_group(group_id):
@@ -144,21 +179,9 @@ def view_group(group_id):
 def join_group(group_id):
     user_id = session['user_id']
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     try:
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
-        
-        # Notify Group Owner
-        group = db.query("SELECT name, created_by FROM groups WHERE id = ?", (group_id,), one=True)
-        if group and group['created_by'] != user_id:
-            user = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
-            content = f"{user['username']} has joined your group '{group['name']}'!"
-            link = url_for('community.view_group', group_id=group_id)
-            conn.execute(
-                "INSERT INTO notifications (user_id, type, content, link) VALUES (?, ?, ?, ?)",
-                (group['created_by'], 'group_join', content, link)
-            )
-        
         conn.commit()
         flash('Joined group!', 'success')
     except:
@@ -170,7 +193,7 @@ def join_group(group_id):
 def leave_group(group_id):
     user_id = session['user_id']
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
     
     # Check if empty
@@ -200,7 +223,7 @@ def delete_group(group_id):
         flash('Only the group creator can delete the group.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
 
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
     conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
     conn.commit()
@@ -223,11 +246,11 @@ def update_group(group_id):
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '')
     
-    if not name or len(name) < 5:
-        flash('Group name must be at least 5 characters.', 'danger')
+    if not name:
+        flash('Group name is required.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
 
-    conn = get_conn()
+    conn = db.get_connection()
     
     if 'image' in request.files:
         file = request.files['image']
@@ -266,31 +289,11 @@ def create_group_post(group_id):
     user_id = session['user_id']
     content = request.form['content']
     
-    # Handle audio upload
-    audio_url = None
-    if 'audio' in request.files:
-        file = request.files['audio']
-        if file and file.filename:
-            filename = secure_filename(file.filename)
-            # Ensure filename has a valid extension if it's missing (Webm is common for browser recordings)
-            if '.' not in filename:
-                filename += '.webm'
-            filename = f"audio_{int(time.time())}_{filename}"
-            from flask import current_app
-            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            audio_url = f"uploads/{filename}"
-
-    # Content Moderation Check
-    if content and check_content_moderation(content):
-        flash('Your post has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        return redirect(url_for('community.view_group', group_id=group_id))
-        
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute(
-        "INSERT INTO group_posts (group_id, user_id, content, audio_url) VALUES (?, ?, ?, ?)",
-        (group_id, user_id, content, audio_url)
+        "INSERT INTO group_posts (group_id, user_id, content) VALUES (?, ?, ?)",
+        (group_id, user_id, content)
     )
     conn.commit()
     flash('Post created!', 'success')
@@ -302,16 +305,6 @@ def update_group_post(post_id):
     user_id = session['user_id']
     new_content = request.form['content']
     
-    # Content Moderation Check
-    if check_content_moderation(new_content):
-        flash('Your updated post has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        # We need to find the group_id to redirect back
-        db = get_db()
-        post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
-        if post:
-            return redirect(url_for('community.view_group', group_id=post['group_id']))
-        return redirect(url_for('community.community'))
-    
     db = get_db()
     post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
     
@@ -322,7 +315,7 @@ def update_group_post(post_id):
         flash('You can only edit your own posts.', 'danger')
         return redirect(url_for('community.view_group', group_id=post['group_id']))
         
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("UPDATE group_posts SET content = ? WHERE id = ?", (new_content, post_id))
     conn.commit()
     
@@ -343,7 +336,7 @@ def delete_group_post(post_id):
         flash('You can only delete your own posts.', 'danger')
         return redirect(url_for('community.view_group', group_id=post['group_id']))
         
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("DELETE FROM group_post_comments WHERE post_id = ?", (post_id,))
     conn.execute("DELETE FROM group_posts WHERE id = ?", (post_id,))
     conn.commit()
@@ -356,7 +349,7 @@ def delete_group_post(post_id):
 def toggle_group_post_like(post_id):
     user_id = session['user_id']
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     
     post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
     if not post:
@@ -370,19 +363,20 @@ def toggle_group_post_like(post_id):
     else:
         conn.execute("INSERT INTO group_post_likes (user_id, post_id) VALUES (?, ?)", (user_id, post_id))
         conn.execute("UPDATE group_posts SET likes = likes + 1 WHERE id = ?", (post_id,))
-        is_liked = True
         
-        # Notify Post Author of Like
+    conn.commit()
+    
+    # Notify Post Author (if liked and not by themselves)
+    if not like: # This means it was just liked
         if post['user_id'] != user_id:
-            username = session.get('username', 'Someone')
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
             create_notification(
-                post['user_id'], 
-                'Group Like', 
-                f"{username} liked your post in the group.", 
+                post['user_id'],
+                'Like',
+                f"{sender['username']} liked your post",
                 url_for('community.view_group', group_id=post['group_id'])
             )
-            
-    conn.commit()
+    
     return redirect(url_for('community.view_group', group_id=post['group_id']))
 
 @community_bp.route('/community/post/<int:post_id>/comment', methods=['POST'])
@@ -391,17 +385,8 @@ def create_group_post_comment(post_id):
     user_id = session['user_id']
     content = request.form['content']
     
-    # Content Moderation Check
-    if check_content_moderation(content):
-        flash('Your comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        db = get_db()
-        post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
-        if post:
-            return redirect(url_for('community.view_group', group_id=post['group_id']))
-        return redirect(url_for('community.community'))
-        
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
     if post:
         conn.execute(
@@ -410,16 +395,15 @@ def create_group_post_comment(post_id):
         )
         conn.commit()
         
-        # Notify Post Author of Comment
-        # We need to get the post author
-        post_data = db.query("SELECT user_id FROM group_posts WHERE id = ?", (post_id,), one=True)
-        if post_data and post_data['user_id'] != user_id:
-            username = session.get('username', 'Someone')
+        # Notify Post Author (if not by themselves)
+        post_info = db.query("SELECT user_id, group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
+        if post_info and post_info['user_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
             create_notification(
-                post_data['user_id'], 
-                'Group Comment', 
-                f"{username} commented on your group post.", 
-                url_for('community.view_group', group_id=post['group_id'])
+                post_info['user_id'],
+                'Comment',
+                f"{sender['username']} commented on your post",
+                url_for('community.view_group', group_id=post_info['group_id'])
             )
     
     if post:
@@ -433,17 +417,6 @@ def update_group_post_comment(comment_id):
     user_id = session['user_id']
     new_content = request.form['content']
     
-    # Content Moderation Check
-    if check_content_moderation(new_content):
-        flash('Your updated comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        db = get_db()
-        comment = db.query("SELECT * FROM group_post_comments WHERE id = ?", (comment_id,), one=True)
-        if comment:
-            post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (comment['post_id'],), one=True)
-            if post:
-                return redirect(url_for('community.view_group', group_id=post['group_id']))
-        return redirect(url_for('community.community'))
-
     db = get_db()
     comment = db.query("SELECT * FROM group_post_comments WHERE id = ?", (comment_id,), one=True)
     
@@ -456,7 +429,7 @@ def update_group_post_comment(comment_id):
         flash('You can only edit your own comments.', 'danger')
         return redirect(url_for('community.view_group', group_id=post['group_id']))
         
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("UPDATE group_post_comments SET content = ? WHERE id = ?", (new_content, comment_id))
     conn.commit()
     

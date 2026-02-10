@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
-from utils import get_db, login_required, allowed_file, check_content_moderation, create_notification, get_conn
+from utils import get_db, login_required, allowed_file, check_content_moderation, create_notification
 import os
 import time
 import math
@@ -217,7 +217,7 @@ def create_story():
             
         author_id = session['user_id']
         db = get_db()
-        conn = get_conn()
+        conn = db.get_connection()
         cursor = conn.cursor()
         
         cursor.execute(
@@ -277,7 +277,7 @@ def view_story(story_id):
     # Fetch comments with like counts
     comments_query = """
         SELECT c.id, c.story_id, c.user_id, c.content, c.likes,
-               datetime(c.created_at, '+8 hours') as created_at,
+                c.created_at,
                u.username, u.role, u.profile_pic 
         FROM comments c 
         JOIN users u ON c.user_id = u.id 
@@ -302,7 +302,7 @@ def view_story(story_id):
         # Fetch replies for this comment
         replies_query = """
             SELECT cr.id, cr.user_id, cr.content, u.username,
-                   datetime(cr.created_at, '+8 hours') as created_at
+                   cr.created_at
             FROM comment_replies cr
             JOIN users u ON cr.user_id = u.id
             WHERE cr.comment_id = ?
@@ -416,7 +416,7 @@ def my_bookmarks():
 @login_required
 def toggle_bookmark(story_id):
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     user_id = session['user_id']
     
     exists = db.query("SELECT * FROM bookmarks WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
@@ -426,16 +426,6 @@ def toggle_bookmark(story_id):
     else:
         conn.execute("INSERT INTO bookmarks (user_id, story_id) VALUES (?, ?)", (user_id, story_id))
         is_bookmarked = True
-        
-        # Notify Author of Bookmark
-        story = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
-        if story and story['author_id'] != user_id:
-            create_notification(
-                story['author_id'], 
-                'Bookmark', 
-                f"Someone bookmarked your story: {story['title']}", 
-                url_for('stories.view_story', story_id=story_id)
-            )
         
     conn.commit()
     
@@ -451,7 +441,7 @@ def toggle_bookmark(story_id):
 @login_required
 def toggle_like(story_id):
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     user_id = session['user_id']
     
     exists = db.query("SELECT * FROM story_likes WHERE user_id = ? AND story_id = ?", (user_id, story_id), one=True)
@@ -465,18 +455,19 @@ def toggle_like(story_id):
         conn.execute("UPDATE stories SET likes = likes + 1 WHERE id = ?", (story_id,))
         is_liked = True
         
-        # Notify Author of Like
-        story = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
-        if story and story['author_id'] != user_id:
-            username = session.get('username', 'Someone')
+    conn.commit()
+    
+    # Notify Story Author if liked (and not by themselves)
+    if is_liked:
+        story_info = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
+        if story_info and story_info['author_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
             create_notification(
-                story['author_id'], 
-                'Like', 
-                f"{username} liked your story: {story['title']}", 
+                story_info['author_id'],
+                'Like',
+                f"{sender['username']} liked your story: {story_info['title']}",
                 url_for('stories.view_story', story_id=story_id)
             )
-            
-    conn.commit()
     
     # Get updated like count
     story = db.query("SELECT likes FROM stories WHERE id = ?", (story_id,), one=True)
@@ -523,7 +514,7 @@ def edit_story(story_id):
             flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
             return redirect(url_for('stories.edit_story', story_id=story_id))
 
-        conn = get_conn()
+        conn = db.get_connection()
         conn.execute("UPDATE stories SET title = ?, content = ?, location = ? WHERE id = ?", 
                      (title, content, location, story_id))
         
@@ -662,7 +653,7 @@ def delete_story_image(story_id, image_id):
         flash('You are not authorized to delete this image.', 'danger')
         return redirect(url_for('stories.stories_list'))
     
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("DELETE FROM story_images WHERE id = ? AND story_id = ?", (image_id, story_id))
     conn.commit()
     
@@ -687,7 +678,7 @@ def delete_main_image(story_id):
         flash('You are not authorized to delete this image.', 'danger')
         return redirect(url_for('stories.stories_list'))
     
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("UPDATE stories SET image_url = NULL WHERE id = ?", (story_id,))
     conn.commit()
     
@@ -697,6 +688,33 @@ def delete_main_image(story_id):
     
     flash('Main image deleted.', 'success')
     return redirect(url_for('stories.edit_story', story_id=story_id))
+
+# REPORT COMMENT ACTION: Allows users to report a comment
+@stories_bp.route('/comment/<int:comment_id>/report', methods=['POST'])
+@login_required
+def report_comment(comment_id):
+    reason = request.form.get('reason')
+    if not reason:
+        flash('Please provide a reason for reporting.', 'warning')
+        return redirect(request.referrer)
+        
+    db = get_db()
+    conn = db.get_connection()
+    user_id = session['user_id']
+    
+    # Check if already reported
+    existing = db.query("SELECT id FROM reports WHERE reporter_id = ? AND target_type = 'comment' AND target_id = ?", 
+                       (user_id, comment_id), one=True)
+    
+    if existing:
+        flash('You have already reported this comment.', 'info')
+    else:
+        conn.execute("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, 'comment', ?, ?)",
+                    (user_id, comment_id, reason))
+        conn.commit()
+        flash('Comment reported. Thank you for helping keep our community safe.', 'success')
+        
+    return redirect(request.referrer)
 
 # REPORT STORY ACTION: Allows users to flag inappropriate content
 @stories_bp.route('/stories/<int:story_id>/report', methods=['POST'])
@@ -708,7 +726,7 @@ def report_story(story_id):
         return redirect(url_for('stories.view_story', story_id=story_id))
         
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     user_id = session['user_id']
     
     # Check if already reported
@@ -739,7 +757,7 @@ def delete_story(story_id):
         flash('You can only delete your own stories.', 'danger')
         return redirect(url_for('stories.view_story', story_id=story_id))
         
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("DELETE FROM bookmarks WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM story_likes WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM comments WHERE story_id = ?", (story_id,))
@@ -762,24 +780,24 @@ def add_comment(story_id):
     if check_content_moderation(content):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': 'Your comment has been flagged by our safety system.'}), 400
-        flash('Your comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
+        flash('Your comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'danger')
         return redirect(url_for('stories.view_story', story_id=story_id))
         
     user_id = session['user_id']
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     cursor = conn.execute("INSERT INTO comments (story_id, user_id, content) VALUES (?, ?, ?)", (story_id, user_id, content))
     comment_id = cursor.lastrowid
     conn.commit()
     
-    # Notify Author of Comment
-    story = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
-    if story and story['author_id'] != user_id:
-        username = session.get('username', 'Someone')
+    # Notify Story Author (if not by themselves)
+    story_info = db.query("SELECT author_id, title FROM stories WHERE id = ?", (story_id,), one=True)
+    if story_info and story_info['author_id'] != user_id:
+        sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
         create_notification(
-            story['author_id'], 
-            'Comment', 
-            f"{username} commented on your story: {story['title']}", 
+            story_info['author_id'],
+            'Comment',
+            f"{sender['username']} commented on your story: {story_info['title']}",
             url_for('stories.view_story', story_id=story_id)
         )
     
@@ -813,9 +831,7 @@ def edit_comment(comment_id):
     
     # Content Moderation Check
     if check_content_moderation(new_content):
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'Your updated comment has been flagged by our safety system.'}), 400
-        flash('Your updated comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
+        flash('Your updated comment has been flagged by our safety system. Please ensure it follows community guidelines.', 'danger')
         return redirect(request.referrer)
         
     user_id = session['user_id']
@@ -831,13 +847,9 @@ def edit_comment(comment_id):
         flash('You can only edit your own comments.', 'danger')
         return redirect(request.referrer)
         
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("UPDATE comments SET content = ? WHERE id = ?", (new_content, comment_id))
     conn.commit()
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, 'content': new_content})
-        
     flash('Comment updated.', 'success')
     return redirect(request.referrer)
 
@@ -857,7 +869,7 @@ def delete_comment(comment_id):
         flash('Unauthorized action.', 'danger')
         return redirect(request.referrer)
         
-    conn = get_conn()
+    conn = db.get_connection()
     # Delete any replies to this comment
     conn.execute("DELETE FROM comment_replies WHERE comment_id = ?", (comment_id,))
     # Delete any likes on this comment
@@ -873,7 +885,7 @@ def delete_comment(comment_id):
 def toggle_comment_like(comment_id):
     user_id = session['user_id']
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     
     # Check if already liked
     existing = db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", 
@@ -891,6 +903,21 @@ def toggle_comment_like(comment_id):
         is_liked = True
     
     conn.commit()
+    
+    # Notify Comment Author if liked (and not by themselves)
+    if is_liked:
+        comment_info = db.query("SELECT user_id, story_id FROM comments WHERE id = ?", (comment_id,), one=True)
+        if comment_info and comment_info['user_id'] != user_id:
+            sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+            # Find story title for better context
+            story = db.query("SELECT title FROM stories WHERE id = ?", (comment_info['story_id'],), one=True)
+            story_title = story['title'] if story else "your story"
+            create_notification(
+                comment_info['user_id'],
+                'Like',
+                f"{sender['username']} liked your comment on {story_title}",
+                url_for('stories.view_story', story_id=comment_info['story_id'])
+            )
     
     # Get updated like count
     comment = db.query("SELECT likes FROM comments WHERE id = ?", (comment_id,), one=True)
@@ -914,20 +941,24 @@ def add_comment_reply(comment_id):
             return jsonify({'success': False, 'error': 'Reply cannot be empty'}), 400
         flash('Reply cannot be empty.', 'warning')
         return redirect(request.referrer)
-
-    # Content Moderation Check
-    if check_content_moderation(content):
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'Your reply has been flagged by our safety system.'}), 400
-        flash('Your reply has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        return redirect(request.referrer)
     
     db = get_db()
-    conn = get_conn()
+    conn = db.get_connection()
     cursor = conn.execute("INSERT INTO comment_replies (comment_id, user_id, content) VALUES (?, ?, ?)",
                 (comment_id, user_id, content))
     reply_id = cursor.lastrowid
     conn.commit()
+    
+    # Notify Parent Comment Author (if not by themselves)
+    comment_info = db.query("SELECT user_id, story_id FROM comments WHERE id = ?", (comment_id,), one=True)
+    if comment_info and comment_info['user_id'] != user_id:
+        sender = db.query("SELECT username FROM users WHERE id = ?", (user_id,), one=True)
+        create_notification(
+            comment_info['user_id'],
+            'Reply',
+            f"{sender['username']} replied to your comment",
+            url_for('stories.view_story', story_id=comment_info['story_id'])
+        )
     
     # Check if AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -958,13 +989,6 @@ def edit_comment_reply(reply_id):
             return jsonify({'success': False, 'error': 'Reply cannot be empty'}), 400
         flash('Reply cannot be empty.', 'warning')
         return redirect(request.referrer)
-
-    # Content Moderation Check
-    if check_content_moderation(content):
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'Your updated reply has been flagged by our safety system.'}), 400
-        flash('Your updated reply has been flagged by our safety system. Please ensure it follows community guidelines.', 'info')
-        return redirect(request.referrer)
     
     db = get_db()
     
@@ -979,7 +1003,7 @@ def edit_comment_reply(reply_id):
         flash('Unauthorized action.', 'danger')
         return redirect(request.referrer)
     
-    conn = get_conn()
+    conn = db.get_connection()
     conn.execute("UPDATE comment_replies SET content = ? WHERE id = ?", (content, reply_id))
     conn.commit()
     

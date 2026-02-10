@@ -2,6 +2,12 @@
 
 {% block content %}
 <section class="mb-5">
+    <div class="mb-4">
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary btn-lg fs-4 py-2 px-4 shadow-sm">
+            <i class="fas fa-home me-2"></i>{{ _('Return to Home') }}
+        </a>
+    </div>
+
     <!-- Header Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
         <h1 class="fw-bold text-dark mb-3 mb-md-0">{{ _('Activities Feed') }}</h1>
@@ -20,20 +26,20 @@
     <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
         <form action="{{ url_for('activities.activities_list') }}" method="get" class="row g-2 align-items-center">
             <!-- Search -->
-            <div class="col-12 col-md-5">
-                <input type="text" name="q" class="form-control form-control-lg"
-                    placeholder="{{ _('Search activities...') }}" value="{{ q }}">
+            <div class="col-12 col-md-10 position-relative">
+                <input type="text" name="search" class="form-control form-control-lg pe-5 search-bar-text"
+                    placeholder="{{ _('Search groups...') }}" value="{{ request.args.get('search', '') }}">
             </div>
 
             <!-- Location -->
             <div class="col-6 col-md-3">
-                <input type="text" name="location" class="form-control form-control-lg"
+                <input type="text" name="location" class="form-control form-control-lg search-bar-text"
                     placeholder="{{ _('Location') }}" value="{{ loc_q }}">
             </div>
 
             <!-- Sorting -->
             <div class="col-6 col-md-2">
-                <select name="sort" class="form-select form-select-lg">
+                <select name="sort" class="form-select form-select-lg search-bar-text">
                     <option value="newest" {{ 'selected' if s=='newest' else '' }}>{{ _('Newest') }}</option>
                     <option value="upcoming" {{ 'selected' if s=='upcoming' else '' }}>{{ _('Upcoming') }}</option>
                     <option value="oldest" {{ 'selected' if s=='oldest' else '' }}>{{ _('Oldest') }}</option>

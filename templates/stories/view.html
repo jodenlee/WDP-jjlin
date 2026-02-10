@@ -5,7 +5,8 @@
 <div class="row justify-content-center">
     <div class="col-12 col-lg-8">
         <div class="mb-3">
-            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">← Back to Stories</a>
+            <a href="{{ url_for('stories.stories_list') }}" class="btn btn-primary btn-lg fs-4">{{ _('← Back to
+                Stories') }}</a>
         </div>
         <div class="card border-0 shadow-sm overflow-hidden mb-5">
 
@@ -83,11 +84,7 @@
                 <!-- Header Section -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="d-flex align-items-center gap-3 flex-wrap">
-                        <h1 class="fw-bold display-6 mb-0" id="story-title">{{ story['title'] }}</h1>
-                        <button class="btn btn-outline-info btn-sm rounded-pill translate-btn"
-                            onclick="translateContent('story-title', '{{ user_lang }}')">
-                            <i class="fas fa-language"></i> {{ _('Translate') }}
-                        </button>
+                        <h1 class="fw-bold display-6 mb-0" id="story-title">{{ _(story['title']) }}</h1>
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <form action="{{ url_for('stories.toggle_bookmark', story_id=story['id']) }}" method="POST">
@@ -109,11 +106,7 @@
                 </div>
 
                 <div class="mb-4">
-                    <p class="lead text-dark mb-2" id="story-content">{{ story['content'] }}</p>
-                    <button class="btn btn-link p-0 text-info text-decoration-none translate-btn"
-                        onclick="translateContent('story-content', '{{ user_lang }}')">
-                        <i class="fas fa-language"></i> {{ _('Translate Content') }}
-                    </button>
+                    <p class="lead text-dark mb-2" id="story-content">{{ _(story['content']) }}</p>
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
@@ -133,16 +126,16 @@
                         <!-- Edit/Delete for Author -->
                         {% if session.get('user_id') == story['author_id'] %}
                         <a href="{{ url_for('stories.edit_story', story_id=story['id']) }}"
-                            class="btn btn-primary px-4 fw-bold">Edit</a>
+                            class="btn btn-primary px-4 fw-bold">{{ _('Edit') }}</a>
                         <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
                             data-bs-target="#deleteStoryModal">
-                            Delete
+                            {{ _('Delete') }}
                         </button>
                         {% else %}
                         <!-- Report Button for Non-Authors -->
                         <button type="button" class="btn btn-danger px-4 fw-bold" data-bs-toggle="modal"
                             data-bs-target="#reportStoryModal">
-                            <i class="fas fa-flag me-2"></i>Report Story
+                            <i class="fas fa-flag me-2"></i>{{ _('Report Story') }}
                         </button>
                         {% endif %}
                     </div>
@@ -154,21 +147,22 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 shadow">
                             <div class="modal-header border-bottom-0 pb-0">
-                                <h5 class="modal-title fw-bold text-dark fs-4" id="deleteStoryModalLabel">Confirm
-                                    delete?</h5>
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="deleteStoryModalLabel">{{ _('Confirm
+                                    delete?') }}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"
                                     aria-label="Close"></button>
                             </div>
                             <div class="modal-body text-secondary fs-5 py-3">
-                                Are you sure you want to delete this story? This action cannot be undone.
+                                {{ _('Are you sure you want to delete this story? This action cannot be undone.') }}
                             </div>
                             <div class="modal-footer border-top-0 pt-0 pb-4">
                                 <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal"
-                                    style="background-color: #6c757d; border: none;">Cancel</button>
+                                    style="background-color: #6c757d; border: none;">{{ _('Cancel') }}</button>
                                 <form action="{{ url_for('stories.delete_story', story_id=story['id']) }}" method="POST"
                                     class="d-inline">
                                     <button type="submit" class="btn btn-danger px-4 fw-bold"
-                                        style="background-color: #dc3545; border: none;">Delete Story</button>
+                                        style="background-color: #dc3545; border: none;">{{ _('Delete Story')
+                                        }}</button>
                                 </form>
                             </div>
                         </div>
@@ -181,21 +175,23 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 shadow">
                             <div class="modal-header border-bottom-0 pb-0">
-                                <h5 class="modal-title fw-bold text-dark fs-4" id="reportStoryModalLabel">Report Story
+                                <h5 class="modal-title fw-bold text-dark fs-4" id="reportStoryModalLabel">{{ _('Report
+                                    Story') }}
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"
                                     aria-label="Close"></button>
                             </div>
                             <form action="{{ url_for('stories.report_story', story_id=story['id']) }}" method="POST">
                                 <div class="modal-body text-secondary fs-5 py-3">
-                                    <p class="mb-2">Why are you reporting this story?</p>
+                                    <p class="mb-2">{{ _('Why are you reporting this story?') }}</p>
                                     <textarea name="reason" class="form-control" rows="4"
-                                        placeholder="Please describe the issue..." required></textarea>
+                                        placeholder="{{ _('Please describe the issue...') }}" required></textarea>
                                 </div>
                                 <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
                                     <button type="button" class="btn btn-secondary px-4 fw-bold"
-                                        data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-danger px-4 fw-bold">Submit Report</button>
+                                        data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                                    <button type="submit" class="btn btn-danger px-4 fw-bold">{{ _('Submit Report')
+                                        }}</button>
                                 </div>
                             </form>
                         </div>
@@ -211,7 +207,8 @@
                             <img src="{{ story['profile_pic'] or 'https://ui-avatars.com/api/?name=' + (story['author_name'] or 'User') + '&background=random' }}"
                                 alt="Author" class="w-100 h-100 object-fit-cover">
                         </div>
-                        <span class="fw-bold fs-5">Posted by: {{ story['author_name'] or 'Unknown' }}</span>
+                        <span class="fw-bold fs-5">{{ _('Posted by:') }} {{ story['author_name'] or _('Unknown')
+                            }}</span>
                     </div>
                 </div>
 
@@ -221,15 +218,16 @@
 
                 <!-- Comments Section -->
                 <div class="mb-5">
-                    <h2 class="h4 fw-bold mb-4">Comments <span class="badge bg-light text-dark ms-2 border">{{
+                    <h2 class="h4 fw-bold mb-4">{{ _('Comments') }} <span
+                            class="badge bg-light text-dark ms-2 border">{{
                             comments|length }}</span></h2>
 
                     <!-- Add Comment Form -->
                     <form action="{{ url_for('stories.add_comment', story_id=story['id']) }}" method="POST"
                         class="d-flex gap-2 mb-4" id="commentForm" novalidate>
                         <input type="text" name="content" id="commentContent" class="form-control form-control-lg"
-                            placeholder="Write a comment..." required>
-                        <button type="submit" class="btn btn-primary">Post</button>
+                            placeholder="{{ _('Write a comment...') }}" required>
+                        <button type="submit" class="btn btn-primary">{{ _('Post') }}</button>
                     </form>
 
 
@@ -242,7 +240,7 @@
                                     class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
                                 <div>
                                     <h6 class="fw-bold mb-0">{{ comment['username'] or 'User' }}</h6>
-                                    <small class="text-muted">{{ comment['created_at'] }}</small>
+                                    <small class="text-muted">{{ comment['created_at']|to_sgt }}</small>
                                 </div>
                                 <!-- Like Button -->
                                 <div class="ms-auto d-flex align-items-center">
@@ -259,12 +257,11 @@
                                     <span class="ms-1 text-muted small">{{ comment.get('likes', 0) }}</span>
                                 </div>
                                 <!-- More Options Dropdown -->
-                                {% if session.get('user_id') == comment['user_id'] or session.get('user_id') ==
-                                story['author_id'] %}
+                                {% if session.get('user_id') %}
                                 <div class="dropdown ms-3">
-                                    <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown"
-                                        aria-expanded="false" style="font-size: 1.2rem;">
-                                        <i class="fas fa-ellipsis-v"></i>
+                                    <button class="btn btn-link text-dark p-0 text-decoration-none" type="button"
+                                        data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 1.2rem;">
+                                        <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
                                         {% if session.get('user_id') == comment['user_id'] %}
@@ -272,22 +269,38 @@
                                             <button class="dropdown-item small py-1 text-primary"
                                                 data-bs-toggle="collapse"
                                                 data-bs-target="#editComment{{ comment['id'] }}">
-                                                <i class="fas fa-edit me-2"></i> Edit Comment
+                                                <i class="fas fa-edit me-2"></i> {{ _('Edit Comment') }}
                                             </button>
                                         </li>
-                                        {% endif %}
                                         <li>
                                             <button type="button" class="dropdown-item small py-1 text-danger"
                                                 data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
                                                 onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
-                                                <i class="fas fa-trash-alt me-2"></i> Delete Comment
+                                                <i class="fas fa-trash-alt me-2"></i> {{ _('Delete Comment') }}
                                             </button>
                                         </li>
+                                        {% else %}
+                                        <li>
+                                            <button type="button" class="dropdown-item small py-1 text-danger"
+                                                onclick="openReportCommentModal('{{ comment.id }}')">
+                                                <i class="fas fa-flag me-2"></i> {{ _('Report Comment') }}
+                                            </button>
+                                        </li>
+                                        {% if session.get('user_id') == story['author_id'] %}
+                                        <li>
+                                            <button type="button" class="dropdown-item small py-1 text-danger"
+                                                data-delete-url="{{ url_for('stories.delete_comment', comment_id=comment['id']) }}"
+                                                onclick="openDeleteCommentModal(this.dataset.deleteUrl)">
+                                                <i class="fas fa-trash-alt me-2"></i> {{ _('Delete Comment (Author)') }}
+                                            </button>
+                                        </li>
+                                        {% endif %}
+                                        {% endif %}
                                     </ul>
                                 </div>
                                 {% endif %}
                             </div>
-                            <p class="card-text fs-5" style="line-height: 1.5;">{{ comment['content'] }}</p>
+                            <p class="card-text fs-5" style="line-height: 1.5;">{{ _(comment['content']) }}</p>
 
                             <!-- Edit Form (Hidden by default) -->
                             <div class="collapse mb-3" id="editComment{{ comment['id'] }}">
@@ -310,10 +323,9 @@
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center gap-2 mb-1">
                                                 <strong>{{ reply['username'] }}</strong>
-                                                <small class="text-muted">{{ reply['created_at'] }}</small>
+                                                <small class="text-muted">{{ reply['created_at']|to_sgt }}</small>
                                             </div>
-                                            <p class="mb-0 fs-5" id="reply-content-{{ reply['id'] }}">{{
-                                                reply['content'] }}</p>
+                                            <p class="mb-0 fs-5">{{ _(reply['content']) }}</p>
                                         </div>
                                         {% if reply['user_id'] == session['user_id'] %}
                                         <div class="dropdown ms-2">
@@ -361,16 +373,16 @@
                                 <form action="{{ url_for('stories.add_comment_reply', comment_id=comment['id']) }}"
                                     method="POST" class="d-flex gap-2 reply-form">
                                     <input type="text" name="content" class="form-control form-control-lg"
-                                        placeholder="Write a reply..." required>
-                                    <button type="submit" class="btn btn-primary">Post</button>
+                                        placeholder="{{ _('Write a reply...') }}" required>
+                                    <button type="submit" class="btn btn-primary">{{ _('Post') }}</button>
                                 </form>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                     {% else %}
-                    <p class="text-muted text-center py-4 bg-light rounded fs-5">No comments yet. Be the first to
-                        comment!</p>
+                    <p class="text-muted text-center py-4 bg-light rounded fs-5">{{ _('No comments yet. Be the first to
+                        comment!') }}</p>
                     {% endif %}
                 </div>
 
@@ -401,7 +413,7 @@
                 </script>
                 <!-- Location Section -->
                 <div>
-                    <h2 class="h4 fw-bold mb-3">Location</h2>
+                    <h2 class="h4 fw-bold mb-3">{{ _('Location') }}</h2>
                     {% if story['location'] %}
                     <div class="rounded-3 overflow-hidden mb-3" style="height: 200px;">
                         <iframe width="100%" height="100%" style="border:0;" loading="lazy" allowfullscreen
@@ -412,11 +424,11 @@
                     {% else %}
                     <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
                         style="height: 150px;">
-                        <span class="text-muted">No location specified</span>
+                        <span class="text-muted">{{ _('No location specified') }}</span>
                     </div>
                     {% endif %}
                     <div>
-                        <h3 class="h5 fw-bold mb-1">{{ story['location'] or 'Unknown' }}</h3>
+                        <h3 class="h5 fw-bold mb-1">{{ story['location'] or _('Unknown') }}</h3>
                         <!-- <p class="text-muted mb-0">Singapore</p> -->
 
                         {% if ai_insight %}
@@ -424,14 +436,14 @@
                             style="background-color: #f0f7ff;">
                             <div class="d-flex gap-2 mb-2 align-items-center text-info">
                                 <i class="fas fa-magic fa-lg"></i>
-                                <span class="fw-bold text-uppercase ls-1">Fun Fact</span>
+                                <span class="fw-bold text-uppercase ls-1">{{ _('Fun Fact') }}</span>
                             </div>
                             <p class="mb-2 text-dark">
-                                {{ ai_insight }}
+                                {{ _(ai_insight) }}
                             </p>
                             <div class="d-flex align-items-center gap-1 text-muted">
                                 <i class="fas fa-robot" style="font-size: 0.8rem;"></i>
-                                <small style="font-size: 0.8rem;">Powered by Gemini</small>
+                                <small style="font-size: 0.8rem;">{{ _('Powered by Gemini') }}</small>
                             </div>
                         </div>
                         {% endif %}
@@ -491,6 +503,13 @@
         myModal.show();
     }
 
+    function openReportCommentModal(commentId) {
+        var form = document.querySelector('#reportCommentModal form');
+        form.action = "/comment/" + commentId + "/report";
+        var myModal = new bootstrap.Modal(document.getElementById('reportCommentModal'));
+        myModal.show();
+    }
+
     // AJAX handlers for comment, like, and reply
     document.addEventListener('DOMContentLoaded', function () {
         // Handle main comment form submission
@@ -524,12 +543,7 @@
                             // Reload to show new comment (or implement dynamic insert)
                             location.reload();
                         } else {
-                            const errorBanner = document.createElement('div');
-                            errorBanner.className = 'alert alert-info show d-none';
-                            errorBanner.textContent = data.error;
-                            document.body.appendChild(errorBanner);
-                            checkAlertsForModals();
-                            errorBanner.remove();
+                            alert(data.error || 'Failed to post comment');
                         }
                     })
                     .catch(() => location.reload());
@@ -591,57 +605,10 @@
                             // Reload to show new reply
                             location.reload();
                         } else {
-                            const errorBanner = document.createElement('div');
-                            errorBanner.className = 'alert alert-info show d-none';
-                            errorBanner.textContent = data.error;
-                            document.body.appendChild(errorBanner);
-                            checkAlertsForModals();
-                            errorBanner.remove();
+                            alert(data.error || 'Failed to post reply');
                         }
                     })
                     .catch(() => location.reload());
-            });
-        });
-
-        // Handle comment edit form submissions
-        document.querySelectorAll('.comment-edit-form').forEach(form => {
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const formData = new FormData(this);
-                const commentId = this.dataset.commentId || this.id.split('-').pop();
-
-                fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Update UI
-                            const contentElem = document.getElementById(`comment-content-${commentId}`);
-                            if (contentElem) contentElem.textContent = data.content;
-                            // Close modal
-                            const modalId = `editCommentModal-${commentId}`;
-                            const modalElem = document.getElementById(modalId);
-                            if (modalElem) {
-                                const modal = bootstrap.Modal.getInstance(modalElem);
-                                if (modal) modal.hide();
-                                else {
-                                    const m = new bootstrap.Modal(modalElem);
-                                    m.hide();
-                                }
-                            }
-                            checkAlertsForModals();
-                        } else {
-                            const errorBanner = document.createElement('div');
-                            errorBanner.className = 'alert alert-info show d-none';
-                            errorBanner.textContent = data.error;
-                            document.body.appendChild(errorBanner);
-                            checkAlertsForModals();
-                            errorBanner.remove();
-                        }
-                    });
             });
         });
 
@@ -650,7 +617,8 @@
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const formData = new FormData(this);
-                const replyId = this.action.split('/').slice(-2, -1)[0];
+
+                if (!formData.get('content').trim()) return;
 
                 fetch(this.action, {
                     method: 'POST',
@@ -660,81 +628,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Update UI
-                            const contentElem = document.getElementById(`reply-content-${replyId}`);
-                            if (contentElem) contentElem.textContent = data.content;
-
-                            // Close collapse
-                            const collapseId = `editReply${replyId}`;
-                            const collapseElem = document.getElementById(collapseId);
-                            if (collapseElem) {
-                                const bsCollapse = bootstrap.Collapse.getInstance(collapseElem) || new bootstrap.Collapse(collapseElem);
-                                bsCollapse.hide();
-                            }
-
-                            checkAlertsForModals();
+                            location.reload();
                         } else {
-                            const errorBanner = document.createElement('div');
-                            errorBanner.className = 'alert alert-info show d-none';
-                            errorBanner.textContent = data.error;
-                            document.body.appendChild(errorBanner);
-                            checkAlertsForModals();
-                            errorBanner.remove();
+                            alert(data.error || 'Failed to update reply');
                         }
-                    });
+                    })
+                    .catch(() => location.reload());
             });
         });
     });
-
-    /**
-     * Translates content of a specific element using the AJAX API.
-     * @param {string} elementId - ID of the element containing text to translate.
-     * @param {string} targetLang - The target language code (e.g., 'en', 'zh_CN').
-     */
-    function translateContent(elementId, targetLang) {
-        const element = document.getElementById(elementId);
-        const btn = event.currentTarget;
-        const originalText = element.innerText;
-        const originalBtnHtml = btn.innerHTML;
-
-        // Show loading state
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Translating...';
-
-        fetch('/translate', {
-            method: 'POST',
-            body: JSON.stringify({
-                text: originalText,
-                target_lang: targetLang
-            }),
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.translated_text) {
-                    element.innerText = data.translated_text;
-                    btn.innerHTML = '<i class="fas fa-undo"></i> Show Original';
-                    btn.onclick = () => {
-                        element.innerText = originalText;
-                        btn.innerHTML = originalBtnHtml;
-                        btn.onclick = () => translateContent(elementId, targetLang);
-                    };
-                } else {
-                    alert('Translation failed. Please try again later.');
-                    btn.innerHTML = originalBtnHtml;
-                }
-            })
-            .catch(err => {
-                console.error('Translation error:', err);
-                alert('Error connecting to translation service.');
-                btn.innerHTML = originalBtnHtml;
-            })
-            .finally(() => {
-                btn.disabled = false;
-            });
-    }
 </script>
 {% endblock %}
