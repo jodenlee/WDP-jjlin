@@ -8,13 +8,13 @@
     'use strict';
 
     // --- DOM References ---
-    const toggle = document.getElementById('chatbotToggle');
-    const panel = document.getElementById('chatbotPanel');
-    const msgs = document.getElementById('chatbotMessages');
-    const input = document.getElementById('chatbotInput');
-    const sendBtn = document.getElementById('chatbotSend');
-    const clearBtn = document.getElementById('chatbotClear');
-    const typing = document.getElementById('chatbotTyping');
+    const toggle = document.getElementById('chatbot-toggle');
+    const panel = document.getElementById('chatbot-panel');
+    const msgs = document.getElementById('chatbot-messages');
+    const input = document.getElementById('chatbot-input');
+    const sendBtn = document.getElementById('chatbot-send');
+    const clearBtn = document.getElementById('chatbot-clear');
+    const typing = document.getElementById('chatbot-typing');
 
     if (!toggle || !panel) return; // Widget not on this page
 
