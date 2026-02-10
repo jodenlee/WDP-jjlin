@@ -13,7 +13,3 @@ def home():
     upcoming_activities = db.query("SELECT * FROM activities ORDER BY created_at DESC LIMIT 3")
     
     return render_template('index.html', stories=recent_stories, activities=upcoming_activities)
-    
-@main_bp.route('/faq')
-def faq():
-    return render_template('faq.html')

@@ -1,17 +1,17 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, render_template, g, session, request, redirect, url_for, flash
 import os
 from dotenv import load_dotenv
-from flask_babel import _
+from flask_babel import Babel, _
+from authlib.integrations.flask_client import OAuth
 from werkzeug.middleware.proxy_fix import ProxyFix
-from extensions import oauth, babel, socketio
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Extensions are imported from extensions.py
+# Global OAuth instance
+oauth = OAuth()
+# Global Babel instance
+babel = Babel()
 
 def get_locale():
     from flask import g, session, request
@@ -67,9 +67,6 @@ def create_app():
     # Initialize Babel
     babel.init_app(app, locale_selector=get_locale)
 
-    # Initialize Socket.IO
-    socketio.init_app(app, async_mode='eventlet')
-
     # Initialize Flask-Mail
     try:
         from email_utils import init_mail
@@ -85,8 +82,7 @@ def create_app():
         return {
             'GOOGLE_MAPS_API_KEY': GOOGLE_MAPS_API_KEY,
             '_': auto_translate,
-            'user_lang': session.get('language') or (g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en'),
-            'current_user': g.user
+            'user_lang': session.get('language') or (g.user['language'] if (hasattr(g, 'user') and g.user and 'language' in g.user.keys()) else 'en')
         }
 
     # Jinja filter to convert UTC timestamps to GMT+8 (Singapore Time)
@@ -124,7 +120,6 @@ def create_app():
     from routes.stories import stories_bp
     from routes.activities import activities_bp
     from routes.messages import messages_bp
-    from routes.chatbot import chatbot_bp
     from routes.main import main_bp
     from routes.community import community_bp
     from routes.admin import admin_bp
@@ -135,7 +130,6 @@ def create_app():
     app.register_blueprint(stories_bp)
     app.register_blueprint(activities_bp)
     app.register_blueprint(messages_bp)
-    app.register_blueprint(chatbot_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(community_bp)
     app.register_blueprint(admin_bp)
@@ -146,6 +140,5 @@ def create_app():
     return app
 
 if __name__ == '__main__':
-    from extensions import socketio
     app = create_app()
-    socketio.run(app, debug=True)
+    app.run(debug=True)
