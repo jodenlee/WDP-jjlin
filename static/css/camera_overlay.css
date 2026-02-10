@@ -1,0 +1,423 @@
+/* ===== CAMERA OVERLAY ===== */
+.camera-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#cameraVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-controls {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+.camera-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+}
+
+.camera-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.camera-btn.capture {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 4px solid white;
+    padding: 6px;
+}
+
+.capture-inner {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 50%;
+}
+
+.camera-btn.cancel {
+    background: rgba(239, 68, 68, 0.5);
+}
+
+.camera-btn.cancel:hover {
+    background: rgba(239, 68, 68, 0.7);
+}
+
+/* Camera Filter Tray */
+.camera-filters-container {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 30px;
+    z-index: 1001;
+    max-width: 90vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.camera-filters-container::-webkit-scrollbar {
+    display: none;
+}
+
+.camera-filters-container.show {
+    display: flex;
+}
+
+.filter-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    min-width: 60px;
+}
+
+.filter-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: transform 0.2s, border-color 0.2s;
+    background: #333;
+}
+
+.filter-option.active .filter-preview {
+    border-color: #8B5CF6;
+    transform: scale(1.1);
+}
+
+.filter-option span {
+    font-size: 0.7rem;
+    color: white;
+}
+
+/* ===== CALL OVERLAY ===== */
+.call-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 6000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 60px 20px;
+    overflow: hidden;
+}
+
+/* Full screen video background */
+#remoteVideo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+/* Local video (PiP) */
+#localVideo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    /* Behind remote video when connected, or main view when alone */
+    /* Actually, for "Live Camera Background" on call start, local video should be visible full screen until remote joins */
+}
+
+/* Call Info (Avatar, Name, Status) */
+.call-info-overlay {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-top: 40px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.call-avatar-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #A68A64;
+    /* Brand color or gradient */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: bold;
+    color: white;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.call-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.call-name {
+    font-size: 2rem;
+    color: white;
+    font-weight: 600;
+    margin: 0;
+}
+
+.call-status {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.8);
+    position: static;
+    /* Reset abstract positioning from previous */
+    transform: none;
+    background: none;
+    backdrop-filter: none;
+}
+
+/* Controls Bottom Bar */
+.call-controls {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 40px;
+    margin-bottom: 40px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.call-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.call-btn:hover {
+    transform: scale(1.05);
+}
+
+.call-btn.end {
+    background: #ff3b30;
+    /* iOS Red */
+}
+
+.call-btn.answer {
+    background: #34c759;
+    /* iOS Green */
+}
+
+.call-btn.secondary {
+    background: rgba(255, 255, 255, 0.2);
+    /* Translucent Grey */
+    backdrop-filter: blur(10px);
+    width: 60px;
+    height: 60px;
+    font-size: 1.4rem;
+}
+
+/* Incoming Call Specifics */
+.call-modal.incoming {
+    background: #0f0f0f;
+    /* Solid dark background if no video yet, or blurred image */
+}
+
+.incoming-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #2c2c2c, #000);
+    z-index: 0;
+}
+
+.incoming-actions {
+    gap: 80px;
+    /* Wider spacing for Accept/Decline */
+}
+
+.camera-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#cameraVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-controls {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+.camera-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+}
+
+.camera-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.camera-btn.capture {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 4px solid white;
+    padding: 6px;
+}
+
+.capture-inner {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 50%;
+}
+
+.camera-btn.cancel {
+    background: rgba(239, 68, 68, 0.5);
+}
+
+.camera-btn.cancel:hover {
+    background: rgba(239, 68, 68, 0.7);
+}
+
+/* Camera Filter Tray */
+.camera-filters-container {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 30px;
+    z-index: 1001;
+    max-width: 90vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.camera-filters-container::-webkit-scrollbar {
+    display: none;
+}
+
+.camera-filters-container.show {
+    display: flex;
+}
+
+.filter-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    min-width: 60px;
+}
+
+.filter-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: transform 0.2s, border-color 0.2s;
+    background: #333;
+}
+
+.filter-option.active .filter-preview {
+    border-color: #8B5CF6;
+    transform: scale(1.1);
+}
+
+.filter-option span {
+    font-size: 0.7rem;
+    color: white;
+}

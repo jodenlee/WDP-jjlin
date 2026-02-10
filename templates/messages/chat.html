@@ -1,72 +1,4671 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="mb-4">
-    <a href="{{ url_for('messages.messages_list') }}" class="btn btn-link text-muted px-0">
-        <i class="fas fa-arrow-left me-1"></i> {{ _('Back to Messages') }}
-    </a>
-</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-telegram.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/camera_overlay.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+    /* Location Modal Styles */
+    .location-modal {
+        position: fixed;
+        bottom: -100%;
+        /* Hidden by default */
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--bg-color, #101014);
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        transition: bottom 0.3s ease-in-out;
+    }
 
-<div class="row">
-    <div class="col-lg-8 mx-auto">
-        <div class="card nav-card-minimal">
-            <!-- Chat Header -->
-            <div class="card-header bg-transparent border-bottom p-3">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
-                        style="width: 45px; height: 45px; background-color: var(--accent-color);">
-                        <i class="fas fa-user" style="color: var(--primary-color);"></i>
-                    </div>
-                    <div>
-                        <h5 class="mb-0 fw-bold">{{ other_user['username'] }}</h5>
-                        <small class="text-muted">{{ _(other_user['role']) }}</small>
-                    </div>
+    .location-modal.show {
+        bottom: 0;
+    }
+
+    .location-header {
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--secondary-bg, #1e1e24);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .location-header h3 {
+        margin: 0;
+        color: white;
+        font-size: 1.1rem;
+    }
+
+    .location-close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+
+    #locationMap {
+        flex: 1;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .location-actions {
+        padding: 20px;
+        background: var(--secondary-bg, #1e1e24);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .location-btn {
+        background: var(--primary-color, #a26b21);
+        /* telegram/gold from existing theme */
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .location-btn.secondary {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nearby-places {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .place-item {
+        padding: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #ddd;
+    }
+
+    .place-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .place-icon {
+        width: 30px;
+        height: 30px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Map Preview in Chat */
+    .map-preview {
+        width: 100%;
+        height: 150px;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 5px;
+        position: relative;
+        background: #eee;
+    }
+
+    .map-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .map-static {
+        width: 100%;
+        height: 100%;
+        background-color: #e5e3df;
+        /* Map placeholder color */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+    }
+
+    /* Live Location Picker Styles */
+    .live-location-picker {
+        position: fixed;
+        bottom: -100%;
+        left: 0;
+        width: 100%;
+        background: #1c1c1e;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        z-index: 3000;
+        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 20px;
+        color: white;
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    .live-location-picker.show {
+        bottom: 0;
+    }
+
+    .picker-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .picker-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        text-align: center;
+        flex: 1;
+    }
+
+    .picker-close {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .duration-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 20px;
+    }
+
+    .duration-option {
+        padding: 15px;
+        text-align: center;
+        background: transparent;
+        border: none;
+        color: #8e8e93;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .duration-option.active {
+        color: white;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        font-weight: 600;
+        transform: scale(1.05);
+    }
+
+    .caption-container {
+        display: flex;
+        align-items: center;
+        background: #2c2c2e;
+        border-radius: 25px;
+        padding: 5px 15px;
+        gap: 10px;
+    }
+
+    .caption-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: white;
+        padding: 10px 0;
+        outline: none;
+        font-size: 1rem;
+    }
+
+    .send-location-btn {
+        background: #34c759;
+        border: none;
+        color: white;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .send-location-btn:hover {
+        transform: scale(1.1);
+    }
+
+    /* Live Location Map Overlay */
+    .live-tag {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #34c759;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        z-index: 10;
+        backdrop-filter: blur(4px);
+    }
+
+    .live-dot-small {
+        width: 8px;
+        height: 8px;
+        background: #34c759;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 0.5;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        100% {
+            opacity: 0.5;
+            transform: scale(1);
+        }
+    }
+
+    /* Custom Avatar Marker Icon */
+    .avatar-marker {
+        position: relative;
+        width: 40px;
+        height: 40px;
+    }
+
+    /* WhatsApp Style Location Message */
+    .message-bubble-whatsapp-location {
+        background: #FFFDD0;
+        /* Cream */
+        border: 1px solid #AA8B56;
+        /* Gold */
+        border-radius: 12px;
+        padding: 5px;
+        color: #333;
+        width: 100%;
+        min-width: 320px;
+        max-width: 450px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .whatsapp-map-container {
+        width: 100%;
+        height: 250px;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .whatsapp-avatar-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid #AA8B56;
+        /* Gold Border */
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        object-fit: cover;
+    }
+
+    .whatsapp-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 5px;
+        font-size: 0.9rem;
+    }
+
+    .whatsapp-status-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .whatsapp-live-icon {
+        color: #AA8B56;
+        /* Gold */
+        font-size: 1rem;
+    }
+
+    .whatsapp-ended-icon {
+        color: #8fa1a8;
+        /* Muted icons */
+        font-size: 1rem;
+    }
+
+    .whatsapp-message-meta {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #666;
+        font-size: 0.75rem;
+    }
+
+    .whatsapp-stop-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(145deg, #AA8B56, #8b6d3d);
+        /* Gold gradient */
+        border: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .whatsapp-stop-btn:hover {
+        background: linear-gradient(145deg, #b89a64, #9c7b48);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .whatsapp-stop-btn:active {
+        transform: scale(0.98);
+        background: #8b6d3d;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .whatsapp-caption {
+        padding: 2px 5px 8px;
+        font-size: 0.95rem;
+        opacity: 0.9;
+    }
+
+    .avatar-marker img,
+    .avatar-marker .avatar-letter {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid white;
+        object-fit: cover;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .avatar-marker .avatar-letter {
+        background: var(--primary-color, #a26b21);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+
+    .live-indicator-dot {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        background: #34c759;
+        border: 2px solid white;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    /* Search Highlighting */
+    .search-highlight {
+        transition: all 0.3s ease;
+    }
+
+    .active-match {
+        background: rgba(170, 139, 86, 0.1);
+        /* Subtle gold band across whole row */
+        position: relative;
+    }
+
+    .active-match .message-bubble-telegram,
+    .active-match .message-bubble-whatsapp-location {
+        box-shadow: 0 0 0 3px rgba(170, 139, 86, 0.4);
+        z-index: 5;
+    }
+
+    /* Flash animation for found messages */
+    .active-match::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(170, 139, 86, 0.1);
+        pointer-events: none;
+        animation: searchFlashLoop 1.5s infinite;
+        z-index: 1;
+    }
+
+    @keyframes searchFlashLoop {
+        0% {
+            background: rgba(170, 139, 86, 0.05);
+        }
+
+        50% {
+            background: rgba(170, 139, 86, 0.2);
+        }
+
+        100% {
+            background: rgba(170, 139, 86, 0.05);
+        }
+    }
+
+    .search-counter {
+        color: #666;
+        font-size: 0.85rem;
+        margin: 0 10px;
+        min-width: 60px;
+        text-align: center;
+        font-weight: 500;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+
+    /* ===== CONFIRMATION MODALS ===== */
+    .confirmation-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .confirmation-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .confirmation-modal {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 320px;
+        width: 90%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirmation-modal-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        font-size: 24px;
+    }
+
+    .confirmation-modal-icon.danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .confirmation-modal-icon.warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .confirmation-modal-icon.info {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .confirmation-modal h4 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .confirmation-modal p {
+        margin: 0 0 16px 0;
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .confirmation-modal-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        cursor: pointer;
+    }
+
+    .confirmation-modal-checkbox input {
+        width: 18px;
+        height: 18px;
+        accent-color: #2563eb;
+    }
+
+    .confirmation-modal-checkbox span {
+        color: #374151;
+        font-size: 14px;
+    }
+
+    .confirmation-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .confirmation-modal-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    /* Text Size Scaling */
+    .text-size-80 {
+        font-size: 0.8rem;
+    }
+
+    .text-size-90 {
+        font-size: 0.9rem;
+    }
+
+    .text-size-100 {
+        font-size: 1rem;
+    }
+
+    .text-size-110 {
+        font-size: 1.1rem;
+    }
+
+    .text-size-120 {
+        font-size: 1.2rem;
+    }
+
+    .text-size-130 {
+        font-size: 1.3rem;
+    }
+
+    #chatContainer.text-size-80 .message-text {
+        font-size: 0.8rem;
+    }
+
+    #chatContainer.text-size-90 .message-text {
+        font-size: 0.9rem;
+    }
+
+    #chatContainer.text-size-100 .message-text {
+        font-size: 1rem;
+    }
+
+    #chatContainer.text-size-110 .message-text {
+        font-size: 1.1rem;
+    }
+
+    #chatContainer.text-size-120 .message-text {
+        font-size: 1.2rem;
+    }
+
+    #chatContainer.text-size-130 .message-text {
+        font-size: 1.3rem;
+    }
+
+    /* Modal Styling */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    /* Message Edit Form */
+    .message-edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 5px 0;
+        min-width: 200px;
+    }
+
+    .message-edit-input {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #000 !important;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+
+    .message-edit-actions {
+        display: flex;
+        gap: 5px;
+        justify-content: flex-end;
+    }
+
+    .message-edit-btn {
+        background: none;
+        border: none;
+        color: #AA8B56;
+        cursor: pointer;
+        padding: 2px 5px;
+        transition: opacity 0.2s;
+    }
+
+    .message-edit-btn:hover {
+        opacity: 0.7;
+    }
+
+    .message-edit-btn.save {
+        color: #4CAF50;
+    }
+
+    .message-edit-btn.cancel {
+        color: #f44336;
+    }
+
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 320px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .modal-header img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .modal-title {
+        color: #000;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .mute-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .mute-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        cursor: pointer;
+        color: #333;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+
+    .mute-option:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .mute-option input {
+        width: 18px;
+        height: 18px;
+        accent-color: #2563eb;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+    }
+
+    .modal-btn {
+        background: transparent;
+        border: none;
+        color: #2563eb;
+        font-weight: 600;
+        padding: 8px 12px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .modal-btn:hover {
+        background: rgba(37, 99, 235, 0.1);
+        border-radius: 4px;
+    }
+
+    /* Selection Status Fix */
+    .message-wrapper.selected .message-status {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+    }
+
+    .confirmation-modal-btn.cancel {
+        background: transparent;
+        color: #6b7280;
+    }
+
+    .confirmation-modal-btn.cancel:hover {
+        background: #f3f4f6;
+    }
+
+    .confirmation-modal-btn.confirm {
+        background: transparent;
+        color: #2563eb;
+        font-weight: 600;
+    }
+
+    .confirmation-modal-btn.confirm:hover {
+        background: #eff6ff;
+    }
+
+    .confirmation-modal-btn.confirm.danger {
+        color: #dc2626;
+    }
+
+    .confirmation-modal-btn.confirm.danger:hover {
+        background: #fef2f2;
+    }
+
+    /* ===== MULTI-SELECT MODE ===== */
+    .message-checkbox {
+        position: absolute;
+        left: -30px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        border: 2px solid #ccc;
+        border-radius: 50%;
+        background: transparent;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    body.select-mode .message-checkbox {
+        display: flex;
+    }
+
+    body.select-mode .message-wrapper {
+        padding-left: 40px;
+        cursor: pointer;
+    }
+
+    .message-wrapper.selected .message-checkbox {
+        background: #A68A64;
+        border-color: #A68A64;
+    }
+
+    .message-wrapper.selected .message-checkbox::after {
+        content: '✓';
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .message-wrapper.selected .message-checkbox::before {
+        content: none !important;
+    }
+
+    /* ===== BATCH ACTIONS BAR ===== */
+    .batch-actions-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #f5f5f5;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 2000;
+    }
+
+    .batch-actions-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .batch-cancel-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #666;
+        cursor: pointer;
+        padding: 5px 10px;
+    }
+
+    .batch-count {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .batch-actions-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .batch-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: none;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 8px 12px;
+    }
+
+    .batch-action-btn.delete {
+        color: #dc2626;
+    }
+
+    /* ===== BLOCKED USER OVERLAY ===== */
+    .chat-blocked-overlay {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-top: 1px solid #ddd;
+        z-index: 1000;
+    }
+
+    .unblock-btn {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 24px;
+        padding: 10px 32px;
+        font-size: 15px;
+        font-weight: 500;
+        color: #333;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .unblock-btn:hover {
+        background: #f9f9f9;
+        border-color: #ccc;
+    }
+
+    /* ===== PINNED MESSAGE BAR ===== */
+    .pinned-message-bar {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #fef9f3, #fdf6ed);
+        border-bottom: 1px solid rgba(170, 139, 86, 0.2);
+        position: sticky;
+        top: 60px;
+        z-index: 100;
+    }
+
+    .pinned-message-bar.show {
+        display: flex;
+    }
+
+    .pinned-icon {
+        color: #a26b21;
+        font-size: 14px;
+    }
+
+    .pinned-label {
+        font-size: 12px;
+        color: #a26b21;
+        font-weight: 600;
+    }
+
+    .pinned-text {
+        flex: 1;
+        font-size: 13px;
+        color: #555;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pinned-close {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 2px 6px;
+    }
+
+    /* ===== REPLY PREVIEW TEXT FIX ===== */
+    .reply-preview-user,
+    .reply-preview-text {
+        color: #333 !important;
+    }
+
+    .reply-user,
+    .reply-text {
+        color: #333 !important;
+    }
+</style>
+
+<div class="chat-telegram" id="chatContainer">
+    <!-- Chat Header -->
+    <div class="chat-header-telegram">
+        <div class="chat-header-left">
+            <a href="{{ url_for('messages.messages_list') }}" class="chat-header-back">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back</span>
+            </a>
+            <div class="chat-header-avatar">
+                {{ other_user.display_name[0] | upper }}
+                <span class="online-dot" id="onlineDot" style="display: none;"></span>
+            </div>
+            <div class="chat-header-info">
+                <h5>{{ other_user.display_name }}</h5>
+                <p class="last-seen" id="lastSeenText">last seen recently</p>
+            </div>
+        </div>
+        <div class="chat-header-actions">
+            <button class="chat-header-btn" title="Voice Call" onclick="initiateCall('voice')">
+                <i class="fas fa-phone"></i>
+            </button>
+            <button class="chat-header-btn" title="Video Call" onclick="initiateCall('video')">
+                <i class="fas fa-video"></i>
+            </button>
+            <button class="chat-header-btn" title="Search" onclick="toggleSearchBar()">
+                <i class="fas fa-search"></i>
+            </button>
+            <div class="header-dropdown">
+                <button class="chat-header-btn" id="headerMenuBtn" onclick="toggleHeaderMenu()">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="header-dropdown-menu" id="headerDropdownMenu">
+                    <button class="header-dropdown-item" onclick="openTextSizeModal()">
+                        <i class="fas fa-text-height"></i>
+                        <span>Text Size</span>
+                    </button>
+                    <button class="header-dropdown-item" id="headerMuteBtn" onclick="toggleMute()">
+                        {% if is_muted %}
+                        <i class="fas fa-bell"></i>
+                        <span>Unmute</span>
+                        {% else %}
+                        <i class="fas fa-bell-slash"></i>
+                        <span>Mute</span>
+                        {% endif %}
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button class="header-dropdown-item" onclick="openNicknameModal()">
+                        <i class="fas fa-pen"></i>
+                        <span>Edit Nickname</span>
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button class="header-dropdown-item" data-user-id="{{ other_user.id }}"
+                        onclick="blockUser(this.dataset.userId)">
+                        <i class="fas fa-ban"></i>
+                        <span>Block User</span>
+                    </button>
+                    <button class="header-dropdown-item danger" data-user-id="{{ other_user.id }}"
+                        onclick="deleteChat(this.dataset.userId)">
+                        <i class="fas fa-trash"></i>
+                        <span>Delete Chat</span>
+                    </button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Messages Container -->
-            <div class="card-body p-3" style="height: 400px; overflow-y: auto;" id="messages-container">
-                {% if messages %}
-                {% for msg in messages %}
-                <div class="d-flex mb-3 {% if msg['sender_id'] == current_user_id %}justify-content-end{% endif %}">
-                    <div class="{% if msg['sender_id'] == current_user_id %}bg-primary text-white{% else %}bg-light{% endif %} rounded-3 p-3"
-                        style="max-width: 70%;">
-                        <p class="mb-1">{{ msg['content'] }}</p>
-                        <small
-                            class="{% if msg['sender_id'] == current_user_id %}text-white-50{% else %}text-muted{% endif %}">{{
-                            msg['created_at']|to_sgt }}</small>
-                    </div>
-                </div>
-                {% endfor %}
+    <!-- Search Bar (hidden by default) -->
+    <div id="chatSearchBar" class="chat-search-bar" style="display: none;">
+        <input type="text" id="chatSearchInput" placeholder="Search messages..." oninput="searchMessages()">
+        <span id="searchCounter" class="search-counter">0 of 0</span>
+        <div class="search-nav">
+            <button onclick="navigateSearch('up')" title="Previous"><i class="fas fa-chevron-up"></i></button>
+            <button onclick="navigateSearch('down')" title="Next"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <button onclick="toggleSearchBar()" class="search-close"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Call Overlay -->
+    <div id="callModal" class="call-modal" style="display: none;">
+        <!-- Video Backgrounds -->
+        <video id="remoteVideo" autoplay playsinline></video>
+        <video id="localVideo" autoplay playsinline muted></video>
+
+        <!-- Call Info Overlay -->
+        <div class="call-info-overlay">
+            <div class="call-avatar-large">
+                {% if other_user.profile_pic %}
+                <img src="{{ other_user.profile_pic }}" alt="Avatar">
                 {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">{{ _('No messages yet. Say hello!') }}</p>
-                </div>
+                {{ other_user.username[0] | upper }}
                 {% endif %}
             </div>
+            <h2 class="call-name">{{ other_user.username }}</h2>
+            <div class="call-status" id="callStatus">Calling...</div>
+        </div>
 
-            <!-- Message Input -->
-            <div class="card-footer bg-transparent border-top p-3">
-                <form action="{{ url_for('messages.send_message', recipient_id=other_user['id']) }}" method="POST">
-                    <div class="input-group">
-                        <input type="text" class="form-control" name="content"
-                            placeholder="{{ _('Type a message...') }}" required autofocus>
-                        <button class="btn btn-primary" type="submit">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
+        <!-- Controls -->
+        <div class="call-controls">
+            <button class="call-btn secondary" onclick="toggleAudio()" id="btnMute"><i
+                    class="fas fa-microphone"></i></button>
+            <button class="call-btn end" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+            <button class="call-btn secondary" onclick="toggleVideo()" id="btnCamera"><i
+                    class="fas fa-video"></i></button>
+        </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div id="incomingCallModal" class="call-modal incoming" style="display: none;">
+        <!-- Fuzzy background layer if needed -->
+        <div class="incoming-bg"></div>
+
+        <div class="call-info-overlay">
+            <div class="call-avatar-large">
+                {% if other_user.profile_pic %}
+                <img src="{{ other_user.profile_pic }}" alt="Avatar">
+                {% else %}
+                {{ other_user.username[0] | upper }}
+                {% endif %}
+            </div>
+            <h2 class="call-name">{{ other_user.username }}</h2>
+            <div class="call-status">Incoming Call...</div>
+        </div>
+
+        <div class="call-controls incoming-actions">
+            <button class="call-btn end" onclick="rejectCall()"><i class="fas fa-phone-slash"></i></button>
+            <button class="call-btn answer" onclick="acceptCall()"><i class="fas fa-phone"></i></button>
+        </div>
+    </div>
+
+    <!-- Nickname Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="confirmation-modal-icon info">
+                    <i class="fas fa-pen"></i>
+                </div>
+                <h4 class="modal-title">Edit Nickname</h4>
+            </div>
+            <p style="color: #666; margin-bottom: 15px;">Set a nickname for <strong>{{ other_user.username }}</strong>.
+                This will only be visible to you.</p>
+
+            <input type="text" id="nicknameInput" class="message-edit-input"
+                style="width: 100%; margin-bottom: 20px; padding: 10px; font-size: 1rem;"
+                placeholder="Enter nickname...">
+
+            <div class="modal-actions">
+                <button class="modal-btn" onclick="closeNicknameModal()">Cancel</button>
+                <button class="modal-btn" style="color: #2563eb; font-weight: 600;"
+                    onclick="saveNickname()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pinned Message Bar -->
+    <div id="pinnedMessageBar" class="pinned-message-bar" style="display: none;" onclick="scrollToPinnedMessage()">
+        <div class="pinned-icon"><i class="fas fa-thumbtack"></i></div>
+        <div class="pinned-content">
+            <div class="pinned-label">Pinned Message</div>
+            <div class="pinned-text" id="pinnedMessageText">Loading...</div>
+        </div>
+        <button class="pinned-close" onclick="unpinMessage(event)"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="chat-messages-telegram" id="messagesContainer">
+        {% if messages %}
+        {% for message in messages %}
+        {% set sender = message.sender_id if message.sender_id is defined else message['sender_id'] %}
+        {% set mid = message.id if message.id is defined else message['id'] %}
+        {% set content = message.content if message.content is defined else message['content'] %}
+
+        <div class="message-wrapper {% if sender == current_user_id %}sent{% else %}received{% endif %}"
+            data-message-id="{{ mid }}" data-content="{{ content | e }}"
+            data-own="{{ 'true' if sender == current_user_id else 'false' }}"
+            data-pinned="{{ 'true' if message.is_pinned else 'false' }}"
+            data-sender-name="{% if sender == current_user_id %}Me{% else %}{{ other_user['username'] }}{% endif %}"
+            oncontextmenu="return showContextMenu(event, this)">
+            <div class="message-checkbox"></div>
+            <div class="message-bubble-telegram">
+                <div class="message-text">
+                    <div class="message-content-wrapper">
+                        {% if message.reply_to %}
+                        {% set reply = message.reply_to_message %}
+                        <div class="message-reply-preview" onclick="scrollToMessage('{{ message.reply_to }}')">
+                            <div class="reply-user">
+                                {% if reply %}
+                                {% if reply.sender_id == current_user_id %}
+                                Me
+                                {% else %}
+                                {{ reply.sender_name }}
+                                {% endif %}
+                                {% else %}
+                                Unknown
+                                {% endif %}
+                            </div>
+                            <div class="reply-text">
+                                {% if reply %}
+                                {% if reply.content.startswith('/static/uploads/') %}
+                                📷 Photo
+                                {% elif reply.content.startswith('LOCATION:') %}
+                                📍 Location
+                                {% else %}
+                                {{ reply.content }}
+                                {% endif %}
+                                {% else %}
+                                Message deleted
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if content.startswith('/static/uploads/') %}
+                        <div class="chat-media-wrapper">
+                            {% set ext = content.split('.')[-1].lower() %}
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}
+                            <img src="{{ content }}" class="chat-media-image" onclick="openImageModal(this.src)"
+                                loading="lazy">
+                            {% elif ext in ['mp3', 'wav', 'ogg', 'm4a', 'webm'] %}
+                            <div class="audio-player">
+                                <audio controls class="chat-media-audio">
+                                    <source src="{{ content }}"
+                                        type="audio/{% if ext == 'm4a' %}mp4{% else %}{{ ext }}{% endif %}">
+                                </audio>
+                            </div>
+                            {% elif ext in ['mp4', 'mov'] %}
+                            <video src="{{ content }}" controls class="chat-media-video"></video>
+                            {% else %}
+                            <a href="{{ content }}" target="_blank" class="chat-media-file"><i class="fas fa-file"></i>
+                                Download
+                                File</a>
+                            {% endif %}
+                        </div>
+                        {% elif content.startswith('LOCATION:') %}
+                        {% set loc_parts = content[9:].split('|') %}
+                        {% set status = loc_parts[1] if loc_parts|length > 1 else 'STATIC' %}
+                        {% set caption = loc_parts[2] if loc_parts|length > 2 else '' %}
+                        {% set endTimeStr = loc_parts[3] if loc_parts|length > 3 else '' %}
+
+                        {% set is_live = status == 'LIVE' %}
+                        {% set is_ended = status == 'ENDED' %}
+                        {% set is_own = sender == current_user_id %}
+
+                        {% set sender_user = current_user if is_own else other_user %}
+                        {% set avatar_url = sender_user.profile_pic if sender_user.profile_pic else
+                        "https://ui-avatars.com/api/?name=" ~ sender_user.username ~ "&background=8D6E63&color=fff" %}
+
+                        <div class="message-bubble-whatsapp-location">
+                            <div class="whatsapp-map-container"
+                                onclick="event.stopPropagation(); window.open('https://www.google.com/maps?q={{ loc_parts[0] }}', '_blank')">
+                                <div id="map-{{ mid }}" class="map-preview"></div>
+                                <img src="{{ avatar_url }}" class="whatsapp-avatar-overlay">
+                            </div>
+
+                            {% if caption %}
+                            <div class="whatsapp-caption" style="color: #333;">{{ caption }}</div>
+                            {% endif %}
+
+                            <div class="whatsapp-status-row">
+                                <div class="whatsapp-status-left" style="color: #AA8B56;">
+                                    {% if is_live %}
+                                    <i class="fas fa-satellite-dish whatsapp-live-icon"></i>
+                                    {% if endTimeStr %}
+                                    <span class="live-until-text" data-expiry="{{ endTimeStr }}"
+                                        style="color: #555;">Live
+                                        Location</span>
+                                    {% else %}
+                                    <span style="color: #555;">Live Location</span>
+                                    {% endif %}
+                                    {% elif is_ended %}
+                                    <i class="fas fa-satellite-dish whatsapp-ended-icon"></i>
+                                    <span style="color: #555;">Live location ended</span>
+                                    {% else %}
+                                    <i class="fas fa-map-marker-alt" style="color: #AA8B56;"></i>
+                                    <span style="color: #555;">Location Shared</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% if is_live and is_own %}
+                        <button class="whatsapp-stop-btn" onclick="manualStopSharing('{{ mid }}')">Stop sharing</button>
+                        {% endif %}
+                        {% else %}
+                        {{ content }}
+                        {% endif %}
                     </div>
-                </form>
+                    <div id="reactions-{{ mid }}" class="message-reactions-container" {% if not message.reactions
+                        %}style="display: none;" {% endif %}>
+                        {% if message.reactions %}
+                        {% for r in message.reactions %}
+                        <span class="reaction-chip"
+                            onclick="event.stopPropagation(); addReaction('{{ r.reaction }}', '{{ mid }}')">
+                            <span class="reaction-emoji">{{ r.reaction }}</span>
+                            <img src="{{ r.avatar }}" class="reaction-avatar" onerror="this.style.display='none'">
+                            <span class="count">{{ r.count }}</span>
+                        </span>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    {% if message.is_pinned %}
+                    <div class="message-pin-indicator">
+                        <i class="fas fa-thumbtack"></i>
+                    </div>
+                    {% endif %}
+                    <div class="message-meta">
+                        <span class="message-time">{{ message.display_time }}</span>
+                        {% if sender == current_user_id %}
+                        <span
+                            class="message-status status-icon {% if message.is_read %}read{% elif message.is_delivered %}delivered{% endif %}"
+                            data-msg-id="{{ mid }}"
+                            data-read-at="{{ message.display_read_at if message.display_read_at else '' }}">
+                            {% if message.is_read or message.is_delivered %}
+                            <i class="fas fa-check-double"></i>
+                            {% else %}
+                            <i class="fas fa-check"></i>
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <button class="message-tts-btn" onclick="speakMessage(this.closest('.message-wrapper').dataset.content)"
+                    title="Text to Speech">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="no-messages-telegram">
+            <i class="fas fa-comments"></i>
+            <p>No messages yet. Say hello!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Blocked User Overlay -->
+    {% if is_blocked %}
+    <div class="chat-blocked-overlay" id="blockedOverlay">
+        <button class="unblock-btn" onclick="unblockUser('{{ other_user.id }}')">Unblock</button>
+    </div>
+    {% else %}
+    <!-- Message Input Area -->
+    <div class="chat-input-telegram">
+        <!-- Reply Preview -->
+        <div id="replyPreview" class="reply-preview-container">
+            <div class="reply-preview-info">
+                <div id="replyPreviewUser" class="reply-preview-user">Me</div>
+                <div id="replyPreviewText" class="reply-preview-text">Replying to...</div>
+            </div>
+            <div class="reply-preview-close" onclick="cancelReply()">&times;</div>
+        </div>
+
+        <!-- Emoji Picker Button -->
+        <div id="emojiBtnContainer" style="position: relative; display: flex; align-items: center;">
+            <button class="input-action-btn" id="emojiBtn" onclick="toggleEmojiPicker()">
+                <i class="fas fa-smile"></i>
+            </button>
+            <div class="emoji-picker-container" id="emojiPicker">
+                <div class="emoji-picker-grid">
+                    {% set emojis = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉',
+                    '😌',
+                    '😍',
+                    '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🥳',
+                    '😏',
+                    '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤',
+                    '😠',
+                    '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🫣', '🤭',
+                    '🤫',
+                    '🫠', '🤥', '😶', '🫥', '😐', '🫤', '😑', '🫨', '😬', '🙄', '😯', '😦', '😧', '😮', '😲',
+                    '🥱',
+                    '😴', '🤤', '😪', '😵', '😵‍💫', '🫥', '🤐', '🥴', '🤢', '🤮', '🤧', '🥵', '🥶', '😶‍🌫️',
+                    '❤️',
+                    '🧡',
+                    '💛', '💚', '💙', '💜', '🖤', '💔', '👍', '👎', '👌', '🙌', '🤝', '🙏', '💪', '🔥', '⭐',
+                    '✨'] %}
+                    {% for emoji in emojis %}
+                    <button class="emoji-btn" onclick="insertEmoji('{{ emoji }}')">{{ emoji }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Attachment Button -->
+        <div id="attachBtnContainer" style="position: relative; display: flex; align-items: center;">
+            <button class="input-action-btn" id="attachBtn" onclick="toggleAttachmentMenu()">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <div class="attachment-dropdown" id="attachmentMenu">
+                <button class="attachment-item" onclick="openCamera()">
+                    <i class="fas fa-camera"></i>
+                    <span>Camera</span>
+                </button>
+                <label class="attachment-item">
+                    <i class="fas fa-image"></i>
+                    <span>Photo or Video</span>
+                    <input type="file" accept="image/*,video/*" style="display: none;"
+                        onchange="handleFileUpload(this, 'media')">
+                </label>
+                <label class="attachment-item">
+                    <i class="fas fa-file"></i>
+                    <span>File</span>
+                    <input type="file" style="display: none;" onchange="handleFileUpload(this, 'file')">
+                </label>
+                <button class="attachment-item" onclick="openLocationModal()">
+                    <i class="fas fa-map-marker-alt" style="color: #2ed573;"></i>
+                    <span>Location</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Message Input -->
+        <form action="{{ url_for('messages.send_message', recipient_id=other_user.id) }}" method="POST"
+            id="chatMessageForm" style="flex: 1; display: flex; gap: 8px; align-items: center;"
+            onsubmit="handleMessageSubmit(event)">
+            <!-- Recording Area (Inside Form) -->
+            <div id="recordingOverlay" class="recording-overlay" style="display: none; flex: 1;">
+                <div class="recording-inner">
+                    <div class="recording-indicator">
+                        <div class="recording-dot"></div>
+                        <span id="recordingTimer">0:00</span>
+                    </div>
+                    <button type="button" class="recording-cancel" onclick="cancelVoiceRecording()"
+                        title="Cancel Recording">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="recording-label">Recording Voice...</div>
+                </div>
+            </div>
+            <input type="text" class="chat-input-field" name="content" id="messageInput" placeholder="Message" autofocus
+                autocomplete="off" style="flex: 1;">
+            <button type="button" class="input-action-btn" id="voiceInputBtn" onclick="toggleVoiceInput()"
+                title="Voice Typing">
+                <i class="fas fa-microphone-alt"></i>
+            </button>
+            <button type="submit" class="send-btn-telegram" id="sendBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+
+        <!-- Voice Message Button -->
+        <div id="voiceBtnContainer" style="position: relative; display: flex; align-items: center;">
+            <button class="input-action-btn voice-btn" id="voiceBtn" onclick="startVoiceRecording()"
+                oncontextmenu="showVoiceOptions(event)" style="color: white; margin-left: 8px;">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <div class="voice-dropdown" id="voiceDropdown">
+                <button class="attachment-item" onclick="startVoiceRecording()">
+                    <i class="fas fa-microphone"></i>
+                    <span>Voice Message</span>
+                </button>
+                <button class="attachment-item" onclick="sendTelebubble()">
+                    <i class="fas fa-circle"></i>
+                    <span>Telebubble</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Camera Preview Overlay -->
+<div id="cameraOverlay" class="camera-overlay" style="display: none;">
+    <div class="camera-container">
+        <video id="cameraVideo" autoplay playsinline></video>
+        <div class="camera-controls">
+            <button class="camera-btn cancel" onclick="closeCamera()">
+                <i class="fas fa-times"></i>
+            </button>
+            <button class="camera-btn capture" onclick="takePicture()">
+                <div class="capture-inner"></div>
+            </button>
+            <button type="button" class="camera-btn switch" onclick="toggleFilterTray()" title="Filters">
+                <i class="fas fa-magic"></i>
+            </button>
+        </div>
+        <!-- Filter Selection Tray -->
+        <div id="filterTray" class="camera-filters-container">
+            <div class="filter-option active" data-filter="none" onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: none;"></div>
+                <span>None</span>
+            </div>
+            <div class="filter-option" data-filter="grayscale(100%)" onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: grayscale(100%);"></div>
+                <span>Gray</span>
+            </div>
+            <div class="filter-option" data-filter="sepia(100%)" onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: sepia(100%);"></div>
+                <span>Sepia</span>
+            </div>
+            <div class="filter-option" data-filter="sepia(0.4) saturate(1.5) contrast(1.1)"
+                onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: sepia(0.4) saturate(1.5) contrast(1.1);"></div>
+                <span>Warm</span>
+            </div>
+            <div class="filter-option" data-filter="hue-rotate(180deg) saturate(0.8) contrast(1.1)"
+                onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: hue-rotate(180deg) saturate(0.8) contrast(1.1);">
+                </div>
+                <span>Cool</span>
+            </div>
+            <div class="filter-option" data-filter="invert(100%)" onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: invert(100%);"></div>
+                <span>Invert</span>
+            </div>
+            <div class="filter-option" data-filter="contrast(1.4) brightness(0.9)" onclick="selectFilter(this)">
+                <div class="filter-preview" style="filter: contrast(1.4) brightness(0.9);"></div>
+                <span>Drama</span>
+            </div>
+        </div>
+    </div>
+    <canvas id="cameraCanvas" style="display: none;"></canvas>
+</div>
+
+<!-- Scroll to Bottom Button -->
+<button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottomSmooth()">
+    <i class="fas fa-arrow-down"></i>
+</button>
+<!-- Location Modal -->
+<div id="locationModal" class="location-modal">
+    <div class="location-header">
+        <h3>Send Location</h3>
+        <button class="location-close-btn" onclick="closeLocationModal()">&times;</button>
+    </div>
+    <div id="locationMap"></div>
+    <div class="location-actions">
+        <button class="location-btn" onclick="sendCurrentLocation()">
+            <i class="fas fa-location-arrow"></i> Send My Current Location
+        </button>
+        <div class="nearby-places" id="nearbyPlacesList">
+            <!-- Places will be populated here -->
+            <div class="place-item" onclick="alert('Live location sharing coming soon!')">
+                <div class="place-icon" style="background: #e74c3c;"><i class="fas fa-satellite-dish"></i></div>
+                <div>
+                    <div style="font-weight: bold; color: #e74c3c;">Share Live Location</div>
+                    <div style="font-size: 0.8rem; opacity: 0.7;">Update continuously</div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Live Location Picker Modal -->
+<div id="liveLocationPicker" class="live-location-picker">
+    <div class="picker-header">
+        <h3>Share live location</h3>
+        <button class="picker-close" onclick="closeLiveLocationPicker()">&times;</button>
+    </div>
+
+    <div class="duration-options">
+        <button class="duration-option" onclick="selectDuration(15, this)">15 Minutes</button>
+        <button class="duration-option active" onclick="selectDuration(60, this)">1 Hour</button>
+        <button class="duration-option" onclick="selectDuration(480, this)">8 Hours</button>
+    </div>
+
+    <div class="caption-container">
+        <input type="text" id="liveLocationCaption" class="caption-input" placeholder="Add a caption..."
+            autocomplete="off">
+        <button class="send-location-btn" onclick="confirmLiveLocation()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<div id="imageModal" class="image-modal" style="display: none;"
+    onclick="if(event.target === this) { closeImageModal(); hideDeleteChoices(); }">
+    <div class="image-modal-header">
+        <div class="image-modal-user-info">
+            <div class="image-modal-avatar" id="imageModalAvatar">T</div>
+            <div class="image-modal-details">
+                <h6 id="imageModalSender">Name</h6>
+                <span id="imageModalTime">Today at --:--</span>
+            </div>
+        </div>
+        <div class="image-modal-actions">
+            <button class="image-modal-btn" onclick="replyFromModal()" title="Reply"><i
+                    class="fas fa-reply"></i></button>
+            <button class="image-modal-btn" onclick="downloadImage()" title="Download"><i
+                    class="fas fa-download"></i></button>
+            <button class="image-modal-btn" onclick="zoomImage(-0.2)" title="Zoom Out"><i
+                    class="fas fa-search-minus"></i></button>
+            <button class="image-modal-btn" onclick="zoomImage(0.2)" title="Zoom In"><i
+                    class="fas fa-search-plus"></i></button>
+            <button class="image-modal-btn" id="modalDeleteBtn" onclick="toggleDeleteChoices(event)" title="Delete"><i
+                    class="fas fa-trash"></i></button>
+            <button class="image-modal-btn" onclick="closeImageModal()" title="Close"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <!-- Delete Choices Popover -->
+        <div id="deleteChoices" class="delete-choices">
+            <button onclick="performDeleteFromModal(false)">Delete for me</button>
+            <button onclick="performDeleteFromModal(true)" class="danger">Delete for both</button>
+        </div>
+    </div>
+    <div class="image-modal-content" onwheel="handleModalWheel(event)">
+        <img id="imageModalImg" src="" class="image-modal-img">
+    </div>
+    <div class="image-modal-caption" id="imageModalCaption"></div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+    <div class="context-menu-reactions">
+        <button class="reaction-btn" onclick="addReaction('❤️')">❤️</button>
+        <button class="reaction-btn" onclick="addReaction('👍')">👍</button>
+        <button class="reaction-btn" onclick="addReaction('🎭')">🎭</button>
+        <button class="reaction-btn" onclick="addReaction('🔥')">🔥</button>
+        <button class="reaction-btn" onclick="addReaction('😂')">😂</button>
+        <button class="reaction-btn" onclick="addReaction('🤝')">🤝</button>
+    </div>
+    <div class="context-menu-items">
+        <button class="context-menu-item" onclick="replyToMessage()">
+            <i class="fas fa-reply"></i>
+            <span>Reply</span>
+        </button>
+        <button class="context-menu-item" id="editMenuItem" onclick="editMessage()">
+            <i class="fas fa-pen"></i>
+            <span>Edit</span>
+        </button>
+        <button class="context-menu-item" onclick="copyMessageText()">
+            <i class="fas fa-copy"></i>
+            <span>Copy Text</span>
+        </button>
+        <button class="context-menu-item" id="pinMenuItem" onclick="togglePinMessage()">
+            <i class="fas fa-thumbtack"></i>
+            <span id="pinMenuText">Pin</span>
+        </button>
+        <button class="context-menu-item" onclick="selectMessage()">
+            <i class="fas fa-check-circle"></i>
+            <span>Select</span>
+        </button>
+        <button class="context-menu-item danger" id="deleteMenuItem" onclick="showDeleteOptions(event)">
+            <i class="fas fa-trash"></i>
+            <span>Delete</span>
+        </button>
+    </div>
+    <!-- New Stacked Delete Options (Initially Hidden) -->
+    <div class="context-menu-delete-options" id="contextDeleteOptions" style="display: none;">
+        <button class="delete-option" onclick="performDelete(currentMessageId, false)">Delete for me</button>
+        <button class="delete-option danger" onclick="performDelete(currentMessageId, true)">Delete for
+            both</button>
+    </div>
+    <div class="context-menu-footer" id="contextMenuFooter">
+        <i class="fas fa-check-double"></i>
+        <span id="readStatus">read today at --:--</span>
+    </div>
+</div>
+
+<!-- Text Size Modal -->
+<div class="modal" id="textSizeModal">
+    <div class="modal-content" style="background: var(--context-menu-bg, #1e1e2f); color: white; max-width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h5 style="margin: 0;">Text Size</h5>
+            <button onclick="closeTextSizeModal()"
+                style="background: none; border: none; color: #ccc; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <div class="text-size-selector" style="flex-wrap: wrap; justify-content: center;">
+            <button class="text-size-option" onclick="setTextSize(80)">80%</button>
+            <button class="text-size-option" onclick="setTextSize(90)">90%</button>
+            <button class="text-size-option active" onclick="setTextSize(100)">100%</button>
+            <button class="text-size-option" onclick="setTextSize(110)">110%</button>
+            <button class="text-size-option" onclick="setTextSize(120)">120%</button>
+            <button class="text-size-option" onclick="setTextSize(130)">130%</button>
+        </div>
+        <p style="text-align: center; color: #666; margin-top: 16px; font-size: 0.85rem;">
+            Sample: <span id="textSizeSample" style="color: #333; font-size: inherit;">The quick brown fox jumps over
+                the lazy dog.</span>
+        </p>
+    </div>
+</div>
+
+<!-- Mute Modal -->
+<div class="modal" id="muteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <img src="{{ other_user.profile_pic if other_user.profile_pic else 'https://ui-avatars.com/api/?name=' + other_user.username }}"
+                alt="">
+            <h3 class="modal-title">Notifications</h3>
+        </div>
+        <div class="mute-options">
+            <label class="mute-option">
+                <span>For 1 Hour</span>
+                <input type="radio" name="mute-duration" value="60">
+            </label>
+            <label class="mute-option">
+                <span>For 8 Hours</span>
+                <input type="radio" name="mute-duration" value="480">
+            </label>
+            <label class="mute-option">
+                <span>For 1 Day</span>
+                <input type="radio" name="mute-duration" value="1440">
+            </label>
+            <label class="mute-option">
+                <span>For 3 Days</span>
+                <input type="radio" name="mute-duration" value="4320">
+            </label>
+            <label class="mute-option">
+                <span>For 7 Days</span>
+                <input type="radio" name="mute-duration" value="10080">
+            </label>
+            <label class="mute-option">
+                <span>Forever</span>
+                <input type="radio" name="mute-duration" value="-1" checked>
+            </label>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn" onclick="closeMuteModal()">Cancel</button>
+            <button class="modal-btn" onclick="confirmMute()">Mute</button>
+        </div>
+    </div>
+</div>
+
+<!-- Batch Actions Bar -->
+<div class="batch-actions-bar" id="batchActionsBar" style="display: none;">
+    <div class="batch-actions-left">
+        <button class="batch-cancel-btn" onclick="toggleSelectMode(false)">✕</button>
+        <span class="batch-count" id="selectedCount">0 messages</span>
+    </div>
+    <div class="batch-actions-right">
+        <button class="batch-action-btn delete" onclick="deleteSelectedMessages()">
+            <i class="fas fa-trash"></i> Delete
+        </button>
+    </div>
+</div>
+
+<!-- Delete Chat Confirmation Modal -->
+<div class="confirmation-modal-overlay" id="deleteChatModal">
+    <div class="confirmation-modal">
+        <div class="confirmation-modal-icon danger">✕</div>
+        <h4>Delete chat</h4>
+        <p>Are you sure you want to delete the chat with <strong id="deleteChatUsername">{{ other_user.username
+                }}</strong>?</p>
+        <label class="confirmation-modal-checkbox">
+            <input type="checkbox" id="deleteForBothCheckbox">
+            <span>Also delete for <span id="deleteChatUsername2">{{ other_user.username }}</span></span>
+        </label>
+        <div class="confirmation-modal-actions">
+            <button class="confirmation-modal-btn cancel" onclick="closeDeleteChatModal()">CANCEL</button>
+            <button class="confirmation-modal-btn confirm" onclick="confirmDeleteChat()">DELETE CHAT</button>
+        </div>
+    </div>
+</div>
+
+<!-- Block User Confirmation Modal -->
+<div class="confirmation-modal-overlay" id="blockUserModal">
+    <div class="confirmation-modal">
+        <div class="confirmation-modal-icon warning">⚠</div>
+        <h4>Block user</h4>
+        <p>Are you sure you want to block <strong id="blockUserUsername">{{ other_user.username }}</strong>? They won't
+            be able to contact you anymore.</p>
+        <div class="confirmation-modal-actions">
+            <button class="confirmation-modal-btn cancel" onclick="closeBlockUserModal()">CANCEL</button>
+            <button class="confirmation-modal-btn confirm danger" onclick="confirmBlockUser()">BLOCK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Report User Confirmation Modal -->
+<div class="confirmation-modal-overlay" id="reportUserModal">
+    <div class="confirmation-modal">
+        <div class="confirmation-modal-icon warning">⚠</div>
+        <h4>Report user</h4>
+        <p>Report <strong id="reportUserUsername">{{ other_user.username }}</strong> for inappropriate behavior?</p>
+        <div class="confirmation-modal-actions">
+            <button class="confirmation-modal-btn cancel" onclick="closeReportUserModal()">CANCEL</button>
+            <button class="confirmation-modal-btn confirm danger" onclick="confirmReportUser()">REPORT</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Batch Delete Confirmation Modal -->
+<div class="confirmation-modal-overlay" id="batchDeleteModal">
+    <div class="confirmation-modal" style="max-width: 320px; padding: 20px;">
+        <h4 style="text-align: center; margin-bottom: 24px; color: #333;">Delete <span id="batchDeleteCount">0</span>
+            messages?</h4>
+        <div style="display: flex; flex-direction: column; gap: 0;">
+            <button onclick="confirmBatchDelete(false)"
+                style="padding: 14px; background: transparent; border: none; border-bottom: 1px solid #eee; text-align: center; font-size: 16px; color: #333; cursor: pointer;">Delete
+                for me</button>
+            <button onclick="confirmBatchDelete(true)"
+                style="padding: 14px; background: transparent; border: none; border-bottom: 1px solid #eee; text-align: center; font-size: 16px; color: #ff3b30; cursor: pointer; font-weight: 600;">Delete
+                for both</button>
+            <button onclick="closeBatchDeleteModal()"
+                style="padding: 14px; background: transparent; border: none; text-align: center; font-size: 16px; color: #666; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // Scroll to bottom of messages
+    // ===== STATE MANAGEMENT =====
+    let currentMessageId = null;
+    let currentMessageContent = '';
+    let isOwnMessage = false;
+    let currentReplyId = null;
+
+    // ===== INITIALIZATION =====
+    /* jshint ignore:start */
+    const OTHER_USER_ID = Number('{{ other_user.id }}');
+    /* jshint ignore:end */
+
     document.addEventListener('DOMContentLoaded', function () {
-        var container = document.getElementById('messages-container');
+        // Scroll to bottom
+        const container = document.getElementById('messagesContainer');
         container.scrollTop = container.scrollHeight;
+
+        // FIX: Clear stale reply state on load
+        currentReplyId = null;
+        const replyPreview = document.getElementById('replyPreview');
+        if (replyPreview) {
+            replyPreview.classList.remove('show');
+            const text = document.getElementById('replyPreviewText');
+            if (text) text.textContent = 'Replying to...';
+            const user = document.getElementById('replyPreviewUser');
+            if (user) user.textContent = 'Me';
+        }
+
+
+
+        // Load saved text size
+        const savedSize = localStorage.getItem('chatTextSize') || '100';
+        setTextSize(parseInt(savedSize), false);
+
+        // Close menus on outside click
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#headerMenuBtn') && !e.target.closest('#headerDropdownMenu')) {
+                document.getElementById('headerDropdownMenu').classList.remove('show');
+            }
+            if (!e.target.closest('#emojiBtn') && !e.target.closest('#emojiPicker')) {
+                document.getElementById('emojiPicker').classList.remove('show');
+            }
+            if (!e.target.closest('#attachBtn') && !e.target.closest('#attachmentMenu')) {
+                document.getElementById('attachmentMenu').classList.remove('show');
+            }
+            if (!e.target.closest('#voiceBtn') && !e.target.closest('#voiceDropdown')) {
+                document.getElementById('voiceDropdown').classList.remove('show');
+            }
+            if (!e.target.closest('.context-menu') && !e.target.closest('.message-wrapper')) {
+                hideContextMenu();
+            }
+        });
+
+        // Start status polling
+        if (typeof fetchUserStatus === 'function') {
+            fetchUserStatus();
+            setInterval(fetchUserStatus, 30000);
+        }
+
+        // Initialize static maps for existing location messages
+        document.querySelectorAll('.message-wrapper').forEach(wrapper => {
+            const content = wrapper.dataset.content;
+            if (content && content.startsWith('LOCATION:')) {
+                const mid = wrapper.dataset.messageId;
+                const locParts = content.substring(9).split('|');
+                const coords = locParts[0].split(',');
+                if (coords.length === 2) {
+                    // Use timeout to ensure renderStaticMap is defined/hoisted if needed
+                    setTimeout(() => {
+                        if (typeof renderStaticMap === 'function') {
+                            renderStaticMap(mid, parseFloat(coords[0]), parseFloat(coords[1]));
+                        }
+                    }, 0);
+                }
+            }
+        });
+    });
+
+    // ===== LOCATION SHARING =====
+    let locationMap = null;
+    let locationMarker = null;
+    let currentLat = null;
+    let currentLng = null;
+
+    function openLocationModal() {
+        document.getElementById('attachmentMenu').classList.remove('show');
+        const modal = document.getElementById('locationModal');
+        modal.classList.add('show');
+
+        // Initialize map if not already done
+        if (!locationMap) {
+            locationMap = L.map('locationMap').setView([1.3521, 103.8198], 13); // Default Singapore
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(locationMap);
+
+            locationMap.on('click', function (e) {
+                updateLocationMarker(e.latlng.lat, e.latlng.lng);
+            });
+        }
+
+        // Get User Location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    updateLocationMarker(lat, lng);
+                    locationMap.setView([lat, lng], 15);
+                    fetchNearbyPlaces(lat, lng);
+                },
+                (error) => {
+                    alert('Unable to retrieve your location. Please check permissions.');
+                    console.error(error);
+                }
+            );
+        } else {
+            alert('Geolocation is not supported by your browser.');
+        }
+
+        // Resize map after transition
+        setTimeout(() => {
+            locationMap.invalidateSize();
+        }, 300);
+    }
+
+    function closeLocationModal() {
+        document.getElementById('locationModal').classList.remove('show');
+    }
+
+    function updateLocationMarker(lat, lng) {
+        currentLat = lat;
+        currentLng = lng;
+
+        if (locationMarker) {
+            locationMarker.setLatLng([lat, lng]);
+        } else {
+            locationMarker = L.marker([lat, lng], { draggable: true }).addTo(locationMap);
+            locationMarker.on('dragend', function (event) {
+                var position = locationMarker.getLatLng();
+                currentLat = position.lat;
+                currentLng = position.lng;
+            });
+        }
+    }
+
+    // ===== LIVE LOCATION & REAL PLACES =====
+    // Use global socket and handle rooms
+    const currentUserId = Number('{{ current_user_id }}');
+    const otherUserId = Number('{{ other_user.id }}');
+    const roomId = `chat_${Math.min(currentUserId, otherUserId)}_${Math.max(currentUserId, otherUserId)}`;
+
+    // Join Private Room (already in base.html for user_{id})
+    // Join Conversation Room for typing indicators and live location
+    socket.emit('join', { room: roomId });
+
+    // REAL-TIME MESSAGE LISTENER
+    socket.on('new_message', (data) => {
+        // Only append if it's from the other user in this private chat
+        if (data.sender_id === otherUserId && !data.group_id) {
+            appendMessage({
+                id: data.id,
+                content: data.content,
+                display_time: data.display_time,
+                sender_id: data.sender_id,
+                reply_to: data.reply_to
+            }, false); // false = not own message
+        }
+    });
+
+    // Typing Indicators
+    let typingTimeout;
+    const input = document.getElementById('messageInput');
+    if (input) {
+        input.addEventListener('keypress', () => {
+            socket.emit('typing', { room: roomId, user: '{{ current_user.username }}' });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('stop_typing', { room: roomId });
+            }, 3000);
+        });
+    }
+
+    socket.on('user_typing', (data) => {
+        const lastSeenText = document.getElementById('lastSeenText');
+        if (lastSeenText) {
+            lastSeenText.originalText = lastSeenText.textContent;
+            lastSeenText.textContent = 'typing...';
+            lastSeenText.style.color = '#22c55e'; // Green
+        }
+    });
+
+    socket.on('user_stop_typing', (data) => {
+        const lastSeenText = document.getElementById('lastSeenText');
+        if (lastSeenText) {
+            lastSeenText.textContent = lastSeenText.originalText || 'online';
+            lastSeenText.style.color = '';
+        }
+    });
+
+    let watchId = null;
+    let otherUserMarker = null;
+    let selectedDuration = 60; // Default 1 hour
+    let sharingTimeout = null;
+
+    function startLiveLocationSharing() {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+
+        const btn = document.getElementById('btnShareLive');
+        const btnText = document.getElementById('btnShareLiveText');
+
+        if (watchId) {
+            stopLiveLocationSharing();
+            return;
+        }
+
+        // Open Duration Picker instead of starting immediately
+        document.getElementById('liveLocationPicker').classList.add('show');
+    }
+
+    function closeLiveLocationPicker() {
+        document.getElementById('liveLocationPicker').classList.remove('show');
+    }
+
+    function selectDuration(mins, btn) {
+        selectedDuration = mins;
+        document.querySelectorAll('.duration-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function confirmLiveLocation() {
+        const caption = document.getElementById('liveLocationCaption').value;
+        closeLiveLocationPicker();
+
+        const btn = document.getElementById('btnShareLive');
+        const btnText = document.getElementById('btnShareLiveText');
+
+        // Get initial position to send the persistent message
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            // Calculate end time
+            const now = new Date();
+            const end = new Date(now.getTime() + selectedDuration * 60 * 1000);
+            const endTimeStr = end.toISOString();
+
+            // Send persistent message to database
+            const content = `LOCATION:${lat},${lng}|LIVE|${caption}|${endTimeStr}`;
+            const formData = new FormData();
+            formData.append('content', content);
+
+            try {
+                const response = await fetch(`/messages/send/${otherUserId}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    appendMessage(data.message);
+                }
+            } catch (err) {
+                console.error("Persistence Error:", err);
+            }
+
+            // Start Live Updates Logic
+            watchId = navigator.geolocation.watchPosition((pos) => {
+                const nLat = pos.coords.latitude;
+                const nLng = pos.coords.longitude;
+
+                socket.emit('location_update', {
+                    room: roomId,
+                    lat: nLat,
+                    lng: nLng,
+                    sender_id: currentUserId,
+                    caption: caption,
+                    is_live: true,
+                    duration: selectedDuration
+                });
+
+                if (locationMap && locationMarker) {
+                    locationMarker.setLatLng([nLat, nLng]);
+                }
+            }, (err) => {
+                console.error(err);
+                alert('Error accessing location: ' + err.message);
+                stopLiveLocationSharing();
+            }, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+
+            if (btnText) btnText.textContent = 'Stop Sharing';
+            if (btn) btn.classList.add('pulsing');
+
+            // Set auto-stop timer
+            if (sharingTimeout) clearTimeout(sharingTimeout);
+            sharingTimeout = setTimeout(() => {
+                stopLiveLocationSharing();
+                alert("Live location sharing ended (duration expired).");
+            }, selectedDuration * 60 * 1000);
+
+            // Close both modals and redirect back to the current chat
+            setTimeout(() => {
+                closeLiveLocationPicker();
+                closeLocationModal();
+                window.location.href = `/messages/${otherUserId}`;
+            }, 500);
+
+        }, (err) => {
+            alert("Could not get location to start sharing: " + err.message);
+        });
+    }
+
+    function stopLiveLocationSharing() {
+        if (watchId) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
+        if (sharingTimeout) {
+            clearTimeout(sharingTimeout);
+            sharingTimeout = null;
+        }
+
+        const btn = document.getElementById('btnShareLive');
+        const btnText = document.getElementById('btnShareLiveText');
+        if (btnText) btnText.textContent = 'Share Live Location';
+        if (btn) btn.classList.remove('pulsing');
+
+        // Notify other user sharing stopped? (Optional)
+    }
+
+    async function manualStopSharing(messageId) {
+        console.log("manualStopSharing called for ID:", messageId);
+        const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (!wrapper) return;
+
+        // NUCLEAR REMOVAL: Remove any buttons that look like the stop button
+        // 1. By Class
+        const specificBtns = wrapper.querySelectorAll('.whatsapp-stop-btn');
+        specificBtns.forEach(b => b.remove());
+
+        // 2. By Content (backup)
+        const allBtns = wrapper.querySelectorAll('button');
+        allBtns.forEach(b => {
+            if (b.textContent.toLowerCase().includes('stop sharing')) {
+                b.remove();
+            }
+        });
+
+        const bubble = wrapper.querySelector('.message-bubble-whatsapp-location');
+        const content = wrapper.dataset.content;
+        if (!content || !content.startsWith('LOCATION:')) return;
+
+        const locParts = content.substring(9).split('|');
+        locParts[1] = 'ENDED';
+        const newContent = `LOCATION:${locParts.join('|')}`;
+
+        try {
+            const formData = new FormData();
+            formData.append('content', newContent);
+
+            const response = await fetch(`/messages/edit/${messageId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                wrapper.dataset.content = newContent;
+                if (bubble) {
+                    const statusLeft = bubble.querySelector('.whatsapp-status-left');
+                    if (statusLeft) {
+                        statusLeft.innerHTML = `
+                            <i class="fas fa-satellite-dish whatsapp-ended-icon"></i>
+                            <span>Live location ended</span>
+                        `;
+                    }
+                }
+                stopLiveLocationSharing();
+            }
+        } catch (err) {
+            console.error("Stop Sharing Error:", err);
+            // If failed, maybe we should restore the button? 
+            // For now, assume success or user can refresh if it failed.
+        }
+    }
+
+    // Receive Live Updates
+    socket.on('live_location_update', (data) => {
+        if (data.sender_id === otherUserId) {
+            if (locationMap) {
+                const avatarHtml = `
+                    <div class="avatar-marker">
+                        <div class="avatar-letter">${'{{ other_user.username[0] | upper }}'}</div>
+                        <div class="live-indicator-dot"></div>
+                    </div>
+                `;
+
+                const customIcon = L.divIcon({
+                    html: avatarHtml,
+                    className: '',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                });
+
+                if (otherUserMarker) {
+                    otherUserMarker.setLatLng([data.lat, data.lng]);
+                    if (data.caption) {
+                        otherUserMarker.setPopupContent(`<b>${data.caption}</b><br>Live Location`);
+                    }
+                } else {
+                    let content = "<b>Live Location</b>";
+                    if (data.caption) content = `<b>${data.caption}</b><br>Live Location`;
+
+                    otherUserMarker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(locationMap)
+                        .bindPopup(content).openPopup();
+                }
+            }
+        }
+    });
+
+    // Message Deleted Listener
+    socket.on('message_deleted', (data) => {
+        const wrapper = document.querySelector(`[data-message-id="${data.message_id}"]`);
+        if (wrapper) {
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'scale(0.9)';
+            wrapper.style.transition = 'all 0.3s ease';
+            setTimeout(() => wrapper.remove(), 300);
+        }
+    });
+
+    // Update Live Until Texts
+    function updateLiveUntilTexts() {
+        document.querySelectorAll('.live-until-text').forEach(el => {
+            const expiryStr = el.dataset.expiry;
+            if (expiryStr) {
+                const expiry = new Date(expiryStr);
+                const now = new Date();
+                if (now > expiry) {
+                    // Sharing naturally expired
+                    const bubble = el.closest('.message-bubble-whatsapp-location');
+                    if (bubble) {
+                        const icon = bubble.querySelector('.fa-satellite-dish');
+                        if (icon) icon.className = 'fas fa-satellite-dish whatsapp-ended-icon';
+                        el.textContent = 'Live location ended';
+                        // Remove class so we don't keep checking
+                        el.classList.remove('live-until-text');
+                        const stopBtn = bubble.querySelector('.whatsapp-stop-btn');
+                        if (stopBtn) stopBtn.remove();
+                    }
+                } else {
+                    // Start checking for ENDED status to prevent overwrite
+                    const bubble = el.closest('.message-bubble-whatsapp-location');
+                    const isEnded = bubble && bubble.querySelector('.whatsapp-ended-icon');
+                    if (isEnded) {
+                        el.textContent = 'Live location ended';
+                        el.classList.remove('live-until-text');
+                    } else {
+                        el.textContent = `Live until ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+                }
+            }
+        });
+    }
+
+    // Run every minute
+    setInterval(updateLiveUntilTexts, 1000);
+    setTimeout(updateLiveUntilTexts, 100); // Initial run
+
+    async function fetchNearbyPlaces(lat, lng) {
+        const list = document.getElementById('nearbyPlacesList');
+        list.innerHTML = '<div style="padding:10px; opacity:0.7;"><i class="fas fa-spinner fa-spin"></i> Loading places...</div>';
+
+        const places = [
+            { name: "Current Location", desc: "Send this exact point", icon: "fas fa-map-pin", lat: lat, lng: lng }
+        ];
+
+        try {
+            // Fetch reverse geocoding for current point
+            const reverseRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
+                headers: { 'User-Agent': 'TogetherSG-ChatApp/1.0' }
+            });
+            const reverseData = await reverseRes.json();
+            if (reverseData && reverseData.display_name) {
+                // Shorten address
+                const parts = reverseData.display_name.split(',');
+                places[0].desc = parts.slice(0, 2).join(', ');
+            }
+
+            // Search for nearby points (e.g., amenities)
+            // Bounding box ~1km
+            const viewbox = `${lng - 0.01},${lat + 0.01},${lng + 0.01},${lat - 0.01}`;
+            const searchRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=amenity&viewbox=${viewbox}&bounded=1&limit=5`, {
+                headers: { 'User-Agent': 'TogetherSG-ChatApp/1.0' }
+            });
+            const searchData = await searchRes.json();
+
+            searchData.forEach(item => {
+                let icon = "fas fa-map-marker-alt";
+                if (item.type === 'cafe') icon = "fas fa-coffee";
+                if (item.type === 'restaurant') icon = "fas fa-utensils";
+                if (item.type === 'park') icon = "fas fa-tree";
+
+                places.push({
+                    name: item.name || item.type, // Fallback if name is empty
+                    desc: item.display_name.split(',').slice(1, 3).join(', '),
+                    icon: icon,
+                    lat: parseFloat(item.lat),
+                    lng: parseFloat(item.lon)
+                });
+            });
+
+        } catch (e) {
+            console.error("Nominatim Error:", e);
+            // Fallback to minimal list
+        }
+
+        list.innerHTML = '';
+
+        // Add Live Sharing Button
+        const liveBtn = document.createElement('div');
+        liveBtn.className = 'place-item';
+        liveBtn.id = 'btnShareLive';
+        liveBtn.onclick = startLiveLocationSharing;
+        liveBtn.innerHTML = `
+            <div class="place-icon" style="background: rgba(255,0,0,0.1); color: #ff4444;">
+                <i class="fas fa-satellite-dish"></i>
+            </div>
+            <div>
+                 <div style="font-weight: bold;" id="btnShareLiveText">${watchId ? 'Stop Sharing' : 'Share Live Location'}</div>
+                 <div style="font-size: 0.8rem; opacity: 0.7;">Update continuously</div>
+            </div>
+        `;
+        if (watchId) liveBtn.classList.add('pulsing'); // Maintain state if re-opened
+        list.appendChild(liveBtn);
+
+        // Render fetched places
+        places.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'place-item';
+            div.onclick = () => {
+                updateLocationMarker(p.lat, p.lng);
+                sendCurrentLocation();
+            };
+            div.innerHTML = `
+                <div class="place-icon"><i class="${p.icon}"></i></div>
+                <div>
+                    <div style="font-weight: bold;">${p.name}</div>
+                    <div style="font-size: 0.8rem; opacity: 0.7;">${p.desc}</div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function sendCurrentLocation() {
+        if (currentLat === null || currentLng === null) {
+            alert("Please select a location first.");
+            return;
+        }
+
+        // Send as special formatted text
+        const content = `LOCATION:${currentLat},${currentLng}|STATIC|`;
+        const input = document.getElementById('messageInput');
+        input.value = content; // Set value
+
+        // Trigger submit
+        const form = document.getElementById('chatMessageForm');
+        // Create event
+        if (form.requestSubmit) {
+            form.requestSubmit();
+        } else {
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        }
+
+        closeLocationModal();
+    }
+
+    function renderStaticMap(messageId, lat, lng) {
+        // Check for server-rendered container or JS-rendered container
+        let container = document.getElementById('map-' + messageId) || document.getElementById('map-preview-' + messageId);
+        if (!container) return;
+
+        // Clear static placeholder
+        container.innerHTML = '';
+
+        const map = L.map(container, {
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false
+        }).setView([lat, lng], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker([lat, lng]).addTo(map);
+
+        // On click, maybe open full map?
+        container.style.cursor = 'pointer';
+        container.onclick = () => {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+        };
+    }
+
+    // ===== USER STATUS POLLING =====
+    function fetchUserStatus() {
+        fetch(`/users/status/${OTHER_USER_ID}`)
+            .then(res => res.json())
+            .then(data => {
+                const lastSeenText = document.getElementById('lastSeenText');
+                const onlineDot = document.getElementById('onlineDot');
+                if (lastSeenText) lastSeenText.textContent = data.text || 'last seen recently';
+                if (onlineDot) {
+                    onlineDot.style.display = 'block';
+                    if (data.status === 'online') {
+                        onlineDot.style.backgroundColor = '#22c55e'; // Green
+                    } else {
+                        onlineDot.style.backgroundColor = '#9ca3af'; // Grey
+                    }
+                }
+            })
+            .catch(err => console.error('Status fetch error:', err));
+    }
+
+    // ===== CALL LOGIC (WebRTC) =====
+    let localStream;
+    let peerConnection;
+    let callInterval;
+    const rtcConfig = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    async function initiateCall(type) {
+        endCall(); // Ensure clean state
+        const modal = document.getElementById('callModal');
+        modal.style.display = 'flex';
+        document.getElementById('callStatus').innerText = 'Calling...';
+
+        // Setup UI for Voice vs Video
+        if (type === 'voice') {
+            modal.classList.add('voice-call');
+        } else {
+            modal.classList.remove('voice-call');
+        }
+
+        // Log the call to database
+        try {
+            fetch('/api/calls/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    receiver_id: OTHER_USER_ID,
+                    call_type: type,
+                    status: 'ongoing'
+                })
+            });
+        } catch (e) { console.error("Logging error", e); }
+
+        try {
+            // Use video: true for both so specific UI requirements can use the camera background,
+            // or modify based on preference. Request says "For video call, i want a live camera background."
+            // "Voice call look like image 1" (Dark BG).
+            const constraints = {
+                audio: true,
+                video: type === 'video' // Only request video for video calls
+            };
+
+            localStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            const localVideo = document.getElementById('localVideo');
+            if (type === 'video') {
+                localVideo.srcObject = localStream;
+                localVideo.style.display = 'block';
+            } else {
+                localVideo.style.display = 'none'; // Hide for voice
+            }
+
+            createPeerConnection();
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            await sendSignal('offer', offer);
+            startSignalPolling();
+
+        } catch (err) {
+            console.error('Call Error:', err);
+            alert('Could not start call: ' + err.message);
+            endCall();
+        }
+    }
+
+    function createPeerConnection() {
+        peerConnection = new RTCPeerConnection(rtcConfig);
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) sendSignal('candidate', event.candidate);
+        };
+
+        peerConnection.ontrack = (event) => {
+            document.getElementById('remoteVideo').srcObject = event.streams[0];
+            document.getElementById('callStatus').style.display = 'none';
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            if (peerConnection.connectionState === 'disconnected') endCall();
+        };
+    }
+
+    async function sendSignal(type, data) {
+        await fetch('/calls/signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                receiver_id: OTHER_USER_ID,
+                type: type,
+                data: data
+            })
+        });
+    }
+
+    function startSignalPolling() {
+        if (callInterval) clearInterval(callInterval);
+        callInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/calls/signals/${OTHER_USER_ID}`);
+                const res = await response.json();
+                if (res.status === 'success' && res.signals) {
+                    for (const signal of res.signals) {
+                        await handleSignal(signal);
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }, 1000);
+    }
+
+    async function handleSignal(signal) {
+        if (!peerConnection && signal.type === 'offer') {
+            window.pendingOffer = signal.data;
+            showIncomingCallModal();
+            return;
+        }
+        if (!peerConnection) return;
+
+        if (signal.type === 'answer') {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal.data));
+        } else if (signal.type === 'candidate') {
+            try { await peerConnection.addIceCandidate(new RTCIceCandidate(signal.data)); } catch (e) { }
+        }
+    }
+
+    function showIncomingCallModal() {
+        document.getElementById('incomingCallModal').style.display = 'flex';
+    }
+
+    async function acceptCall() {
+        endCall(); // Ensure clean state
+        document.getElementById('incomingCallModal').style.display = 'none';
+        const modal = document.getElementById('callModal');
+        modal.style.display = 'flex';
+        document.getElementById('callStatus').innerText = 'Connecting...';
+
+        try {
+            // For answer, we assume video if we want to support video. 
+            // Ideally we check call type from signal, but for now enable both.
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+
+            createPeerConnection();
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            await sendSignal('answer', answer);
+            startSignalPolling();
+
+        } catch (err) {
+            console.error(err);
+            endCall();
+        }
+    }
+
+    function rejectCall() {
+        document.getElementById('incomingCallModal').style.display = 'none';
+    }
+
+    function endCall() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+
+        if (peerConnection) {
+            peerConnection.onicecandidate = null;
+            peerConnection.ontrack = null;
+            peerConnection.onconnectionstatechange = null;
+            peerConnection.close();
+            peerConnection = null;
+        }
+
+        if (callInterval) {
+            clearInterval(callInterval);
+            callInterval = null;
+        }
+
+        document.getElementById('callModal').style.display = 'none';
+        document.getElementById('incomingCallModal').style.display = 'none';
+
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (localVideo) localVideo.srcObject = null;
+        if (remoteVideo) remoteVideo.srcObject = null;
+    }
+
+    // Ensure cleanup on page navigation
+    window.addEventListener('beforeunload', endCall);
+
+    function toggleAudio() {
+        const track = localStream.getAudioTracks()[0];
+        if (track) {
+            track.enabled = !track.enabled;
+            document.getElementById('btnMute').innerHTML = track.enabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
+        }
+    }
+
+    function toggleVideo() {
+        const track = localStream.getVideoTracks()[0];
+        if (track) {
+            track.enabled = !track.enabled;
+            document.getElementById('btnCamera').innerHTML = track.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
+        }
+    }
+
+    // Polling for incoming calls (background)
+    setInterval(async () => {
+        if (!peerConnection && document.getElementById('incomingCallModal').style.display === 'none') {
+            try {
+                const response = await fetch(`/calls/signals/${OTHER_USER_ID}`);
+                const res = await response.json();
+                if (res.status === 'success' && res.signals) {
+                    for (const signal of res.signals) {
+                        if (signal.type === 'offer') {
+                            window.pendingOffer = signal.data;
+                            showIncomingCallModal();
+                            break;
+                        }
+                    }
+                }
+            } catch (e) { }
+        }
+    }, 3000);
+
+    // ===== SEARCH BAR =====
+    function toggleSearchBar() {
+        const searchBar = document.getElementById('chatSearchBar');
+        const input = document.getElementById('chatSearchInput');
+        const isVisible = searchBar.style.display !== 'none';
+
+        searchBar.style.display = isVisible ? 'none' : 'flex';
+
+        if (!isVisible) {
+            input.focus();
+            // Trigger search if there's already text (e.g. from previous session or typed fast)
+            if (input.value) searchMessages();
+        } else {
+            input.value = '';
+            clearSearchHighlights();
+        }
+    }
+
+    let searchMatches = [];
+    let currentMatchIndex = -1;
+
+    function searchMessages() {
+        const query = document.getElementById('chatSearchInput').value.toLowerCase().trim();
+        const messages = document.querySelectorAll('.message-wrapper');
+        const counter = document.getElementById('searchCounter');
+
+        clearSearchHighlights();
+
+        if (!query || query.length < 2) {
+            counter.textContent = '0 of 0';
+            return;
+        }
+
+        messages.forEach(msg => {
+            const content = msg.getAttribute('data-content') || '';
+            if (content.toLowerCase().includes(query)) {
+                msg.classList.add('search-highlight');
+                searchMatches.push(msg);
+            }
+        });
+
+        if (searchMatches.length > 0) {
+            // By default, focus the most recent match (bottom)
+            currentMatchIndex = searchMatches.length - 1;
+            highlightCurrentMatch();
+        } else {
+            counter.textContent = '0 of 0';
+        }
+    }
+
+    function navigateSearch(direction) {
+        if (searchMatches.length === 0) return;
+
+        if (direction === 'up') {
+            currentMatchIndex--;
+            if (currentMatchIndex < 0) currentMatchIndex = searchMatches.length - 1;
+        } else {
+            currentMatchIndex++;
+            if (currentMatchIndex >= searchMatches.length) currentMatchIndex = 0;
+        }
+        highlightCurrentMatch();
+    }
+
+    function highlightCurrentMatch() {
+        // Clear previous active match
+        document.querySelectorAll('.active-match').forEach(el => el.classList.remove('active-match'));
+
+        const target = searchMatches[currentMatchIndex];
+        const counter = document.getElementById('searchCounter');
+
+        if (target) {
+            target.classList.add('active-match');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            counter.textContent = `${currentMatchIndex + 1} of ${searchMatches.length}`;
+
+            // Auto-remove active-match after a few seconds to match the "flash" feel?
+            // Or keep it while searching. Usually kept while searching on Telegram.
+        }
+    }
+
+    function clearSearchHighlights() {
+        document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+        document.querySelectorAll('.active-match').forEach(el => el.classList.remove('active-match'));
+        searchMatches = [];
+        currentMatchIndex = -1;
+    }
+
+    // Add keyboard support for search
+    document.getElementById('chatSearchInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            navigateSearch(e.shiftKey ? 'up' : 'down');
+        } else if (e.key === 'Escape') {
+            toggleSearchBar();
+        }
+    });
+
+    // ===== CONTEXT MENU =====
+    function showContextMenu(event, element) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        currentMessageId = element.dataset.messageId;
+        currentMessageContent = element.dataset.content;
+        isOwnMessage = element.dataset.own === 'true';
+
+        const menu = document.getElementById('contextMenu');
+        const editItem = document.getElementById('editMenuItem');
+        const deleteItem = document.getElementById('deleteMenuItem');
+        const readStatus = document.getElementById('readStatus');
+
+        // Show/hide edit and delete based on ownership
+        editItem.style.display = isOwnMessage ? 'flex' : 'none';
+        deleteItem.style.display = isOwnMessage ? 'flex' : 'none';
+
+        // Update read status text
+        const statusSpan = element.querySelector('.status-icon');
+        if (statusSpan && statusSpan.classList.contains('read')) {
+            const readAt = statusSpan.dataset.readAt;
+            readStatus.textContent = readAt ? `read today at ${readAt}` : 'read today';
+        } else {
+            readStatus.textContent = 'sent';
+        }
+
+        // Update Pin/Unpin text based on message state
+        const pinMenuText = document.getElementById('pinMenuText');
+        if (pinMenuText) {
+            const isPinned = element.dataset.pinned === 'true';
+            pinMenuText.textContent = isPinned ? 'Unpin' : 'Pin';
+        }
+
+        // Show menu first to get its dimensions, but keep it transparent
+        menu.style.visibility = 'hidden';
+        menu.style.display = 'block';
+        menu.classList.add('show');
+
+        // Position menu based on click
+        let x = event.clientX;
+        let y = event.clientY;
+
+        const rect = menu.getBoundingClientRect();
+
+        // Horizontal adjustment
+        if (x + rect.width > window.innerWidth) {
+            x = window.innerWidth - rect.width - 10;
+        }
+
+        // Vertical adjustment
+        if (y + rect.height > window.innerHeight) {
+            y = window.innerHeight - rect.height - 10;
+        }
+
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        menu.style.visibility = 'visible';
+
+        return false;
+    }
+
+    function hideContextMenu() {
+        const menu = document.getElementById('contextMenu');
+        menu.classList.remove('show');
+        // Reset delete options
+        const items = menu.querySelector('.context-menu-items');
+        const delOptions = document.getElementById('contextDeleteOptions');
+        if (items) items.style.display = 'block';
+        if (delOptions) delOptions.style.display = 'none';
+        // Clear current message to prevent random actions
+        currentMessageId = null;
+        currentMessageContent = '';
+        isOwnMessage = false;
+    }
+
+    function showDeleteOptions(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('contextMenu');
+        const items = menu.querySelector('.context-menu-items');
+        const delOptions = document.getElementById('contextDeleteOptions');
+
+        items.style.display = 'none';
+        delOptions.style.display = 'flex';
+    }
+
+    // ===== HEADER MENU =====
+    function toggleHeaderMenu() {
+        document.getElementById('headerDropdownMenu').classList.toggle('show');
+    }
+
+    // ===== EMOJI PICKER =====
+    function toggleEmojiPicker() {
+        document.getElementById('emojiPicker').classList.toggle('show');
+    }
+
+    function insertEmoji(emoji) {
+        const input = document.getElementById('messageInput');
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+        document.getElementById('emojiPicker').classList.remove('show');
+    }
+
+    // ===== ATTACHMENT MENU =====
+    function toggleAttachmentMenu() {
+        document.getElementById('attachmentMenu').classList.toggle('show');
+    }
+
+    function handleFileUpload(input, type) {
+        const file = input.files[0];
+        if (file) {
+            alert('File upload: ' + file.name + ' (Type: ' + type + ')\n\nNote: File upload backend not yet implemented.');
+        }
+        document.getElementById('attachmentMenu').classList.remove('show');
+    }
+
+
+    // ===== VOICE MESSAGE =====
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordingInterval;
+    let recordingStartTime;
+    let isRecording = false;
+    let recordingCancelled = false;
+
+    function showVoiceOptions(event) {
+        event.preventDefault();
+        document.getElementById('voiceDropdown').classList.toggle('show');
+    }
+
+    async function startVoiceRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            recordingCancelled = false;
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                if (audioChunks.length > 0 && !recordingCancelled) {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await uploadMedia(audioBlob, 'voice_message.webm');
+                }
+                stream.getTracks().forEach(track => track.stop());
+                finishRecording();
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+
+            // Hide other inputs
+            document.getElementById('emojiBtnContainer').style.display = 'none';
+            document.getElementById('attachBtnContainer').style.display = 'none';
+            document.getElementById('messageInput').style.display = 'none';
+            document.getElementById('voiceBtnContainer').style.display = 'none';
+
+            // Show recording overlay
+            document.getElementById('recordingOverlay').style.display = 'flex';
+            document.getElementById('voiceDropdown').classList.remove('show');
+
+            recordingStartTime = Date.now();
+            updateRecordingTimer();
+            recordingInterval = setInterval(updateRecordingTimer, 1000);
+
+        } catch (err) {
+            console.error('Microphone access denied:', err);
+            alert('Could not access microphone. Please check permissions.');
+        }
+    }
+
+    function updateRecordingTimer() {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        document.getElementById('recordingTimer').textContent = mins + ':' + secs.toString().padStart(2, '0');
+    }
+
+    function stopVoiceRecording() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            finishRecording();
+        }
+    }
+
+    function cancelVoiceRecording() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            recordingCancelled = true;
+            audioChunks = []; // Clear chunks so onstop doesn't upload
+            mediaRecorder.stop();
+        } else {
+            finishRecording();
+        }
+    }
+
+    function finishRecording() {
+        isRecording = false;
+        clearInterval(recordingInterval);
+
+        // Restore UI
+        document.getElementById('emojiBtnContainer').style.display = 'flex';
+        document.getElementById('attachBtnContainer').style.display = 'flex';
+        document.getElementById('messageInput').style.display = 'block';
+        document.getElementById('voiceBtnContainer').style.display = 'flex';
+
+        document.getElementById('recordingOverlay').style.display = 'none';
+
+        const input = document.getElementById('messageInput');
+        input.value = '';
+        input.focus();
+    }
+
+    function sendTelebubble() {
+        alert(`Telebubble feature coming soon!
+
+This will allow you to send animated video messages.`);
+        document.getElementById('voiceDropdown').classList.remove('show');
+    }
+
+    // ===== MEDIA UPLOAD =====
+    function handleFileUpload(input, type) {
+        const file = input.files[0];
+        if (file) {
+            uploadMedia(file, file.name);
+        }
+        document.getElementById('attachmentMenu').classList.remove('show');
+    }
+
+    async function uploadMedia(fileOrBlob, filename) {
+        try {
+            const formData = new FormData();
+            formData.append('file', fileOrBlob, filename);
+            if (currentReplyId) {
+                formData.append('reply_to', currentReplyId);
+            }
+
+            // Show a temporary "sending..." state if desired
+            const sendBtn = document.getElementById('sendBtn');
+            const originalBtnContent = sendBtn.innerHTML;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            const response = await fetch(`/messages/upload/${OTHER_USER_ID}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = originalBtnContent;
+
+            if (data.status === 'success') {
+                appendMessage(data.message);
+                cancelReply();
+                const container = document.getElementById('messagesContainer');
+                container.scrollTop = container.scrollHeight;
+            } else {
+                alert('Upload failed: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to upload media.');
+        }
+    }
+
+    async function addReaction(emoji, messageId) {
+        const id = messageId || currentMessageId;
+        if (!id) return;
+
+        // Immediate UI feedback
+        hideContextMenu();
+
+        try {
+            const formData = new FormData();
+            formData.append('reaction', emoji);
+
+            const response = await fetch(`/messages/react/${id}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Ensure we pass an empty array if no reactions
+                updateMessageReactions(id, data.reactions || []);
+            } else {
+                console.error('[Reactions] Server error:', data.message);
+            }
+        } catch (error) {
+            console.error('[Reactions] Fetch error:', error);
+        }
+    }
+
+    function updateMessageReactions(messageId, reactions) {
+        requestAnimationFrame(() => {
+            try {
+                const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (!wrapper) return;
+
+                let container = wrapper.querySelector(`.message-reactions-container[id="reactions-${messageId}"]`);
+
+                // Create container if missing
+                if (!container && reactions && reactions.length > 0) {
+                    const bubble = wrapper.querySelector('.message-bubble-telegram, .message-bubble-whatsapp-location');
+                    if (!bubble) return;
+
+                    const target = bubble.querySelector('.message-text') || bubble;
+                    container = target.querySelector('.message-reactions-container');
+
+                    if (!container) {
+                        container = document.createElement('div');
+                        container.id = `reactions-${messageId}`;
+                        container.className = 'message-reactions-container';
+
+                        const meta = target.querySelector('.message-meta, .whatsapp-status-row');
+                        if (meta && meta.parentNode === target) {
+                            target.insertBefore(container, meta);
+                        } else {
+                            target.appendChild(container);
+                        }
+                    }
+                }
+
+                // Hide if empty
+                if (!reactions || reactions.length === 0) {
+                    if (container) {
+                        container.style.display = 'none';
+                        container.innerHTML = '';
+                    }
+                    return;
+                }
+
+                if (container) {
+                    container.style.display = 'flex';
+
+                    // Build HTML string to match server template exactly
+                    const chipsHtml = reactions.map(r => {
+                        // random color logic if avatar is random... but here we have full url
+                        const avatarSrc = r.avatar || `https://ui-avatars.com/api/?name=User&background=random`;
+
+                        return `
+                        <span class="reaction-chip" onclick="event.stopPropagation(); addReaction('${r.reaction}', '${messageId}')">
+                            <span class="reaction-emoji">${r.reaction}</span>
+                            <img src="${avatarSrc}" class="reaction-avatar" onerror="this.style.display='none'">
+                            <span class="count">${r.count}</span>
+                        </span>`;
+                    }).join('');
+
+                    container.innerHTML = chipsHtml;
+                }
+            } catch (err) {
+                console.error('[Reactions] Update Error:', err);
+            }
+        });
+    }
+
+    function replyToMessage(fromModal = false) {
+        const wrapper = document.querySelector(`[data-message-id="${currentMessageId}"]`);
+        if (!wrapper) return;
+        const isOwn = wrapper.dataset.own === 'true';
+        const senderName = isOwn ? 'Me' : (wrapper.dataset.senderName || 'Unknown');
+
+        currentReplyId = currentMessageId;
+
+        const preview = document.getElementById('replyPreview');
+        document.getElementById('replyPreviewUser').textContent = senderName;
+
+        let displayContent = currentMessageContent;
+        if (displayContent.startsWith('/static/uploads/')) {
+            displayContent = '📷 Photo';
+        }
+        document.getElementById('replyPreviewText').textContent = displayContent;
+        preview.classList.add('show');
+
+        const input = document.getElementById('messageInput');
+        input.focus();
+        hideContextMenu();
+        if (fromModal) closeImageModal();
+    }
+
+    function cancelReply() {
+        currentReplyId = null;
+        document.getElementById('replyPreview').classList.remove('show');
+    }
+
+    function editMessage() {
+        if (!isOwnMessage) return;
+
+        // Save values before hideContextMenu clears them
+        const msgId = currentMessageId;
+        const msgContent = currentMessageContent;
+
+        hideContextMenu();
+
+        const wrapper = document.querySelector(`[data-message-id="${msgId}"]`);
+        if (wrapper) {
+            const textDiv = wrapper.querySelector('.message-text');
+            const contentWrapper = textDiv.querySelector('.message-content-wrapper');
+            const existingForm = textDiv.querySelector('.message-edit-form');
+
+            if (!existingForm) {
+                // Hide content wrapper, show form
+                if (contentWrapper) {
+                    contentWrapper.style.display = 'none';
+                }
+
+                const form = document.createElement('form');
+                form.className = 'message-edit-form';
+
+                // Allow enter key submission
+                form.onsubmit = function (e) {
+                    e.preventDefault();
+                    processEdit(this, msgId);
+                };
+
+                const safeContent = msgContent.replace(/"/g, '&quot;');
+
+                form.innerHTML = `
+                <input type="text" class="message-edit-input" name="content" value="${safeContent}">
+
+                <div class="message-edit-actions">
+                    <button type="button" class="message-edit-btn save" onclick="submitEdit(this, '${msgId}')"><i class="fas fa-check"></i></button>
+                    <button type="button" class="message-edit-btn cancel" onclick="cancelEdit('${msgId}')"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+
+                // Insert form before meta if it exists, otherwise append
+                const meta = textDiv.querySelector('.message-meta');
+                if (meta) {
+                    textDiv.insertBefore(form, meta);
+                } else {
+                    textDiv.appendChild(form);
+                }
+
+                const input = form.querySelector('input');
+                if (input) {
+                    input.focus();
+                    // Cursor at end
+                    const val = input.value;
+                    input.value = '';
+                    input.value = val;
+                }
+            }
+        }
+    }
+
+    async function submitEdit(btn, messageId) {
+        // Find form from button click
+        const form = btn.closest('form');
+        if (!form) {
+            console.error('Edit form not found');
+            return;
+        }
+        await processEdit(form, messageId);
+    }
+
+    async function processEdit(form, messageId) {
+        const input = form.querySelector('input');
+        if (!input) return;
+
+        const newContent = input.value.trim();
+        if (!newContent) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('content', newContent);
+
+            const response = await fetch(`/messages/edit/${messageId}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (wrapper) {
+                    wrapper.dataset.content = newContent;
+
+                    const textDiv = wrapper.querySelector('.message-text');
+                    const contentWrapper = textDiv.querySelector('.message-content-wrapper');
+                    const editForm = textDiv.querySelector('.message-edit-form');
+
+                    // Remove the edit form
+                    if (editForm) editForm.remove();
+
+                    // Update the content wrapper
+                    if (contentWrapper) {
+                        // Check if there's a reply preview to preserve
+                        const replyPreview = contentWrapper.querySelector('.message-reply-preview');
+                        const mediaWrapper = contentWrapper.querySelector('.chat-media-wrapper');
+
+                        // Clear and rebuild content wrapper
+                        contentWrapper.innerHTML = '';
+
+                        // Re-add reply preview if it existed
+                        if (replyPreview) {
+                            contentWrapper.appendChild(replyPreview);
+                        }
+
+                        // Re-add media wrapper if it existed  
+                        if (mediaWrapper) {
+                            contentWrapper.appendChild(mediaWrapper);
+                        }
+
+                        // Add the new text content
+                        contentWrapper.appendChild(document.createTextNode(newContent));
+
+                        contentWrapper.style.display = 'block';
+                    }
+
+                    // Add (edited) indicator if not present
+                    const meta = textDiv.querySelector('.message-meta');
+                    if (meta && !meta.querySelector('.edited-indicator')) {
+                        const editIndicator = document.createElement('span');
+                        editIndicator.className = 'edited-indicator';
+                        editIndicator.textContent = '(edited)';
+                        editIndicator.style.marginRight = '5px';
+                        editIndicator.style.fontSize = '0.75em';
+                        editIndicator.style.color = '#888';
+                        if (meta.firstChild) {
+                            meta.insertBefore(editIndicator, meta.firstChild);
+                        } else {
+                            meta.appendChild(editIndicator);
+                        }
+                    }
+                }
+            } else {
+                alert('Error editing message: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to edit message.');
+        }
+    }
+
+    function cancelEdit(messageId) {
+        const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (wrapper) {
+            const textDiv = wrapper.querySelector('.message-text');
+            if (textDiv) {
+                const form = textDiv.querySelector('.message-edit-form');
+                const contentWrapper = textDiv.querySelector('.message-content-wrapper');
+
+                if (form) form.remove();
+                if (contentWrapper) contentWrapper.style.display = 'block';
+            }
+        }
+    }
+
+    function copyMessageText() {
+        navigator.clipboard.writeText(currentMessageContent).then(() => {
+            // Could show a toast notification here
+        });
+        hideContextMenu();
+    }
+
+    async function pinMessage() {
+        try {
+            const response = await fetch(`/messages/pin/${currentMessageId}`, { method: 'POST' });
+            const data = await response.json();
+            if (data.status === 'success') {
+                const wrapper = document.querySelector(`[data-message-id="${currentMessageId}"]`);
+                if (wrapper) {
+                    const bubble = wrapper.querySelector('.message-bubble-telegram, .message-bubble-whatsapp-location');
+                    if (!bubble) return;
+
+                    const target = bubble.querySelector('.message-text') || bubble;
+                    let indicator = target.querySelector('.message-pin-indicator');
+
+                    if (data.is_pinned) {
+                        if (!indicator) {
+                            indicator = document.createElement('div');
+                            indicator.className = 'message-pin-indicator';
+                            indicator.innerHTML = '<i class="fas fa-thumbtack"></i>';
+
+                            // Insert before reactions or meta if possible
+                            const meta = target.querySelector('.message-reactions-container, .message-meta, .whatsapp-status-row');
+                            if (meta && meta.parentNode === target) {
+                                target.insertBefore(indicator, meta);
+                            } else {
+                                target.appendChild(indicator);
+                            }
+                        }
+                    } else if (indicator) {
+                        indicator.remove();
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Pin error:', err);
+        }
+        hideContextMenu();
+    }
+
+    function scrollToMessage(messageId) {
+        const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (wrapper) {
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight effect
+            wrapper.classList.add('active-match');
+            setTimeout(() => {
+                wrapper.classList.remove('active-match');
+            }, 2000);
+        } else {
+            console.log('Message not found:', messageId);
+        }
+    }
+
+    function selectMessage() {
+        const wrapper = document.querySelector(`[data-message-id="${currentMessageId}"]`);
+        if (wrapper) {
+            wrapper.style.outline = '2px solid #8B5CF6';
+        }
+        hideContextMenu();
+    }
+
+
+
+    async function performDelete(messageId, forEveryone = false) {
+        try {
+            const formData = new FormData();
+            if (forEveryone) formData.append('for_everyone', 'true');
+
+            const response = await fetch('/messages/delete/' + messageId, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (wrapper) {
+                    wrapper.style.opacity = '0';
+                    wrapper.style.transform = 'scale(0.9)';
+                    wrapper.style.transition = 'all 0.3s ease';
+                    setTimeout(() => wrapper.remove(), 300);
+                }
+                closeImageModal();
+                hideContextMenu();
+            } else {
+                alert('Error deleting message: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to delete message.');
+        }
+    }
+
+    // ===== VOICE TYPING (SPEECH TO TEXT) =====
+    let recognition;
+    let isVoiceTyping = false;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+            isVoiceTyping = true;
+            document.getElementById('voiceInputBtn').classList.add('pulse');
+        };
+
+        recognition.onend = () => {
+            isVoiceTyping = false;
+            document.getElementById('voiceInputBtn').classList.remove('pulse');
+        };
+
+        recognition.onresult = (event) => {
+            const input = document.getElementById('messageInput');
+            let interimTranscript = '';
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            if (finalTranscript) {
+                input.value += (input.value ? ' ' : '') + finalTranscript;
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            stopVoiceInput();
+        };
+    }
+
+    function toggleVoiceInput() {
+        if (!recognition) {
+            alert('Speech Recognition is not supported in this browser.');
+            return;
+        }
+
+        if (isVoiceTyping) {
+            stopVoiceInput();
+        } else {
+            startVoiceInput();
+        }
+    }
+
+    function startVoiceInput() {
+        if (recognition) {
+            recognition.start();
+        }
+    }
+
+    function stopVoiceInput() {
+        if (recognition) {
+            recognition.stop();
+        }
+    }
+
+    // ===== TEXT TO SPEECH (CONTEXT MENU) =====
+    function speakMessage(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert('Text-to-Speech is not supported in your browser.');
+        }
+    }
+
+    // ===== TEXT SIZE =====
+    function openTextSizeModal() {
+        document.getElementById('textSizeModal').classList.add('show');
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+    }
+
+    function closeTextSizeModal() {
+        document.getElementById('textSizeModal').classList.remove('show');
+    }
+
+    function setTextSize(size, save = true) {
+        const container = document.getElementById('chatContainer');
+        // Remove existing size classes
+        container.classList.remove('text-size-80', 'text-size-90', 'text-size-100', 'text-size-110', 'text-size-120', 'text-size-130');
+        container.classList.add('text-size-' + size);
+
+        // Update sample text
+        const sample = document.getElementById('textSizeSample');
+        if (sample) {
+            sample.style.fontSize = (size / 100) + 'rem';
+        }
+
+        // Update active button
+        document.querySelectorAll('.text-size-option').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent === size + '%') {
+                btn.classList.add('active');
+            }
+        });
+
+        if (save) {
+            localStorage.setItem('chatTextSize', size.toString());
+        }
+    }
+
+    // ===== HEADER ACTIONS =====
+
+
+    // Global state for mute
+    let isMuted = "{{ 'true' if is_muted else 'false' }}" === "true";
+
+    function updateMuteUI(muted) {
+        isMuted = muted;
+        const btn = document.getElementById('headerMuteBtn');
+        if (btn) {
+            if (muted) {
+                btn.innerHTML = '<i class="fas fa-bell"></i><span>Unmute</span>';
+            } else {
+                btn.innerHTML = '<i class="fas fa-bell-slash"></i><span>Mute</span>';
+            }
+        }
+    }
+
+    function toggleMute() {
+        if (isMuted) {
+            // Immediately unmute
+            performMuteToggle(null);
+        } else {
+            openMuteModal();
+        }
+    }
+
+    function openMuteModal() {
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+        document.getElementById('muteModal').classList.add('show');
+    }
+
+    function closeMuteModal() {
+        document.getElementById('muteModal').classList.remove('show');
+    }
+
+    async function confirmMute() {
+        const selectedOption = document.querySelector('input[name="mute-duration"]:checked');
+        if (!selectedOption) return;
+
+        const duration = parseInt(selectedOption.value);
+        closeMuteModal();
+        await performMuteToggle(duration);
+    }
+
+    async function performMuteToggle(duration) {
+        try {
+            const body = duration !== null ? JSON.stringify({ duration: duration }) : JSON.stringify({});
+            const response = await fetch(`/messages/mute/${OTHER_USER_ID}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                updateMuteUI(data.is_muted);
+                if (data.is_muted) {
+                    alert('Notifications muted.');
+                } else {
+                    alert('Notifications unmuted.');
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (err) {
+            console.error('Mute error:', err);
+            alert('Failed to update mute settings.');
+        }
+    }
+
+    function toggleSelectMode() {
+        alert('Select mode enabled. Click messages to select them.');
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+    }
+
+    function blockUser(userId) {
+        if (confirm('Block this user? They will not be able to send you messages.')) {
+            alert('User blocked.\n\nNote: Block backend not yet implemented.');
+        }
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+    }
+
+    function reportUser(userId) {
+        const reason = prompt('Please describe why you are reporting this user:');
+        if (reason) {
+            alert('Report submitted. Thank you.\n\nNote: Report backend not yet implemented.');
+        }
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+    }
+
+    function deleteChat(userId) {
+        if (confirm('Delete all messages in this chat? This cannot be undone.')) {
+            // Create and submit form to backend
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/messages/' + userId + '/delete-chat';
+            document.body.appendChild(form);
+            form.submit();
+        }
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+    }
+
+    // ===== MESSAGE SENDING (SEAMLESS) =====
+    async function handleMessageSubmit(event) {
+        event.preventDefault();
+
+        if (isRecording) {
+            stopVoiceRecording();
+            return;
+        }
+
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+
+        if (!content) return;
+
+        // Clear input immediately for seamless feel
+        input.value = '';
+
+        try {
+            const formData = new FormData();
+            formData.append('content', content);
+            if (currentReplyId) {
+                formData.append('reply_to', currentReplyId);
+            }
+
+            const response = await fetch(event.target.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                appendMessage(data.message);
+                cancelReply(); // Clear reply state
+                // Scroll to bottom
+                const container = document.getElementById('messagesContainer');
+                container.scrollTop = container.scrollHeight;
+            } else {
+                alert('Error sending message: ' + data.message);
+                input.value = content; // Restore input on error
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to send message.');
+            input.value = content;
+        }
+    }
+
+    function appendMessage(msg, isOwn = true) {
+        const container = document.getElementById('messagesContainer');
+        const noMessages = container.querySelector('.no-messages-telegram');
+        if (noMessages) noMessages.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${isOwn ? 'sent' : 'received'}`;
+        wrapper.dataset.messageId = msg.id;
+        wrapper.dataset.content = msg.content;
+        wrapper.dataset.own = isOwn ? 'true' : 'false';
+        wrapper.dataset.senderName = isOwn ? 'Me' : '{{ other_user.username }}';
+        wrapper.oncontextmenu = (e) => showContextMenu(e, wrapper);
+
+        let replyHtml = '';
+        if (msg.reply_to) {
+            const originalWrapper = document.querySelector(`[data-message-id="${msg.reply_to}"]`);
+            if (originalWrapper) {
+                const originalUser = originalWrapper.dataset.senderName;
+                let originalContent = originalWrapper.dataset.content;
+                if (originalContent.startsWith('/static/uploads/')) {
+                    originalContent = '📷 Photo';
+                } else if (originalContent.startsWith('LOCATION:')) {
+                    originalContent = '📍 Location';
+                }
+                replyHtml = `
+                    <div class="message-reply-context" onclick="scrollToMessage('${msg.reply_to}')">
+                        <div class="message-reply-user">${originalUser}</div>
+                        <div class="message-reply-text">${originalContent}</div>
+                    </div>
+                `;
+            }
+        }
+
+        if (msg.content.toLowerCase().startsWith('/static/uploads/')) {
+            const ext = msg.content.split('.').pop().toLowerCase();
+            let mediaHtml = '';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                mediaHtml = `<img src="${msg.content}" class="chat-media-img" loading="lazy" onclick="openImageModal(this.src)">`;
+            } else if (['mp3', 'wav', 'm4a', 'ogg', 'webm'].includes(ext)) {
+                mediaHtml = `
+                    <div class="voice-message-container">
+                        <audio controls class="voice-message-audio">
+                            <source src="${msg.content}" type="audio/${ext === 'm4a' ? 'mp4' : ext}">
+                        </audio>
+                    </div>`;
+            } else if (['mp4', 'mov'].includes(ext)) {
+                mediaHtml = `<video src="${msg.content}" controls class="chat-media-video"></video>`;
+            } else {
+                mediaHtml = `<a href="${msg.content}" target="_blank" class="chat-media-file"><i class="fas fa-file"></i> Download File</a>`;
+            }
+
+            wrapper.innerHTML = `
+                <div class="message-bubble-telegram media">
+                    <div class="message-text">
+                        ${replyHtml}
+                        <div class="message-content-wrapper">${mediaHtml}</div>
+                        <div id="reactions-${msg.id}" class="message-reactions-container" style="display: none;"></div>
+                        <div class="message-meta">
+                            <span class="message-time">${msg.display_time}</span>
+                            <span class="message-status status-icon" data-msg-id="${msg.id}">
+                                <i class="fas fa-check"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (msg.content.startsWith('LOCATION:')) {
+            // Location Message
+            const locParts = msg.content.substring(9).split('|');
+            const status = locParts[1] || 'STATIC';
+            const caption = locParts[2] || '';
+            const coordsString = locParts[0];
+            const endTimeStr = locParts[3] || '';
+
+            const isLive = status === 'LIVE';
+            const isEnded = status === 'ENDED';
+
+            let statusText = 'Location Shared';
+            let statusIcon = 'fa-map-marker-alt';
+            let liveUntilText = '';
+
+            if (isLive) {
+                statusText = 'Live Location';
+                statusIcon = 'fa-satellite-dish whatsapp-live-icon';
+                if (endTimeStr) {
+                    const expiry = new Date(endTimeStr);
+                    liveUntilText = `Live until ${expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                }
+            } else if (isEnded) {
+                statusText = 'Live location ended';
+                statusIcon = 'fa-satellite-dish whatsapp-ended-icon';
+            }
+
+            const isOwnMsg = msg.sender_id === currentUserId;
+            const stopBtnHtml = (isLive && isOwnMsg) ? `<button class="whatsapp-stop-btn" onclick="manualStopSharing('${msg.id}')">Stop sharing</button>` : '';
+
+            // User Info for avatar
+            const current_user_username = "{{ current_user.username }}";
+            const current_user_pic = "{{ current_user.profile_pic }}";
+            const other_user_username = "{{ other_user.username }}";
+            const other_user_pic = "{{ other_user.profile_pic }}";
+
+            const senderUser = isOwnMsg ?
+                { username: current_user_username, profile_pic: current_user_pic } :
+                { username: other_user_username, profile_pic: other_user_pic };
+
+            const fallbackAvatar = `https://ui-avatars.com/api/?name=${senderUser.username}&background=8D6E63&color=fff`;
+            const avatarUrl = senderUser.profile_pic || fallbackAvatar;
+
+            wrapper.innerHTML = `
+                <div class="message-bubble-telegram">
+                    <div class="message-text">
+                        ${replyHtml}
+                        <div class="message-content-wrapper">
+                            <div class="message-bubble-whatsapp-location">
+                                <div class="whatsapp-map-container">
+                                    <div class="map-preview" id="map-preview-${msg.id}"></div>
+                                    <img src="${avatarUrl}" class="whatsapp-avatar-overlay" style="border-color: #AA8B56;">
+                                </div>
+                                ${caption ? `<div class="whatsapp-caption" style="color: #333;">${escapeHtml(caption)}</div>` : ''}
+                                <div class="whatsapp-status-row">
+                                    <div class="whatsapp-status-left" style="color: #AA8B56;">
+                                        <i class="fas ${statusIcon}"></i>
+                                        <span class="${isLive ? 'live-until-text' : ''}" data-expiry="${endTimeStr || ''}" style="color: #555;">${isLive ? liveUntilText : statusText}</span>
+                                    </div>
+                                    ${stopBtnHtml}
+                                </div>
+                            </div>
+                        </div>
+                        <div id="reactions-${msg.id}" class="message-reactions-container" style="display: none;"></div>
+                        <div class="message-meta">
+                            <span class="message-time">${msg.display_time}</span>
+                            <span class="message-status status-icon" data-msg-id="${msg.id}">
+                                <i class="fas fa-check"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Initialize mini map after insertion
+            setTimeout(() => {
+                const coords = coordsString.split(',');
+                if (coords.length === 2) {
+                    const lat = parseFloat(coords[0]);
+                    const lng = parseFloat(coords[1]);
+                    renderStaticMap(msg.id, lat, lng);
+                }
+            }, 100);
+        } else {
+            wrapper.innerHTML = `
+                <div class="message-bubble-telegram">
+                    <div class="message-text">
+                        ${replyHtml}
+                        <div class="message-content-wrapper">${escapeHtml(msg.content)}</div>
+                        <div id="reactions-${msg.id}" class="message-reactions-container" style="display: none;"></div>
+                        <div class="message-meta">
+                            <span class="message-time">${msg.display_time}</span>
+                            <span class="message-status status-icon" data-msg-id="${msg.id}">
+                                <i class="fas fa-check"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <button class="message-tts-btn" onclick="speakMessage(this.closest('.message-wrapper').dataset.content)" title="Text to Speech">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            `;
+        }
+        container.appendChild(wrapper);
+    }
+
+    function scrollToMessage(messageId) {
+        const target = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.style.transition = 'background 0.5s';
+            const originalBg = target.style.background;
+            target.style.background = 'rgba(170, 139, 86, 0.2)';
+            setTimeout(() => {
+                target.style.background = originalBg;
+            }, 1000);
+        }
+    }
+
+    // ===== STATUS POLLING =====
+    function startStatusPolling() {
+        setInterval(async () => {
+            try {
+                if (typeof OTHER_USER_ID === 'undefined') return;
+
+                const response = await fetch(`/messages/updates/${OTHER_USER_ID}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Handle deletions (received messages deleted by sender or self)
+                    if (data.deleted_ids) {
+                        data.deleted_ids.forEach(id => {
+                            const wrapper = document.querySelector(`[data-message-id="${id}"]`);
+                            if (wrapper) {
+                                wrapper.style.opacity = '0';
+                                wrapper.style.transform = 'scale(0.9)';
+                                wrapper.style.transition = 'all 0.3s ease';
+                                setTimeout(() => wrapper.remove(), 300);
+                            }
+                        });
+                    }
+
+                    data.updates.forEach(update => {
+                        const wrapper = document.querySelector(`[data-message-id="${update.id}"]`);
+
+                        // Handle self-deletions (sent messages deleted from another session)
+                        if (update.is_deleted_sender && wrapper) {
+                            wrapper.style.opacity = '0';
+                            wrapper.style.transform = 'scale(0.9)';
+                            wrapper.style.transition = 'all 0.3s ease';
+                            setTimeout(() => wrapper.remove(), 300);
+                            return;
+                        }
+
+                        // Handle status updates
+                        const statusSpan = document.querySelector(`.status-icon[data-msg-id="${update.id}"]`);
+                        if (statusSpan) {
+                            if (update.display_read_at) {
+                                statusSpan.dataset.readAt = update.display_read_at;
+                            }
+                            if (update.is_read) {
+                                statusSpan.classList.remove('delivered');
+                                statusSpan.classList.add('read');
+                                statusSpan.innerHTML = '<i class="fas fa-check-double"></i>';
+                            } else if (update.is_delivered) {
+                                statusSpan.classList.add('delivered');
+                                statusSpan.innerHTML = '<i class="fas fa-check-double"></i>';
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Polling error:', err);
+            }
+        }, 3000); // 3 seconds
+    }
+
+    document.addEventListener('DOMContentLoaded', startStatusPolling);
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ===== CAMERA FEATURE =====
+    let cameraStream = null;
+    let currentFacingMode = 'user';
+    let currentFilter = 'none';
+
+    async function openCamera() {
+        const overlay = document.getElementById('cameraOverlay');
+        const video = document.getElementById('cameraVideo');
+
+        // Check for mediaDevices support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Your browser does not support camera access or is not in a secure context (HTTPS/localhost).');
+            return;
+        }
+
+        try {
+            // Simplify constraints for better compatibility
+            const constraints = {
+                video: {
+                    facingMode: currentFacingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+
+            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = cameraStream;
+
+            // Wait for video to be ready before showing overlay
+            video.onloadedmetadata = () => {
+                overlay.style.display = 'flex';
+                document.getElementById('attachmentMenu').classList.remove('show');
+            };
+        } catch (err) {
+            console.error('Camera access error:', err);
+            let msg = 'Could not access camera. ';
+            if (err.name === 'NotAllowedError') msg += 'Permission denied.';
+            else if (err.name === 'NotFoundError') msg += 'No camera found.';
+            else if (err.name === 'NotReadableError') msg += 'Camera is already in use by another app.';
+            else msg += 'Error: ' + err.message;
+            alert(msg);
+        }
+    }
+
+    function closeCamera() {
+        const overlay = document.getElementById('cameraOverlay');
+        const video = document.getElementById('cameraVideo');
+
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+
+        video.srcObject = null;
+        overlay.style.display = 'none';
+        document.getElementById('filterTray').classList.remove('show');
+    }
+
+    async function takePicture() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        const context = canvas.getContext('2d');
+        const recipientId = OTHER_USER_ID;
+
+        // Set canvas size to video size
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Apply same filter to canvas
+        context.filter = currentFilter;
+
+        // Draw video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Close camera first to free resource
+        closeCamera();
+
+        // Convert canvas to blob
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+
+            const formData = new FormData();
+            formData.append('file', blob, 'camera_photo.jpg');
+
+            try {
+                const response = await fetch(`/messages/upload/${recipientId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    appendMessage(data.message);
+                    const container = document.getElementById('messagesContainer');
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    alert('Error uploading photo: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Failed to send photo.');
+            }
+        }, 'image/jpeg', 0.8);
+    }
+
+    function toggleFilterTray() {
+        document.getElementById('filterTray').classList.toggle('show');
+    }
+
+    function selectFilter(element) {
+        // Update UI
+        document.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('active'));
+        element.classList.add('active');
+
+        // Apply to video
+        currentFilter = element.dataset.filter;
+        document.getElementById('cameraVideo').style.filter = currentFilter;
+
+        // Hide tray after selection (optional, but good for UX)
+        // setTimeout(() => toggleFilterTray(), 300); 
+    }
+
+    // ===== IMAGE MODAL (GALLERY) =====
+    let currentZoom = 1;
+
+    function openImageModal(src) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('imageModalImg');
+        const clickedImg = event.target;
+        const wrapper = clickedImg.closest('.message-wrapper');
+
+        // Reset zoom
+        currentZoom = 1;
+        modalImg.style.transform = `scale(${currentZoom})`;
+
+        modalImg.src = src;
+        modal.style.display = 'flex';
+
+        // Set sender info
+        const senderName = wrapper.dataset.senderName || 'Unknown';
+        document.getElementById('imageModalSender').textContent = senderName;
+        document.getElementById('imageModalAvatar').textContent = senderName.charAt(0).toUpperCase();
+
+        // Find time
+        const timeSpan = wrapper.querySelector('.message-time');
+        if (timeSpan) {
+            document.getElementById('imageModalTime').textContent = 'Today at ' + timeSpan.textContent;
+        }
+
+        // Global state for modal actions
+        currentMessageId = wrapper.dataset.messageId;
+        currentMessageContent = wrapper.dataset.content;
+        isOwnMessage = wrapper.dataset.own === 'true';
+
+        // Hide scrollbar on body
+        document.body.style.overflow = 'hidden';
+
+        // Hide delete choices if open
+        hideDeleteChoices();
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function zoomImage(delta) {
+        currentZoom = Math.max(0.2, Math.min(5, currentZoom + delta));
+        document.getElementById('imageModalImg').style.transform = `scale(${currentZoom})`;
+    }
+
+    function handleModalWheel(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        zoomImage(delta);
+    }
+
+    async function downloadImage() {
+        const src = document.getElementById('imageModalImg').src;
+        try {
+            const response = await fetch(src);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = src.split('/').pop() || 'image.jpg';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error) {
+            console.error('Download failed:', error);
+            // Fallback for cross-origin or other issues
+            window.open(src, '_blank');
+        }
+    }
+
+    function replyFromModal() {
+        replyToMessage(true);
+    }
+
+    function toggleDeleteChoices(e) {
+        e.stopPropagation();
+        const choices = document.getElementById('deleteChoices');
+        choices.classList.toggle('show');
+    }
+
+    function hideDeleteChoices() {
+        const choices = document.getElementById('deleteChoices');
+        if (choices) choices.classList.remove('show');
+    }
+
+    async function performDeleteFromModal(forEveryone) {
+        await performDelete(currentMessageId, forEveryone);
+    }
+
+    // ===== SCROLL HANDLING =====
+    const messagesContainer = document.getElementById('messagesContainer');
+    const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+
+    function scrollToBottomSmooth() {
+        messagesContainer.scrollTo({
+            top: messagesContainer.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+
+    messagesContainer.onscroll = function () {
+        const threshold = 300; // px from bottom
+        const currentScroll = messagesContainer.scrollTop;
+        const totalHeight = messagesContainer.scrollHeight;
+        const viewportHeight = messagesContainer.clientHeight;
+
+        const distanceFromBottom = totalHeight - (currentScroll + viewportHeight);
+
+        if (distanceFromBottom > threshold) {
+            scrollBottomBtn.classList.add('show');
+        } else {
+            scrollBottomBtn.classList.remove('show');
+        }
+    };
+
+    // ===== PINNED MESSAGES =====
+    let currentPinnedMessageId = null;
+
+    async function togglePinMessage() {
+        // Save values before hideContextMenu clears them
+        const messageId = currentMessageId;
+        const messageContent = currentMessageContent;
+        if (!messageId) return;
+
+        hideContextMenu();
+
+        try {
+            const response = await fetch(`/messages/pin/${messageId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const wrapper = document.querySelector(`[data-message-id="${messageId}"]`);
+                const pinnedBar = document.getElementById('pinnedMessageBar');
+                const pinnedText = document.getElementById('pinnedMessageText');
+
+                if (data.is_pinned) {
+                    // Pin the message
+                    currentPinnedMessageId = messageId;
+                    if (wrapper) wrapper.dataset.pinned = 'true';
+                    if (pinnedBar && pinnedText) {
+                        const content = messageContent;
+                        pinnedText.textContent = content.startsWith('LOCATION:') ? '📍 Location' :
+                            (content.startsWith('/static/') ? '📷 Media' : content);
+                        pinnedBar.style.display = 'flex';
+                    }
+                    appendSystemMessage('You pinned a message');
+                } else {
+                    // Unpin the message
+                    currentPinnedMessageId = null;
+                    if (wrapper) wrapper.dataset.pinned = 'false';
+                    if (pinnedBar) pinnedBar.style.display = 'none';
+                    appendSystemMessage('You unpinned a message');
+                }
+            }
+        } catch (err) {
+            console.error('Pin toggle error:', err);
+        }
+    }
+
+    function unpinMessage(event) {
+        if (event) event.stopPropagation();
+        // Unpin by toggling the currently pinned message
+        if (currentPinnedMessageId) {
+            currentMessageId = currentPinnedMessageId;
+            togglePinMessage();
+        } else {
+            document.getElementById('pinnedMessageBar').style.display = 'none';
+        }
+    }
+
+    function scrollToPinnedMessage() {
+        if (currentPinnedMessageId) {
+            scrollToMessage(currentPinnedMessageId);
+        }
+    }
+
+    // Initialize pinned message on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const pinnedMsg = document.querySelector('.message-wrapper[data-pinned="true"]');
+        if (pinnedMsg) {
+            currentPinnedMessageId = pinnedMsg.dataset.messageId;
+            const content = pinnedMsg.dataset.content;
+
+            const pinnedBar = document.getElementById('pinnedMessageBar');
+            const pinnedText = document.getElementById('pinnedMessageText');
+
+            if (pinnedBar && pinnedText) {
+                pinnedText.textContent = content.startsWith('LOCATION:') ? '📍 Location' :
+                    (content.startsWith('/static/') ? '📷 Media' : content);
+                pinnedBar.style.display = 'flex';
+            }
+        }
+    });
+
+    // ===== MULTI-SELECT =====
+    let isSelectMode = false;
+    const selectedMessages = new Set();
+
+    function selectMessage() {
+        toggleSelectMode(true);
+        if (currentMessageId) {
+            toggleMessageSelection(currentMessageId);
+        }
+        hideContextMenu();
+    }
+
+    function toggleSelectMode(forceState = null) {
+        isSelectMode = forceState !== null ? forceState : !isSelectMode;
+
+        const batchBar = document.getElementById('batchActionsBar');
+        const messages = document.querySelectorAll('.message-wrapper');
+
+        if (isSelectMode) {
+            batchBar.style.display = 'flex';
+            document.body.classList.add('select-mode');
+        } else {
+            batchBar.style.display = 'none';
+            document.body.classList.remove('select-mode');
+            selectedMessages.clear();
+            updateSelectedCount();
+
+            // Clear visual selection
+            messages.forEach(msg => msg.classList.remove('selected'));
+        }
+    }
+
+    function toggleMessageSelection(mid) {
+        const wrapper = document.querySelector(`[data-message-id="${mid}"]`);
+        if (!wrapper) return;
+
+        if (selectedMessages.has(mid)) {
+            selectedMessages.delete(mid);
+            wrapper.classList.remove('selected');
+        } else {
+            selectedMessages.add(mid);
+            wrapper.classList.add('selected');
+        }
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        document.getElementById('selectedCount').textContent = selectedMessages.size;
+    }
+
+    // Handle clicks in select mode
+    document.getElementById('messagesContainer').addEventListener('click', function (e) {
+        if (!isSelectMode) return;
+
+        const wrapper = e.target.closest('.message-wrapper');
+        if (wrapper) {
+            // Prevent other actions
+            e.preventDefault();
+            e.stopPropagation();
+
+            const mid = wrapper.dataset.messageId;
+            toggleMessageSelection(mid);
+        }
+    }, true); // Capture phase to override other click handlers? 
+    // Capturing might break things. Let's try bubbling first, but existing onclicks might fire.
+    // To properly intercept, we might need to modify the onclicks or use a overlay.
+    // For now, we will add a specific check in `showContextMenu` to ignore if select mode?
+    // Actually, adding a click listener on container with `useCapture=true` is good to stop propagation.
+
+    function deleteSelectedMessages() {
+        if (selectedMessages.size === 0) return;
+
+        document.getElementById('batchDeleteCount').textContent = selectedMessages.size;
+        document.getElementById('batchDeleteModal').classList.add('show');
+    }
+
+    function closeBatchDeleteModal() {
+        document.getElementById('batchDeleteModal').classList.remove('show');
+    }
+
+    async function confirmBatchDelete(forEveryone) {
+        if (selectedMessages.size === 0) return;
+
+        const messageIds = Array.from(selectedMessages);
+
+        try {
+            const formData = new FormData();
+            messageIds.forEach(id => formData.append('message_ids[]', id));
+            if (forEveryone) formData.append('for_everyone', 'true');
+
+            // Find valid delete endpoint - we added /messages/delete-batch
+            const response = await fetch('/messages/delete-batch', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                // Remove messages from DOM
+                messageIds.forEach(mid => {
+                    const wrapper = document.querySelector(`[data-message-id="${mid}"]`);
+                    if (wrapper) {
+                        wrapper.style.opacity = '0';
+                        wrapper.remove();
+                    }
+                });
+
+                toggleSelectMode(false);
+                closeBatchDeleteModal();
+            } else {
+                alert('Failed to delete messages: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Batch delete error:', err);
+            alert('Failed to delete messages');
+        }
+    }
+
+
+    // Helper for system message
+    function appendSystemMessage(text) {
+        const container = document.getElementById('messagesContainer');
+        const div = document.createElement('div');
+        div.className = 'system-message';
+        div.innerHTML = `<span>${text}</span>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // ===== DELETE CHAT MODAL =====
+    let deleteChatUserId = null;
+
+    function deleteChat(userId) {
+        deleteChatUserId = userId;
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+        document.getElementById('deleteChatModal').classList.add('show');
+    }
+
+    function closeDeleteChatModal() {
+        document.getElementById('deleteChatModal').classList.remove('show');
+        deleteChatUserId = null;
+    }
+
+    async function confirmDeleteChat() {
+        if (!deleteChatUserId) return;
+
+        const deleteForBoth = document.getElementById('deleteForBothCheckbox').checked;
+
+        try {
+            const formData = new FormData();
+            formData.append('delete_for_both', deleteForBoth);
+
+            const response = await fetch(`/messages/delete-chat/${deleteChatUserId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                window.location.href = '/messages';
+            } else {
+                alert('Failed to delete chat: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Delete chat error:', err);
+            alert('Failed to delete chat');
+        }
+
+        closeDeleteChatModal();
+    }
+
+    // ===== BLOCK USER MODAL =====
+    let blockUserId = null;
+
+    function blockUser(userId) {
+        blockUserId = userId;
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+        document.getElementById('blockUserModal').classList.add('show');
+    }
+
+    function closeBlockUserModal() {
+        document.getElementById('blockUserModal').classList.remove('show');
+        blockUserId = null;
+    }
+
+    async function confirmBlockUser() {
+        if (!blockUserId) return;
+
+        try {
+            const response = await fetch(`/users/block/${blockUserId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                alert('User blocked successfully');
+                window.location.href = '/messages';
+            } else {
+                alert('Failed to block user: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Block user error:', err);
+            alert('Failed to block user');
+        }
+
+        closeBlockUserModal();
+    }
+
+    // ===== UNBLOCK USER =====
+    async function unblockUser(userId) {
+        try {
+            const response = await fetch(`/users/unblock/${userId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Reload the page to restore input area
+                window.location.reload();
+            } else {
+                alert('Failed to unblock user: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Unblock user error:', err);
+            alert('Failed to unblock user');
+        }
+    }
+
+    function closeReportUserModal() {
+        document.getElementById('reportUserModal').classList.remove('show');
+        reportUserId = null;
+    }
+
+    async function confirmReportUser() {
+        if (!reportUserId) return;
+
+        try {
+            const response = await fetch(`/users/report/${reportUserId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                alert('User reported successfully. Thank you for helping keep our community safe.');
+            } else {
+                alert('Failed to report user: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Report user error:', err);
+            alert('Failed to report user');
+        }
+
+        closeReportUserModal();
+    }
+
+    // ===== UNBLOCK USER =====
+    async function unblockUser(userId) {
+        try {
+            const response = await fetch(`/users/unblock/${userId}`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('Failed to unblock user: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Unblock user error:', err);
+            alert('Failed to unblock user');
+        }
+    }
+
+    // ===== NICKNAME MODAL =====
+    function openNicknameModal() {
+        document.getElementById('headerDropdownMenu').classList.remove('show');
+        const modal = document.getElementById('nicknameModal');
+        const input = document.getElementById('nicknameInput');
+
+        // Pre-fill with existing nickname if any
+        // We can get it from the header or a data attribute. 
+        // Best to use the variable we passed from backend if available in JS context,
+        // or just fetch it. For now, let's use the header text if it differs from username, 
+        // OR better, rely on the backend API we made: GET /api/chats/nickname/<user_id>
+
+        // Fetch current nickname to ensure we have the latest
+        fetch(`/api/chats/nickname/{{ other_user.id }}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    input.value = data.nickname || '';
+                    modal.classList.add('show');
+                    input.focus();
+                } else {
+                    alert('Error fetching nickname');
+                }
+            });
+    }
+
+    function closeNicknameModal() {
+        document.getElementById('nicknameModal').classList.remove('show');
+    }
+
+    async function saveNickname() {
+        const input = document.getElementById('nicknameInput');
+        const nickname = input.value.trim();
+
+        try {
+            const response = await fetch(`/api/chats/nickname/{{ other_user.id }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ nickname: nickname })
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Update UI immediately
+                const newName = data.nickname || '{{ other_user.username }}';
+                document.querySelector('.chat-header-info h5').textContent = newName;
+                document.querySelector('.chat-header-avatar').firstChild.textContent = newName.charAt(0).toUpperCase();
+
+                // Also update page title
+                document.title = newName;
+
+                closeNicknameModal();
+                appendSystemMessage(nickname ? `You set the nickname to ${nickname}` : 'You removed the nickname');
+            } else {
+                alert('Failed to save nickname: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Save nickname error:', err);
+            alert('Failed to save nickname');
+        }
+    }
+
+    // Auto-scroll on initial load
+    window.onload = function () {
+        const container = document.getElementById('messagesContainer');
+        if (container) container.scrollTop = container.scrollHeight;
+    };
+
+    // Keyboard listeners
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+            closeCamera();
+            closeTextSizeModal();
+            closeMuteModal();
+        }
+
+        if (e.key === 'Enter' && isRecording) {
+            e.preventDefault();
+            stopVoiceRecording();
+        }
     });
 </script>
 {% endblock %}

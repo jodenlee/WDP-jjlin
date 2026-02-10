@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block main_class %}container-fluid p-0{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-telegram.css') }}">
+
+<div class="whatsapp-home-container">
+    <!-- Header -->
+    <div class="whatsapp-home-header">
+        <div class="whatsapp-top-controls">
+            <a href="{{ url_for('messages.messages_list') }}"
+                style="color: var(--accent-color); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-chevron-left"></i>
+                <span>Chats</span>
+            </a>
+        </div>
+        <h1 class="whatsapp-page-title">Archived</h1>
+    </div>
+
+    <!-- Archived Chat List -->
+    <div class="whatsapp-chat-list" id="archivedChatList">
+        {% if archived_chats %}
+        {% for chat in archived_chats %}
+        <div class="whatsapp-list-row" data-user-id="{{ chat['user_id'] }}"
+            data-type="{{ chat.get('type', 'private') }}"
+            data-url="{{ url_for('messages.chat', user_id=chat['user_id']) }}"
+            onclick="location.href=this.dataset.url;">
+
+            <!-- Avatar -->
+            <img src="https://ui-avatars.com/api/?name={{ chat['username'] }}&background=A68A64&color=1c1c1e&bold=true"
+                class="whatsapp-list-avatar" alt="{{ chat['username'] }}">
+
+            <!-- Content -->
+            <div class="whatsapp-list-content">
+                <div class="whatsapp-list-header">
+                    <div class="whatsapp-list-name">{{ chat['username'] }}</div>
+                    <div class="whatsapp-list-time">{{ chat['last_message_time'] }}</div>
+                </div>
+                <div class="whatsapp-list-preview-row">
+                    <div class="whatsapp-list-msg">
+                        {% if chat['last_message'] %}
+                        {{ chat['last_message'] }}
+                        {% else %}
+                        <span style="color: #999;">No messages</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-archive" style="font-size: 3rem; color: #ccc; margin-bottom: 15px;"></i>
+            <p class="text-muted">No archived chats.</p>
+        </div>
+        {% endif %}
+
+        <!-- Padding for bottom nav -->
+        <div style="height: 80px;"></div>
+    </div>
+
+    <!-- Right-Click Context Menu for Unarchive -->
+    <div id="archivedContextMenu" class="chat-context-menu"
+        style="display: none; position: fixed; z-index: 9999; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); min-width: 180px; overflow: hidden;">
+        <div class="context-menu-item" onclick="unarchiveSelectedChat()"
+            style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+            <i class="fas fa-inbox" style="color: #888; width: 18px;"></i>
+            <span style="color: #333;">Unarchive</span>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="whatsapp-bottom-nav">
+        <a href="{{ url_for('messages.calls_list') }}" class="whatsapp-nav-item">
+            <div class="whatsapp-nav-icon"><i class="fas fa-phone-alt"></i></div>
+            <span class="whatsapp-nav-label">Calls</span>
+        </a>
+        <a href="{{ url_for('messages.messages_list') }}" class="whatsapp-nav-item active">
+            <div class="whatsapp-nav-icon"><i class="fas fa-comment-alt"></i></div>
+            <span class="whatsapp-nav-label">Chats</span>
+        </a>
+    </div>
+</div>
+
+<style>
+    .chat-context-menu .context-menu-item:hover {
+        background: #f5f5f5;
+    }
+</style>
+
+<script>
+    let contextMenuTargetUserId = null;
+    const contextMenu = document.getElementById('archivedContextMenu');
+
+    // Attach right-click handler to all archived chat rows
+    document.querySelectorAll('.whatsapp-list-row').forEach(row => {
+        row.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            contextMenuTargetUserId = this.dataset.userId;
+
+            const menu = contextMenu;
+            menu.style.display = 'block';
+
+            let x = e.clientX;
+            let y = e.clientY;
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+
+            if (x + menuWidth > window.innerWidth) {
+                x = window.innerWidth - menuWidth - 10;
+            }
+            if (y + menuHeight > window.innerHeight) {
+                y = window.innerHeight - menuHeight - 10;
+            }
+
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        });
+    });
+
+    // Hide context menu on click elsewhere
+    document.addEventListener('click', function (e) {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+        }
+    });
+
+    async function unarchiveSelectedChat() {
+        if (!contextMenuTargetUserId) return;
+        contextMenu.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/chats/unarchive/${contextMenuTargetUserId}`, { method: 'POST' });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                // Remove from UI
+                const row = document.querySelector(`.whatsapp-list-row[data-user-id="${contextMenuTargetUserId}"]`);
+                if (row) row.remove();
+
+                // Check if list is now empty
+                const remaining = document.querySelectorAll('.whatsapp-list-row').length;
+                if (remaining === 0) {
+                    document.getElementById('archivedChatList').innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-archive" style="font-size: 3rem; color: #ccc; margin-bottom: 15px;"></i>
+                            <p class="text-muted">No archived chats.</p>
+                        </div>
+                        <div style="height: 80px;"></div>
+                    `;
+                }
+            }
+        } catch (e) {
+            console.error('Unarchive error:', e);
+        }
+    }
+</script>
+
+{% endblock %}

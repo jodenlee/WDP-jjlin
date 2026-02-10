@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .faq-wrap {
+        max-width: 980px;
+        margin: 18px auto 60px;
+        padding: 0 16px;
+    }
+
+    .faq-hero {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        padding: 20px 22px;
+        margin-bottom: 16px;
+    }
+
+    .faq-hero h1 {
+        margin: 0 0 6px;
+        font-size: 30px;
+    }
+
+    .faq-hero p {
+        margin: 0;
+        color: #666;
+    }
+
+    .faq-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .faq-section {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        padding: 18px 18px;
+    }
+
+    .faq-section h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+    }
+
+    .faq-item {
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .faq-q {
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: #faf7f5;
+        padding: 14px 14px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .faq-q span {
+        color: #6b4f45;
+        /* TogetherSG brown-ish */
+    }
+
+    .faq-a {
+        display: none;
+        padding: 14px 14px 16px;
+        background: #fff;
+        color: #444;
+        line-height: 1.65;
+    }
+
+    .faq-a ul {
+        margin: 10px 0 0 18px;
+    }
+
+    .tag {
+        display: inline-block;
+        font-size: 12px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: rgba(141, 110, 99, 0.12);
+        color: #6b4f45;
+        margin-left: 8px;
+        font-weight: 600;
+    }
+
+    .note {
+        background: rgba(141, 110, 99, 0.08);
+        border: 1px solid rgba(141, 110, 99, 0.18);
+        border-radius: 14px;
+        padding: 12px 12px;
+        margin-top: 10px;
+        color: #5a433b;
+    }
+
+    @media (min-width: 920px) {
+        .faq-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+
+<div class="faq-wrap">
+
+    <div class="faq-hero">
+        <h1>FAQ & Help</h1>
+        <p>Common questions + misconceptions about TogetherSG, explained in simple English.</p>
+    </div>
+
+    <div class="faq-grid">
+
+        <!-- SECTION 1 -->
+        <div class="faq-section">
+            <h2>Accounts & Access</h2>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“If I log out, my account is deleted.” <span class="tag">Misconception</span></div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Logging out only signs you out of the website.
+                    <div class="note"><b>✅ Reality:</b> Your account and your content stay saved unless an admin deletes
+                        it.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“I forgot my password. Can I still recover my account?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    If your app has a “Reset Password” feature, use it from the login page.
+                    If not, ask an admin/teacher to help reset it.
+                    <ul>
+                        <li>Try logging in carefully (caps lock matters).</li>
+                        <li>Check if you are using the correct username.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“I see different pages after login. Is something wrong?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Different users may see slightly different options depending on roles (e.g., admin vs member).
+                    <div class="note"><b>Tip:</b> If you think a page is missing, check the top navigation bar first
+                        (Home /
+                        Stories / Groups / Activities / Messages).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2 -->
+        <div class="faq-section">
+            <h2>Messages & Chat</h2>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“My conversation disappeared when I pressed Start a conversation.” <span
+                            class="tag">Common</span></div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    The “Start a conversation” button should only show the user picker. It should not delete chats.
+                    <ul>
+                        <li>If it shows “No messages yet”, it usually means the page is switching to a “picker” mode.
+                        </li>
+                        <li>Your chat still exists as long as messages are in the database.</li>
+                    </ul>
+                    <div class="note"><b>✅ Reality:</b> Conversations list comes from the <b>messages table</b>. If you
+                        can still
+                        open the chat page, the chat is not gone.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Why do I get ‘Method Not Allowed’ when sending a message?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    This happens when your form submits to a URL that only accepts GET, but your form uses POST.
+                    <ul>
+                        <li>Your <b>send route</b> must include <code>methods=['POST']</code>.</li>
+                        <li>Your form action must match the route exactly.</li>
+                    </ul>
+                    <div class="note"><b>Example:</b> form action should go to
+                        <code>/messages/send/&lt;recipient_id&gt;</code> if
+                        that is your Flask route.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Can people see my messages?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Messages are meant to be private between sender and receiver.
+                    <ul>
+                        <li>Only the two users involved should see the chat.</li>
+                        <li>Admins may have database access (depending on your project rules).</li>
+                    </ul>
+                    <div class="note"><b>Tip:</b> Avoid sharing passwords or sensitive personal data in chat.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“What does the double tick / read receipt mean?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    A read receipt usually means:
+                    <ul>
+                        <li><b>1 tick</b> = sent (saved to database)</li>
+                        <li><b>2 ticks</b> = delivered/seen (depends on your implementation)</li>
+                    </ul>
+                    <div class="note"><b>In your app:</b> you already have <code>is_read</code> in the database. That is
+                        the key
+                        field to power read receipts.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3 -->
+        <div class="faq-section">
+            <h2>Editing & Deleting Messages</h2>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“If I edit a message, will the other person see the old one?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Normally, editing updates the same message record.
+                    <div class="note"><b>✅ Reality:</b> The other person will usually only see the updated text.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“If I delete a message, will it delete for both people?” <span class="tag">Misconception</span>
+                    </div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    In your current setup, deleting removes the message from the database, so it disappears for everyone
+                    in that
+                    chat.
+                    <div class="note"><b>Tip:</b> If you want “delete for me only”, you would need a different design
+                        (e.g.,
+                        per-user hidden messages).</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Can I edit someone else’s message?”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    No. Only the person who sent the message should be able to edit or delete it.
+                    <div class="note"><b>✅ Reality:</b> Your Flask route checks sender_id before allowing edits/deletes.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4 -->
+        <div class="faq-section">
+            <h2>Stories, Groups & Activities</h2>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Stories are private messages.” <span class="tag">Misconception</span></div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Stories are usually public/community posts that others can read.
+                    <div class="note"><b>✅ Reality:</b> For private talks, use Messages instead.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Joining a group automatically shares my profile with everyone.”</div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    Joining a group usually shows your username to members, but it should not expose sensitive info.
+                    <div class="note"><b>Tip:</b> If your profile contains contact details, keep them minimal unless
+                        needed.</div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-q" type="button">
+                    <div>“Activities and Groups are the same thing.” <span class="tag">Misconception</span></div>
+                    <span class="faq-toggle">＋</span>
+                </button>
+                <div class="faq-a">
+                    They are different:
+                    <ul>
+                        <li><b>Groups</b> = communities (people with shared interests)</li>
+                        <li><b>Activities</b> = events or planned sessions you can join</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Simple accordion behaviour
+    document.querySelectorAll('.faq-item').forEach(item => {
+        const btn = item.querySelector('.faq-q');
+        const ans = item.querySelector('.faq-a');
+        const icon = btn.querySelector('.faq-toggle');
+
+        btn.addEventListener('click', () => {
+            const isOpen = ans.style.display === 'block';
+            document.querySelectorAll('.faq-a').forEach(a => a.style.display = 'none');
+            document.querySelectorAll('.faq-toggle').forEach(i => i.textContent = '＋');
+
+            if (!isOpen) {
+                ans.style.display = 'block';
+                icon.textContent = '－';
+            }
+        });
+    });
+</script>
+
+{% endblock %}
