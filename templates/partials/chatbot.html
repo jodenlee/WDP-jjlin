@@ -1,0 +1,46 @@
+<!-- Chatbot Widget Partial -->
+<div id="chatbot-widget">
+    <!-- Floating Toggle Button -->
+    <button class="chatbot-toggle" id="chatbot-toggle" aria-label="Open helper chat">
+        <span class="chatbot-icon-open">🤖</span>
+        <span class="chatbot-icon-close">✕</span>
+    </button>
+
+    <!-- Chat Panel -->
+    <div class="chatbot-panel" id="chatbot-panel">
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-header-avatar">🤖</div>
+                <div class="chatbot-header-text">
+                    <h4>TogetherSG Helper</h4>
+                    <span>Online | AI Powered</span>
+                </div>
+            </div>
+            <button class="chatbot-clear-btn" id="chatbot-clear" title="Clear chat history">Clear</button>
+        </div>
+
+        <div class="chatbot-messages" id="chatbot-messages">
+            <!-- Messages will be injected here -->
+            <div class="chatbot-welcome">
+                Welcome! How can I help you today?
+            </div>
+        </div>
+
+        <div class="chatbot-typing" id="chatbot-typing">
+            <div class="chatbot-typing-dot"></div>
+            <div class="chatbot-typing-dot"></div>
+            <div class="chatbot-typing-dot"></div>
+        </div>
+
+        <div class="chatbot-input-area">
+            <textarea class="chatbot-input" id="chatbot-input" placeholder="Type a message..." rows="1"></textarea>
+            <button class="chatbot-send-btn" id="chatbot-send" disabled>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>

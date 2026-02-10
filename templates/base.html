@@ -13,8 +13,24 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
     <!-- Inject API key for geolocation.js (must be before any scripts that use it) -->
     <script>window.GOOGLE_MAPS_API_KEY = "{{ GOOGLE_MAPS_API_KEY }}";</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    {% if g.user %}
+    <script>
+        // GLOBAL SOCKET INITIALIZATION
+        window.socket = io();
+        socket.on('connect', () => {
+            const userId = '{{ session.user_id or "" }}';
+            console.log('Socket connected, joining personal room: user_' + userId);
+            socket.emit('join', { room: 'user_' + userId });
+        });
+    </script>
+    {% else %}
+    <script>window.socket = null;</script>
+    {% endif %}
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -109,6 +125,8 @@
                                 {% endif %}
                                 <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
                                         <i class="fas fa-cog me-2"></i> {{ _('Settings') }}</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.faq') }}">
+                                        <i class="fas fa-question-circle me-2"></i> {{ _('FAQ') }}</a></li>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
@@ -233,6 +251,12 @@
         fetchNotifications();
         setInterval(fetchNotifications, 30000);
     </script>
+    {% endif %}
+
+    <!-- Chatbot Widget -->
+    {% if request.endpoint not in ['messages.messages_list', 'messages.chat', 'messages.group_chat',
+    'messages.archived_chats_view', 'messages.calls_list'] %}
+    {% include 'partials/chatbot.html' %}
     {% endif %}
 </body>
 

@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+
+{% block main_class %}container-fluid p-0{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-telegram.css') }}">
+<!-- WhatsApp iOS Style Calls Screen -->
+<div class="whatsapp-home-container">
+
+    <!-- Sticky Header -->
+    <div class="whatsapp-home-header">
+        <!-- Top Controls -->
+        <div class="whatsapp-top-controls">
+            <button class="whatsapp-control-btn" id="editBtn" style="font-size: 1rem; color: var(--accent-color);"
+                onclick="toggleSelectionMode()">Edit</button>
+
+            <!-- Segmented Control (All / Missed) -->
+            <div class="calls-filter-tabs"
+                style="background: rgba(118, 118, 128, 0.12); padding: 2px; border-radius: 8px; display: flex;">
+                <div class="calls-filter-tab active" data-filter="all" onclick="setCallsFilter('all', this)"
+                    style="padding: 4px 12px; background: white; border-radius: 6px; font-size: 0.8rem; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;">
+                    All</div>
+                <div class="calls-filter-tab" data-filter="missed" onclick="setCallsFilter('missed', this)"
+                    style="padding: 4px 12px; font-size: 0.8rem; font-weight: 600; color: #888; cursor: pointer;">Missed
+                </div>
+            </div>
+
+            <!-- Hidden in selection mode -->
+            <div id="normalControls">
+                <!-- Removed phone-plus icon as per user request (image 6) -->
+            </div>
+
+            <!-- Selection Mode Controls -->
+            <div id="selectionControls" style="display: none;">
+                <button class="whatsapp-control-btn" style="color: #ef4444; font-size: 0.9rem;"
+                    onclick="deleteSelectedCalls()">Delete</button>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <h1 class="whatsapp-page-title">Calls</h1>
+
+        <!-- Search -->
+        <div class="whatsapp-search-wrapper">
+            <i class="fas fa-search whatsapp-search-icon"></i>
+            <input type="text" class="whatsapp-search-input" id="callSearchInput" placeholder="Search"
+                oninput="filterCallsDebounced()">
+        </div>
+    </div>
+
+    <!-- Calls List -->
+    <div class="whatsapp-chat-list" id="callsList">
+        {% if calls %}
+        {% for call in calls %}
+        <div class="whatsapp-list-row call-row" data-call-id="{{ call.id }}"
+            data-username="{{ call.other_username|lower }}" data-status="{{ call.status }}">
+            <!-- Selection Checkbox -->
+            <div class="whatsapp-select-checkbox">
+                <i class="fas fa-check" style="color: white; font-size: 0.8rem;"></i>
+            </div>
+
+            <!-- Avatar -->
+            <div style="position: relative;">
+                <img src="{{ call.other_profile_pic or 'https://ui-avatars.com/api/?name=' + call.other_username + '&background=A68A64&color=fff' }}"
+                    class="whatsapp-list-avatar" alt="{{ call.other_username }}">
+            </div>
+
+            <!-- Content -->
+            <div class="whatsapp-list-content">
+                <div class="whatsapp-list-header">
+                    <div class="whatsapp-list-name" {% if call.status=='missed' %}style="color: #ef4444;" {% endif %}>
+                        {{ call.other_username }}
+                    </div>
+                    <div class="whatsapp-list-time">
+                        {{ call.display_date }} <span style="font-size: 0.8em;">{{ call.display_time }}</span>
+                    </div>
+                </div>
+
+                <div class="whatsapp-list-preview-row">
+                    <div class="whatsapp-list-msg" style="display: flex; align-items: center; gap: 5px;">
+                        <!-- Icon Logic -->
+                        {% if call.status == 'missed' %}
+                        <i class="fas fa-phone-slash" style="color: #ef4444; font-size: 0.8rem;"></i>
+                        <span style="color: #666;">Missed</span>
+                        {% elif call.is_outgoing %}
+                        <i class="fas fa-phone-alt"
+                            style="color: #888; font-size: 0.8rem; transform: rotate(-45deg);"></i>
+                        <span style="color: #666;">Outgoing</span>
+                        {% else %}
+                        <i class="fas fa-phone-alt"
+                            style="color: #888; font-size: 0.8rem; transform: rotate(135deg);"></i>
+                        <span style="color: #666;">Incoming</span>
+                        {% endif %}
+
+                        {% if call.call_type == 'video' %}
+                        <i class="fas fa-video" style="font-size: 0.7rem; color: #888; margin-left: 5px;"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-5" id="emptyState">
+            <i class="fas fa-phone-alt fa-3x text-muted mb-3" style="opacity: 0.3;"></i>
+            <p class="text-muted">No recent calls.</p>
+        </div>
+        {% endif %}
+
+        <!-- Padding for bottom nav -->
+        <div style="height: 80px;"></div>
+    </div>
+
+    <!-- Batch Actions Bar (Selection Mode) -->
+    <div class="batch-actions-bar" id="callsBatchBar" style="display: none;">
+        <div class="batch-actions-left">
+            <button class="batch-cancel-btn" onclick="exitSelectionMode()">✕</button>
+            <span class="batch-count" id="callsSelectedCount">0 selected</span>
+        </div>
+        <div class="batch-actions-right">
+            <button class="batch-action-btn delete" onclick="deleteSelectedCalls()">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="whatsapp-bottom-nav">
+        <!-- Calls (Active) -->
+        <a href="{{ url_for('messages.calls_list') }}" class="whatsapp-nav-item active">
+            <div class="whatsapp-nav-icon"><i class="fas fa-phone-alt"></i></div>
+            <span class="whatsapp-nav-label">Calls</span>
+        </a>
+
+        <!-- Chats -->
+        <a href="{{ url_for('messages.messages_list') }}" class="whatsapp-nav-item">
+            <div class="whatsapp-nav-icon"><i class="fas fa-comment-alt"></i></div>
+            <span class="whatsapp-nav-label">Chats</span>
+        </a>
+    </div>
+</div>
+
+<style>
+    .whatsapp-nav-item {
+        color: #8e8e93;
+    }
+
+    .whatsapp-nav-item.active {
+        color: var(--accent-color);
+    }
+
+    .calls-filter-tab.active {
+        background: white !important;
+        color: #333 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .call-row.selected {
+        background: rgba(166, 138, 100, 0.1);
+    }
+
+    .call-row.selected .whatsapp-select-checkbox {
+        background: var(--accent-color) !important;
+        border-color: var(--accent-color) !important;
+    }
+
+    .whatsapp-select-checkbox {
+        width: 0;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0;
+        flex-shrink: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .whatsapp-chat-list.selection-mode .whatsapp-select-checkbox {
+        width: 22px;
+        margin-right: 10px;
+        opacity: 1;
+    }
+
+    /* Adjust checkbox check icon visibility */
+    .whatsapp-select-checkbox i {
+        display: block;
+        /* Always block but hidden by overflow/width/opacity */
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    // --- STATE ---
+    let selectionMode = false;
+    let selectedCalls = new Set();
+    let currentFilter = 'all';
+    let searchDebounce = null;
+
+    // --- FILTER TABS ---
+    function setCallsFilter(filter, btn) {
+        currentFilter = filter;
+
+        // Update tab visuals
+        document.querySelectorAll('.calls-filter-tab').forEach(tab => {
+            tab.classList.remove('active');
+            tab.style.background = 'transparent';
+            tab.style.color = '#888';
+            tab.style.boxShadow = 'none';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'white';
+        btn.style.color = '#333';
+        btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+
+        filterCallsDebounced();
+    }
+
+    // --- SEARCH + FILTER ---
+    function filterCallsDebounced() {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(filterCalls, 150);
+    }
+
+    function filterCalls() {
+        const query = document.getElementById('callSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.call-row');
+
+        rows.forEach(row => {
+            const username = row.dataset.username || '';
+            const status = row.dataset.status || '';
+
+            let visible = true;
+
+            // Text search by username
+            if (query && !username.includes(query)) {
+                visible = false;
+            }
+
+            // Missed filter
+            if (currentFilter === 'missed' && status !== 'missed') {
+                visible = false;
+            }
+
+            row.style.display = visible ? 'flex' : 'none';
+        });
+    }
+
+    // --- SELECTION MODE ---
+    function toggleSelectionMode() {
+        selectionMode = !selectionMode;
+        const editBtn = document.getElementById('editBtn');
+        const normalControls = document.getElementById('normalControls');
+        const selectionControls = document.getElementById('selectionControls');
+        const batchBar = document.getElementById('callsBatchBar');
+        const callsList = document.getElementById('callsList');
+
+        if (selectionMode) {
+            editBtn.textContent = 'Done';
+            // normalControls.style.display = 'none'; // Keep layout stable? Or hide? 
+            // User might want search to stay? Usually search stays.
+            // But right side controls might hide.
+            normalControls.style.opacity = '0'; // Fade out?
+            setTimeout(() => normalControls.style.display = 'none', 200);
+
+            selectionControls.style.display = '';
+            batchBar.style.display = 'flex';
+
+            callsList.classList.add('selection-mode');
+        } else {
+            exitSelectionMode();
+        }
+    }
+
+    function exitSelectionMode() {
+        selectionMode = false;
+        selectedCalls.clear();
+
+        const callsList = document.getElementById('callsList');
+        callsList.classList.remove('selection-mode');
+
+        document.getElementById('editBtn').textContent = 'Edit';
+
+        const normalControls = document.getElementById('normalControls');
+        normalControls.style.display = '';
+        normalControls.style.opacity = '1';
+
+        document.getElementById('selectionControls').style.display = 'none';
+        document.getElementById('callsBatchBar').style.display = 'none';
+
+        document.querySelectorAll('.call-row.selected').forEach(row => {
+            row.classList.remove('selected');
+        });
+
+        updateCallsSelectionCount();
+    }
+
+    function updateCallsSelectionCount() {
+        document.getElementById('callsSelectedCount').textContent = `${selectedCalls.size} selected`;
+    }
+
+    // Click handler for call rows
+    document.querySelectorAll('.call-row').forEach(row => {
+        row.addEventListener('click', function () {
+            if (!selectionMode) return;
+
+            const callId = this.dataset.callId;
+            if (selectedCalls.has(callId)) {
+                selectedCalls.delete(callId);
+                this.classList.remove('selected');
+            } else {
+                selectedCalls.add(callId);
+                this.classList.add('selected');
+            }
+            updateCallsSelectionCount();
+        });
+    });
+
+    // --- DELETE CALLS ---
+    async function deleteSelectedCalls() {
+        if (selectedCalls.size === 0) return;
+
+        const ids = Array.from(selectedCalls);
+
+        try {
+            const res = await fetch('/api/calls/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ call_ids: ids })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                // Remove from UI
+                ids.forEach(id => {
+                    const row = document.querySelector(`.call-row[data-call-id="${id}"]`);
+                    if (row) row.remove();
+                });
+                exitSelectionMode();
+            } else {
+                alert(data.message || 'Failed to delete calls.');
+            }
+        } catch (e) {
+            console.error('Delete calls error:', e);
+        }
+    }
+
+    // --- REAL-TIME UPDATES ---
+    const socket = io();
+
+    socket.on('call_status_update', (data) => {
+        // Update call status in UI if the call exists
+        const row = document.querySelector(`.call-row[data-call-id="${data.call_id}"]`);
+        if (row) {
+            row.dataset.status = data.status;
+            // Re-apply filter
+            filterCalls();
+        }
+    });
+</script>
+
+{% endblock %}
