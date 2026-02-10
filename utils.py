@@ -47,8 +47,6 @@ def login_required(f):
 # Get current user helper
 def get_current_user():
     if 'user_id' in session:
-        # Calling get_conn ensures g.db_conn is set for the rest of the request
-        get_conn()
         db = get_db()
         return db.query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
     return None
@@ -140,22 +138,13 @@ def auto_translate(text, target_lang=None):
 
     db = get_db()
     
+    # Check cache
+    cache = db.query("SELECT translation FROM ui_translations WHERE text_key = ? AND language = ?", (text, target_lang), one=True)
+    if cache:
+        return cache['translation']
+
     # Translate using Google API
     try:
-        # Request-level cache to avoid multiple DB lookups for same text
-        if not hasattr(g, 'translation_cache'):
-            g.translation_cache = {}
-        
-        cache_key = f"{text}_{target_lang}"
-        if cache_key in g.translation_cache:
-            return g.translation_cache[cache_key]
-
-        # Check DB cache
-        cache = db.query("SELECT translation FROM ui_translations WHERE text_key = ? AND language = ?", (text, target_lang), one=True)
-        if cache:
-            g.translation_cache[cache_key] = cache['translation']
-            return cache['translation']
-
         import requests
         api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
         if not api_key:
@@ -165,7 +154,7 @@ def auto_translate(text, target_lang=None):
         payload = {
             "q": text,
             "target": target_lang,
-            "format": "text"
+            "format": "text" # Use text format to avoid excessive escaping
         }
         
         response = requests.post(url, json=payload)
@@ -174,11 +163,12 @@ def auto_translate(text, target_lang=None):
         if 'data' in response_data and 'translations' in response_data['data']:
             translated_text = html.unescape(response_data['data']['translations'][0]['translatedText'])
             
-            # Save to persistent cache (DB)
-            db.query("INSERT OR REPLACE INTO ui_translations (text_key, language, translation) VALUES (?, ?, ?)", 
+            # Save to cache
+            conn = db.get_connection()
+            conn.execute("INSERT OR REPLACE INTO ui_translations (text_key, language, translation) VALUES (?, ?, ?)", 
                          (text, target_lang, translated_text))
+            conn.commit()
             
-            g.translation_cache[cache_key] = translated_text
             return translated_text
         else:
             return text
