@@ -295,18 +295,35 @@ def update_group(group_id):
 @login_required
 def create_group_post(group_id):
     user_id = session['user_id']
-    content = request.form['content']
+    content = request.form.get('content', '')
     
     # CONTENT MODERATION CHECK
-    if check_content_moderation(content):
+    if content and check_content_moderation(content):
         flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
+
+    audio_url = None
+    if 'audio' in request.files:
+        file = request.files['audio']
+        if file and file.filename:
+            from flask import current_app
+            filename = secure_filename(file.filename)
+            # Ensure unique filename with timestamp
+            filename = f"post_audio_{int(time.time())}_{filename}"
+            
+            # Create uploads/posts directory if it doesn't exist
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'posts')
+            if not os.path.exists(upload_path):
+                os.makedirs(upload_path)
+                
+            file.save(os.path.join(upload_path, filename))
+            audio_url = f"uploads/posts/{filename}"
 
     db = get_db()
     conn = db.get_connection()
     conn.execute(
-        "INSERT INTO group_posts (group_id, user_id, content) VALUES (?, ?, ?)",
-        (group_id, user_id, content)
+        "INSERT INTO group_posts (group_id, user_id, content, audio_url) VALUES (?, ?, ?, ?)",
+        (group_id, user_id, content, audio_url)
     )
     conn.commit()
     flash('Post created successfully!', 'success')
