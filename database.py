@@ -173,9 +173,8 @@ class Database:
         ''')
 
         # Add role column to group_members if not exists
-        try:
-            cursor.execute("SELECT role FROM group_members LIMIT 1")
-        except sqlite3.OperationalError:
+        columns = [row[1] for row in cursor.execute("PRAGMA table_info(group_members)").fetchall()]
+        if 'role' not in columns:
             cursor.execute("ALTER TABLE group_members ADD COLUMN role TEXT DEFAULT 'member'")
 
         # Group Posts Table

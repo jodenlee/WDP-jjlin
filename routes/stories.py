@@ -186,7 +186,10 @@ def create_story():
                 if gcs_url:
                     saved_image_paths.append(gcs_url)
                 else:
+                    # Reset file stream position after GCS attempt
+                    image.seek(0)
                     # Fallback to local storage if GCS fails
+                    os.makedirs(upload_folder, exist_ok=True)
                     filepath = os.path.join(upload_folder, filename)
                     image.save(filepath)
                     saved_image_paths.append(request.url_root + 'static/uploads/' + filename)
@@ -542,7 +545,10 @@ def edit_story(story_id):
                     if gcs_url:
                         saved_image_paths.append(gcs_url)
                     else:
+                        # Reset file stream position after GCS attempt
+                        image.seek(0)
                         # Fallback to local storage
+                        os.makedirs(upload_folder, exist_ok=True)
                         filepath = os.path.join(upload_folder, filename)
                         image.save(filepath)
                         saved_image_paths.append(request.url_root + 'static/uploads/' + filename)
