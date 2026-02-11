@@ -28,7 +28,7 @@
             onclick="location.href=this.dataset.url;">
 
             <!-- Avatar -->
-            <img src="https://ui-avatars.com/api/?name={{ chat['username'] }}&background=A68A64&color=1c1c1e&bold=true"
+            <img src="{{ chat['profile_pic'] or 'https://ui-avatars.com/api/?name=' + chat['username'] + '&background=A68A64&color=1c1c1e&bold=true' }}"
                 class="whatsapp-list-avatar" alt="{{ chat['username'] }}">
 
             <!-- Content -->

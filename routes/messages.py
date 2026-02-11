@@ -251,24 +251,52 @@ def upload_media(recipient_id=None, group_id=None):
 @login_required
 def archived_chats_view():
     db, user_id = get_db(), session['user_id']
-    archived = db.query("""
+    archived_rows = db.query("""
         SELECT u.id as user_id, COALESCE(n.nickname, u.username) as username, u.profile_pic, 'private' as type,
-               (SELECT content FROM messages m2 WHERE ((m2.sender_id = u.id AND m2.receiver_id = ?) OR (m2.sender_id = ? AND m2.receiver_id = u.id)) AND m2.group_id IS NULL ORDER BY m2.created_at DESC LIMIT 1) as last_message,
-               (SELECT created_at FROM messages m2 WHERE ((m2.sender_id = u.id AND m2.receiver_id = ?) OR (m2.sender_id = ? AND m2.receiver_id = u.id)) AND m2.group_id IS NULL ORDER BY m2.created_at DESC LIMIT 1) as last_message_time
+               (SELECT content FROM messages m2 WHERE ((m2.sender_id = u.id AND m2.receiver_id = ?) OR (m2.sender_id = ? AND m2.receiver_id = u.id)) AND m2.group_id IS NULL AND (CASE WHEN m2.sender_id = ? THEN m2.is_deleted_sender ELSE m2.is_deleted_receiver END = 0) ORDER BY m2.created_at DESC LIMIT 1) as last_message,
+               (SELECT created_at FROM messages m2 WHERE ((m2.sender_id = u.id AND m2.receiver_id = ?) OR (m2.sender_id = ? AND m2.receiver_id = u.id)) AND m2.group_id IS NULL AND (CASE WHEN m2.sender_id = ? THEN m2.is_deleted_sender ELSE m2.is_deleted_receiver END = 0) ORDER BY m2.created_at DESC LIMIT 1) as last_message_time
         FROM archived_chats ac JOIN users u ON u.id = ac.archived_user_id LEFT JOIN nicknames n ON n.user_id = ac.user_id AND n.target_user_id = u.id
         WHERE ac.user_id = ?
-    """, (user_id, user_id, user_id, user_id, user_id))
+    """, (user_id, user_id, user_id, user_id, user_id, user_id, user_id))
+    
+    archived = [dict(r) for r in archived_rows]
+    now = datetime.utcnow() + timedelta(hours=8)
+    for d in archived:
+        if d['last_message_time']:
+            try:
+                dt = datetime.strptime(d['last_message_time'], '%Y-%m-%d %H:%M:%S') + timedelta(hours=8)
+                diff = now.date() - dt.date()
+                d['last_message_time'] = dt.strftime('%I:%M %p').lower() if diff.days == 0 else 'Yesterday' if diff.days == 1 else dt.strftime('%A') if diff.days < 7 else dt.strftime('%d/%m/%y')
+            except: pass
+            
     return render_template('messages/archived.html', archived_chats=archived)
 
 @messages_bp.route('/calls')
 @login_required
 def calls_list():
     user_id = session['user_id']
-    calls = get_db().query("""
+    calls_rows = get_db().query("""
         SELECT c.*, u.username as other_username, u.profile_pic as other_profile_pic, CASE WHEN c.caller_id = ? THEN 1 ELSE 0 END as is_outgoing
         FROM calls c JOIN users u ON u.id = CASE WHEN c.caller_id = ? THEN c.receiver_id ELSE c.caller_id END
         WHERE c.caller_id = ? OR c.receiver_id = ? ORDER BY c.started_at DESC LIMIT 50
     """, (user_id, user_id, user_id, user_id))
+    
+    calls = []
+    for row in calls_rows:
+        d = dict(row)
+        if d['started_at']:
+            try:
+                dt = datetime.strptime(d['started_at'], '%Y-%m-%d %H:%M:%S') + timedelta(hours=8)
+                d['display_date'] = dt.strftime('%d/%m/%y')
+                d['display_time'] = dt.strftime('%I:%M %p').lower()
+            except:
+                d['display_date'] = ''
+                d['display_time'] = ''
+        else:
+            d['display_date'] = ''
+            d['display_time'] = ''
+        calls.append(d)
+        
     return render_template('messages/calls.html', calls=calls)
 
 @messages_bp.route('/api/calls/log', methods=['POST'])
