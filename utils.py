@@ -11,9 +11,19 @@ def get_db():
 
 def get_conn():
     """Returns a shared database connection for the current request context"""
+    import sqlite3
+    db = get_db()
+    
     if 'db_conn' not in g:
-        db = get_db()
         g.db_conn = db.get_connection()
+    else:
+        # Verify the connection is still open/usable
+        try:
+            g.db_conn.execute("SELECT 1")
+        except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+            # Connection was closed or is broken, re-open it
+            g.db_conn = db.get_connection()
+            
     return g.db_conn
 
 def create_notification(user_id, ntype, content, link=None):

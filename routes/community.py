@@ -63,8 +63,13 @@ def create_group():
         db = get_db()
         conn = db.get_connection()
         try:
+            # Server-side validation
+            if len(name) < 5:
+                flash('Group name needs a minimum of 5 characters.', 'danger')
+                return render_template('community/create.html')
+
             cursor = conn.execute(
-                "INSERT INTO groups (name, description, creator_id, image_url) VALUES (?, ?, ?, ?)",
+                "INSERT INTO groups (name, description, created_by, image_url) VALUES (?, ?, ?, ?)",
                 (name, description, user_id, image_url)
             )
             group_id = cursor.lastrowid
@@ -78,8 +83,11 @@ def create_group():
             flash('Group created successfully!', 'success')
             return redirect(url_for('community.view_group', group_id=group_id))
         except Exception as e:
+            if conn: conn.rollback()
             flash(f'Error creating group: {e}', 'danger')
             return redirect(url_for('community.create_group'))
+        finally:
+            if conn: conn.close()
             
     return render_template('community/create.html')
 
@@ -122,12 +130,14 @@ def view_group(group_id):
     # Calculate total members in the group
     member_count = len(db.query("SELECT * FROM group_members WHERE group_id = ?", (group_id,)))
     
-    # Fetch all members of the group
+    # Fetch all members of the group, prioritizing the creator
     members = db.query("""
-        SELECT u.* FROM users u
+        SELECT u.*, gm.role 
+        FROM users u
         JOIN group_members gm ON u.id = gm.user_id
         WHERE gm.group_id = ?
-    """, (group_id,))
+        ORDER BY CASE WHEN u.id = (SELECT created_by FROM groups WHERE id = ?) THEN 0 ELSE 1 END, u.username ASC
+    """, (group_id, group_id))
     
     user_id = session.get('user_id')
     is_member = False
@@ -184,8 +194,11 @@ def join_group(group_id):
         conn.execute("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", (group_id, user_id))
         conn.commit()
         flash('Joined group!', 'success')
-    except:
-        pass
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f'Error joining group: {e}', 'danger')
+    finally:
+        if conn: conn.close()
     return redirect(url_for('community.view_group', group_id=group_id))
 
 @community_bp.route('/community/<int:group_id>/leave', methods=['POST'])
@@ -194,20 +207,27 @@ def leave_group(group_id):
     user_id = session['user_id']
     db = get_db()
     conn = db.get_connection()
-    conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
-    
-    # Check if empty
-    cursor = conn.execute("SELECT COUNT(*) FROM group_members WHERE group_id = ?", (group_id,))
-    count = cursor.fetchone()[0]
-    
-    if count == 0:
-        conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
-        conn.commit()
-        flash('Group deleted as it has no members.', 'info')
-        return redirect(url_for('community.community'))
+    try:
+        conn.execute("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", (group_id, user_id))
         
-    conn.commit()
-    flash('Left group successfully.', 'info')
+        # Check if empty
+        cursor = conn.execute("SELECT COUNT(*) FROM group_members WHERE group_id = ?", (group_id,))
+        count = cursor.fetchone()[0]
+        
+        if count == 0:
+            conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+            conn.commit()
+            flash('Group deleted as it has no members.', 'info')
+            return redirect(url_for('community.community'))
+            
+        conn.commit()
+        flash('Left group successfully.', 'info')
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f'Error leaving group: {e}', 'danger')
+    finally:
+        if conn: conn.close()
+    return redirect(url_for('community.view_group', group_id=group_id))
     return redirect(url_for('community.view_group', group_id=group_id))
 
 @community_bp.route('/community/<int:group_id>/delete', methods=['POST'])
@@ -224,10 +244,17 @@ def delete_group(group_id):
         return redirect(url_for('community.view_group', group_id=group_id))
 
     conn = db.get_connection()
-    conn.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
-    conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
-    conn.commit()
-    flash('Group deleted successfully.', 'success')
+    try:
+        conn.execute("DELETE FROM group_members WHERE group_id = ?", (group_id,))
+        conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+        conn.commit()
+        flash('Group deleted successfully.', 'success')
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f'Error deleting group: {e}', 'danger')
+    finally:
+        if conn: conn.close()
+    return redirect(url_for('community.community'))
     return redirect(url_for('community.community'))
 
 @community_bp.route('/community/<int:group_id>/update', methods=['POST'])
@@ -247,40 +274,49 @@ def update_group(group_id):
     description = request.form.get('description', '')
     
     if not name:
-        flash('Group name is required.', 'danger')
+        flash('Please input a group name.', 'danger')
+        return redirect(url_for('community.view_group', group_id=group_id))
+    if len(name) < 5:
+        flash('Group name needs a minimum of 5 characters.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
 
     conn = db.get_connection()
-    
-    if 'image' in request.files:
-        file = request.files['image']
-        if file and file.filename:
-            if not allowed_file(file.filename):
-                flash('Only image files are allowed.', 'danger')
-                return redirect(url_for('community.view_group', group_id=group_id))
-            
-            # Delete old image
-            if group['image_url']:
+    try:
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    flash('Only image files are allowed.', 'danger')
+                    return redirect(url_for('community.view_group', group_id=group_id))
+                
+                # Delete old image
+                if group['image_url']:
+                    from flask import current_app
+                    old_image_path = os.path.join(current_app.root_path, 'static', group['image_url'])
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+                
+                filename = secure_filename(file.filename)
+                filename = f"group_{int(time.time())}_{filename}"
                 from flask import current_app
-                old_image_path = os.path.join(current_app.root_path, 'static', group['image_url'])
-                if os.path.exists(old_image_path):
-                    os.remove(old_image_path)
-            
-            filename = secure_filename(file.filename)
-            filename = f"group_{int(time.time())}_{filename}"
-            from flask import current_app
-            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            image_url = f"uploads/{filename}"
-            conn.execute("UPDATE groups SET name = ?, description = ?, image_url = ? WHERE id = ?", 
-                        (name, description, image_url, group_id))
+                filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename) # Fixed path
+                file.save(filepath)
+                image_url = f"uploads/groups/{filename}"
+                conn.execute("UPDATE groups SET name = ?, description = ?, image_url = ? WHERE id = ?", 
+                            (name, description, image_url, group_id))
+            else:
+                conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
         else:
-            conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
-    else:
-         conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
+             conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
 
-    conn.commit()
-    flash('Group updated successfully.', 'success')
+        conn.commit()
+        flash('Group updated successfully.', 'success')
+    except Exception as e:
+        if conn: conn.rollback()
+        flash(f'Error updating group: {e}', 'danger')
+    finally:
+        if conn: conn.close()
+    return redirect(url_for('community.view_group', group_id=group_id))
     return redirect(url_for('community.view_group', group_id=group_id))
 
 @community_bp.route('/community/<int:group_id>/post', methods=['POST'])

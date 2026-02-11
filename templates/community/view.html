@@ -86,18 +86,18 @@
                             {% for member in members %}
                             <div class="list-group-item bg-transparent px-0 d-flex align-items-center">
                                 <!-- Member Avatar -->
-                                <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
-                                    style="width: 40px; height: 40px; background-color: var(--accent-color);">
-                                    <i class="fas fa-user" style="color: var(--primary-color);"></i>
-                                </div>
+                                <img src="{{ member['profile_pic'] or 'https://ui-avatars.com/api/?name=' + member['username'] }}"
+                                    class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
                                 <!-- Member Details -->
-                                <div>
+                                <div class="flex-grow-1">
                                     <span class="fw-bold">{{ member['username'] }}</span>
                                     <span class="badge bg-light text-dark ms-2"> {{ member['role']|capitalize }} </span>
-                                    {% if group['created_by'] == member['id'] %}
-                                    <span style="color: green; font-weight: bold;"> Creator</span>
-                                    {% endif %}
                                 </div>
+                                {% if group['creator_id'] == member['id'] %}
+                                <span class="badge bg-success-soft text-success">
+                                    <i class="fas fa-crown me-1"></i> Creator
+                                </span>
+                                {% endif %}
                             </div>
                             {% endfor %}
                         </div>
@@ -367,6 +367,30 @@
         </div>
     </div>
 
+    <!-- Missing Information Modal -->
+    <div class="modal fade" id="missingInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Missing Information
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="fas fa-info-circle fa-3x text-warning"></i>
+                    </div>
+                    <p id="missingInfoMessage" class="fs-5 mb-0"></p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-warning px-4 fw-bold"
+                        data-bs-dismiss="modal">Understood</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Post Modal -->
     <div class="modal fade" id="createPostModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -431,18 +455,32 @@
     <script>
         function validateAndUpdate() {
             var form = document.getElementById('updateGroupForm');
-            if (form.checkValidity()) {
-                // Hide edit modal
-                var updateModalEl = document.getElementById('updateGroupModal');
-                var updateModal = bootstrap.Modal.getInstance(updateModalEl);
-                updateModal.hide();
+            var nameInput = form.querySelector('input[name="name"]');
+            var nameValue = nameInput.value.trim();
 
-                // Show confirmation modal
-                var confirmModal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
-                confirmModal.show();
-            } else {
-                form.reportValidity();
+            if (!nameValue) {
+                showMissingInfoModal("Please input a group name.");
+                return;
             }
+
+            if (nameValue.length < 5) {
+                showMissingInfoModal("Group name needs a minimum of 5 characters.");
+                return;
+            }
+
+            // If valid, hide update modal and show confirmation modal
+            var updateModalEl = document.getElementById('updateGroupModal');
+            var updateModal = bootstrap.Modal.getInstance(updateModalEl);
+            if (updateModal) updateModal.hide();
+
+            var confirmModal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
+            confirmModal.show();
+        }
+
+        function showMissingInfoModal(message) {
+            document.getElementById('missingInfoMessage').innerText = message;
+            var missingModal = new bootstrap.Modal(document.getElementById('missingInfoModal'));
+            missingModal.show();
         }
 
         function toggleEnlarge(event, postId, btnElement) {

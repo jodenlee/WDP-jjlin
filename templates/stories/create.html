@@ -236,17 +236,17 @@
     </div>
 </div>
 
-<!-- Validation Modal -->
-<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+<!-- Missing Information Modal -->
+<div class="modal fade" id="missingInfoModal" tabindex="-1" aria-labelledby="missingInfoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <h5 class="modal-title fw-bold text-dark fs-4" id="missingInfoModalLabel">Missing Information</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-secondary fs-5 py-3">
                 <p class="mb-2">Please fix the following issues:</p>
-                <ul id="validation-errors" class="text-danger mb-0"></ul>
+                <ul id="missing-info-errors" class="text-danger mb-0"></ul>
             </div>
             <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
                 <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
@@ -280,9 +280,9 @@
 
             if (errors.length > 0) {
                 e.preventDefault();
-                const errorList = document.getElementById('validation-errors');
+                const errorList = document.getElementById('missing-info-errors');
                 errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
-                const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                const modal = new bootstrap.Modal(document.getElementById('missingInfoModal'));
                 modal.show();
             }
         });

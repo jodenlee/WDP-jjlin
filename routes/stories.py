@@ -77,7 +77,7 @@ def stories_list():
     tags_filter = request.args.getlist('tags')  # Multiple tags can be selected
     
     # Build Query
-    query = "SELECT DISTINCT s.*, u.username, u.profile_pic FROM stories s LEFT JOIN users u ON s.author_id = u.id"
+    query = "SELECT DISTINCT s.*, u.username, u.profile_pic, u.role FROM stories s LEFT JOIN users u ON s.author_id = u.id"
     args = []
     
     # FILTER BY TAGS: Join with story_tags if tags filter is applied
@@ -250,7 +250,7 @@ def create_story():
 def view_story(story_id):
     db = get_db()
     query = """
-        SELECT s.*, u.username as author_name, u.profile_pic
+        SELECT s.*, u.username as author_name, u.profile_pic, u.role
         FROM stories s 
         LEFT JOIN users u ON s.author_id = u.id 
         WHERE s.id = ?

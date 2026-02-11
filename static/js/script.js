@@ -156,12 +156,6 @@ function checkAlertsForModals() {
             title: 'Reply Deleted',
             body: 'Your reply has been successfully removed.',
             btnClass: 'btn-primary'
-        },
-        {
-            keywords: ['flagged by our safety system'],
-            title: 'Safety Warning',
-            body: 'Your content has been flagged by our safety system. Please ensure it follows community guidelines.',
-            btnClass: 'btn-danger'
         }
     ];
 

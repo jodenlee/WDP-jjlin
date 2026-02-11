@@ -587,10 +587,20 @@ class Database:
     def query(self, query, args=(), one=False):
         """Helper method to execute queries."""
         from flask import g, has_app_context
+        import sqlite3
         # Use shared connection if in request context
         use_g = has_app_context()
         if use_g and hasattr(g, 'db_conn'):
-            conn = g.db_conn
+            try:
+                # Check if connection is closed by performing a dummy operation or checking a known attribute
+                # sqlite3 connections don't have a reliable 'is_closed' property, 
+                # but we can check if it's usable.
+                g.db_conn.execute("SELECT 1")
+                conn = g.db_conn
+            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+                # Connection is closed or broken, open a new one
+                g.db_conn = self.get_connection()
+                conn = g.db_conn
             should_close = False
         else:
             conn = self.get_connection()
@@ -600,20 +610,26 @@ class Database:
             cursor = conn.cursor()
             cursor.execute(query, args)
             rv = cursor.fetchall()
-            # Only commit/close if we opened it here or it's not a read-only query
-            # sqlite3 needs commit for writes but for consistency we commit if we opened it
+            # Only commit if we opened it here or it's not a read-only query
             if should_close:
                 conn.commit()
             return (rv[0] if rv else None) if one else rv
         finally:
             if should_close:
                 conn.close()
+
     def set_setting(self, key, value):
         """Sets a value in the settings table."""
         from flask import g, has_app_context
+        import sqlite3
         use_g = has_app_context()
         if use_g and hasattr(g, 'db_conn'):
-            conn = g.db_conn
+            try:
+                g.db_conn.execute("SELECT 1")
+                conn = g.db_conn
+            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+                g.db_conn = self.get_connection()
+                conn = g.db_conn
             should_close = False
         else:
             conn = self.get_connection()

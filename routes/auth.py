@@ -94,7 +94,6 @@ def login():
                     (user['id'], email, otp_code, expires_at)
                 )
                 conn.commit()
-                conn.close()
                 
                 # Send OTP email
                 email_sent = send_verification_email(email, otp_code, purpose='login')
@@ -252,7 +251,6 @@ def complete_google_setup():
         (username, email, password_hash, role, full_name)
     )
     conn.commit()
-    conn.close()
     
     # Get the newly created user
     user = db.query("SELECT * FROM users WHERE email = ?", (email,), one=True)
@@ -352,7 +350,6 @@ def register():
                     (form['email'], otp_code, expires_at)
                 )
                 conn.commit()
-                conn.close()
                 
                 email_sent = send_verification_email(form['email'], otp_code, purpose='registration')
                 session['pending_verification_email'] = form['email']
@@ -400,7 +397,6 @@ def verify_email():
                 conn.execute("UPDATE email_verifications SET is_used = 1 WHERE id = ?", (verification['id'],))
                 conn.execute("UPDATE users SET is_verified = 1 WHERE email = ?", (email,))
                 conn.commit()
-                conn.close()
                 
                 session.pop('pending_verification_email', None)
                 flash('Email verified successfully! You can now log in.', 'success')
@@ -428,7 +424,6 @@ def resend_verification():
         (email, otp_code, expires_at)
     )
     conn.commit()
-    conn.close()
     
     email_sent = send_verification_email(email, otp_code, purpose='registration')
     
@@ -471,7 +466,6 @@ def verify_login_otp():
                 conn = get_conn()
                 conn.execute("UPDATE login_otps SET is_used = 1 WHERE id = ?", (otp_record['id'],))
                 conn.commit()
-                conn.close()
                 
                 user = db.query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
                 
@@ -511,7 +505,6 @@ def verify_login_otp():
                         (user['id'], device_token, expires_at)
                     )
                     conn.commit()
-                    conn.close()
                     
                     response.set_cookie('trusted_device', device_token, max_age=30*24*60*60, httponly=True)
                 
@@ -541,7 +534,6 @@ def resend_login_otp():
         (user_id, email, otp_code, expires_at)
     )
     conn.commit()
-    conn.close()
     
     email_sent = send_verification_email(email, otp_code, purpose='login')
     
@@ -795,7 +787,6 @@ def update_language():
         conn = get_db().get_connection()
         conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
         conn.commit()
-        conn.close()
     
     # Update language in session for both guests and logged-in users
     session['language'] = language

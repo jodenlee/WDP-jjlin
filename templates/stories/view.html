@@ -209,6 +209,10 @@
                         </div>
                         <span class="fw-bold fs-5">{{ _('Posted by:') }} {{ story['author_name'] or _('Unknown')
                             }}</span>
+                        <span
+                            class="badge {{ 'bg-success' if story['role'] == 'senior' else 'bg-info' }} rounded-pill px-3 py-2 fw-bold shadow-sm ms-2">
+                            {{ _('SENIOR') if story['role'] == 'senior' else _('YOUTH') }}
+                        </span>
                     </div>
                 </div>
 
@@ -453,17 +457,17 @@
         </div>
     </div>
 </div>
-<!-- Validation Modal -->
-<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+<!-- Missing Information Modal -->
+<div class="modal fade" id="missingInfoModal" tabindex="-1" aria-labelledby="missingInfoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                <h5 class="modal-title fw-bold text-dark fs-4" id="missingInfoModalLabel">Missing Information</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-secondary fs-5 py-3">
                 <p class="mb-2">Please fix the following issues:</p>
-                <ul id="validation-errors" class="text-danger mb-0"></ul>
+                <div id="missing-info-errors" class="text-danger"></div>
             </div>
             <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
                 <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
@@ -510,6 +514,12 @@
         myModal.show();
     }
 
+    function showMissingInfoModal(messageHtml) {
+        document.getElementById('missing-info-errors').innerHTML = messageHtml;
+        var modal = new bootstrap.Modal(document.getElementById('missingInfoModal'));
+        modal.show();
+    }
+
     // AJAX handlers for comment, like, and reply
     document.addEventListener('DOMContentLoaded', function () {
         // Handle main comment form submission
@@ -521,12 +531,7 @@
                 const content = formData.get('content').trim();
 
                 if (!content) {
-                    const errorList = document.getElementById('validation-errors');
-                    if (errorList) {
-                        errorList.innerHTML = '<li>Comment content is required.</li>';
-                        const modal = new bootstrap.Modal(document.getElementById('validationModal'));
-                        modal.show();
-                    }
+                    showMissingInfoModal('<ul class="mb-0"><li>Comment content is required.</li></ul>');
                     return;
                 }
 
@@ -543,7 +548,11 @@
                             // Reload to show new comment (or implement dynamic insert)
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post comment');
+                            if (data.error && data.error.indexOf('flagged') !== -1) {
+                                showModerationModal(data.error);
+                            } else {
+                                alert(data.error || 'Failed to post comment');
+                            }
                         }
                     })
                     .catch(() => location.reload());
@@ -605,7 +614,11 @@
                             // Reload to show new reply
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post reply');
+                            if (data.error && data.error.indexOf('flagged') !== -1) {
+                                showModerationModal(data.error);
+                            } else {
+                                alert(data.error || 'Failed to post reply');
+                            }
                         }
                     })
                     .catch(() => location.reload());
@@ -630,7 +643,11 @@
                         if (data.success) {
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to update reply');
+                            if (data.error && data.error.indexOf('flagged') !== -1) {
+                                showModerationModal(data.error);
+                            } else {
+                                alert(data.error || 'Failed to update reply');
+                            }
                         }
                     })
                     .catch(() => location.reload());
