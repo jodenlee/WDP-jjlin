@@ -86,9 +86,11 @@
                             {% for member in members %}
                             <div class="list-group-item bg-transparent px-0 d-flex align-items-center">
                                 <!-- Member Avatar -->
-                                <div class="rounded-circle me-3 d-flex align-items-center justify-content-center"
-                                    style="width: 40px; height: 40px; background-color: var(--accent-color);">
-                                    <i class="fas fa-user" style="color: var(--primary-color);"></i>
+                                <div class="me-3">
+                                    <img src="{{ member.profile_pic if member.profile_pic else 'https://ui-avatars.com/api/?name=' + member.username }}"
+                                        class="rounded-circle shadow-sm"
+                                        style="width: 44px; height: 44px; object-fit: cover; border: 2px solid var(--accent-color);"
+                                        alt="{{ member.username }}">
                                 </div>
                                 <!-- Member Details -->
                                 <div>

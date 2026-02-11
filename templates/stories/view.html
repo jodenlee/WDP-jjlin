@@ -543,7 +543,11 @@
                             // Reload to show new comment (or implement dynamic insert)
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post comment');
+                            if (data.error && data.error.includes('safety system')) {
+                                window.showGlobalModal('Safety Warning', data.error, 'btn-danger');
+                            } else {
+                                alert(data.error || 'Failed to post comment');
+                            }
                         }
                     })
                     .catch(() => location.reload());
@@ -605,7 +609,11 @@
                             // Reload to show new reply
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to post reply');
+                            if (data.error && data.error.includes('safety system')) {
+                                window.showGlobalModal('Safety Warning', data.error, 'btn-danger');
+                            } else {
+                                alert(data.error || 'Failed to post reply');
+                            }
                         }
                     })
                     .catch(() => location.reload());
@@ -630,7 +638,11 @@
                         if (data.success) {
                             location.reload();
                         } else {
-                            alert(data.error || 'Failed to update reply');
+                            if (data.error && data.error.includes('safety system')) {
+                                window.showGlobalModal('Safety Warning', data.error, 'btn-danger');
+                            } else {
+                                alert(data.error || 'Failed to update reply');
+                            }
                         }
                     })
                     .catch(() => location.reload());

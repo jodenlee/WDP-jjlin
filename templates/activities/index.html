@@ -24,17 +24,14 @@
 
     <!-- Search & Filters -->
     <div class="card border-0 shadow-sm p-3 mb-4 bg-light">
-        <form action="{{ url_for('activities.activities_list') }}" method="get" class="row g-2 align-items-center">
+        <form action="{{ url_for('activities.activities_list') }}" method="get" class="row g-2 align-items-center"
+            id="search-form">
             <!-- Search -->
-            <div class="col-12 col-md-10 position-relative">
-                <input type="text" name="search" class="form-control form-control-lg pe-5 search-bar-text"
-                    placeholder="{{ _('Search groups...') }}" value="{{ request.args.get('search', '') }}">
-            </div>
-
-            <!-- Location -->
-            <div class="col-6 col-md-3">
-                <input type="text" name="location" class="form-control form-control-lg search-bar-text"
-                    placeholder="{{ _('Location') }}" value="{{ loc_q }}">
+            <div class="col-12 col-md-5 position-relative">
+                <input type="text" name="q" id="search-input" class="form-control form-control-lg pe-5 search-bar-text"
+                    placeholder="{{ _('Search activities...') }}" value="{{ q }}">
+                <i class="fas fa-times position-absolute top-50 end-0 translate-middle-y me-4 text-muted cursor-pointer"
+                    id="clear-search" style="cursor: pointer; display: none;"></i>
             </div>
 
             <!-- Sorting -->
@@ -46,12 +43,62 @@
                 </select>
             </div>
 
+            <!-- Location -->
+            <div class="col-6 col-md-4">
+                <div class="input-group">
+                    <input type="text" id="location-filter" name="location"
+                        class="form-control form-control-lg search-bar-text" placeholder="{{ _('Location') }}"
+                        value="{{ loc_q }}">
+                    <button type="button" class="btn btn-outline-secondary border-start-0 border" id="clear-location"
+                        style="display: none;" title="{{ _('Clear Location') }}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button type="button" id="use-location-btn" class="btn btn-outline-secondary"
+                        onclick="populateLocationField('location-filter', 'use-location-btn')"
+                        title="{{ _('Use My Location') }}">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                </div>
+            </div>
+
             <!-- Search Button -->
-            <div class="col-12 col-md-2 d-grid">
-                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i> {{ _('Search')
-                    }}</button>
+            <div class="col-12 col-md-1 d-grid">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-search"></i></button>
             </div>
         </form>
+        <script src="{{ url_for('static', filename='js/geolocation.js') }}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const searchInput = document.getElementById('search-input');
+                const clearSearchBtn = document.getElementById('clear-search');
+                const locationInput = document.getElementById('location-filter');
+                const clearLocationBtn = document.getElementById('clear-location');
+
+                function toggleClearButton(input, button) {
+                    if (button) button.style.display = input.value.trim() !== '' ? 'block' : 'none';
+                }
+
+                if (searchInput) {
+                    toggleClearButton(searchInput, clearSearchBtn);
+                    searchInput.addEventListener('input', () => toggleClearButton(searchInput, clearSearchBtn));
+                    clearSearchBtn.addEventListener('click', () => {
+                        searchInput.value = '';
+                        toggleClearButton(searchInput, clearSearchBtn);
+                        searchInput.focus();
+                    });
+                }
+
+                if (locationInput) {
+                    toggleClearButton(locationInput, clearLocationBtn);
+                    locationInput.addEventListener('input', () => toggleClearButton(locationInput, clearLocationBtn));
+                    clearLocationBtn.addEventListener('click', () => {
+                        locationInput.value = '';
+                        toggleClearButton(locationInput, clearLocationBtn);
+                        locationInput.focus();
+                    });
+                }
+            });
+        </script>
     </div>
 </section>
 

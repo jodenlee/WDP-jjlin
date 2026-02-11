@@ -164,12 +164,19 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 group_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
+                role TEXT DEFAULT 'member',
                 joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (group_id) REFERENCES groups (id),
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(group_id, user_id)
             )
         ''')
+
+        # Add role column to group_members if not exists
+        try:
+            cursor.execute("SELECT role FROM group_members LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_members ADD COLUMN role TEXT DEFAULT 'member'")
 
         # Group Posts Table
         cursor.execute('''

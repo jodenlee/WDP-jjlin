@@ -95,24 +95,24 @@ function checkAlertsForModals() {
     // List of triggers that should convert an alert into a modal
     const modalTriggers = [
         {
-            keywords: ['Story created successfully!', 'Story updated successfully!'],
-            title: 'Story Posted!',
-            body: 'Your story has been successfully shared with the community.'
+            keywords: ['Story created successfully!', 'Story updated successfully!', 'Group created successfully!', 'Group post created successfully!', 'Post created successfully!', 'Comment posted successfully!', 'Reply posted successfully!'],
+            title: 'Content Posted!',
+            body: 'Your content has been successfully shared with the community.'
         },
         {
-            keywords: ['Story updated successfully!'], // Handle specific update text if needed differently
-            title: 'Story Updated!',
-            body: 'Your story has been successfully updated.'
+            keywords: ['Story updated successfully!', 'Group updated successfully!', 'Post updated successfully!', 'Comment updated successfully!', 'Reply updated successfully!'],
+            title: 'Updated!',
+            body: 'Your changes have been successfully saved.'
         },
         {
-            keywords: ['Story reported'],
+            keywords: ['Story reported', 'Group reported', 'Comment reported'],
             title: 'Report Submitted',
             body: 'Thank you for helping keep our community safe.'
         },
         {
-            keywords: ['already reported this story'],
+            keywords: ['already reported this story', 'already reported this group', 'already reported this comment'],
             title: 'Already Reported',
-            body: 'You have already reported this story. We are reviewing it.',
+            body: 'You have already reported this item. We are reviewing it.',
             btnClass: 'btn-primary'
         },
         {
@@ -205,6 +205,31 @@ function checkAlertsForModals() {
         }
     });
 }
+
+/**
+ * Global helper to trigger the success/warning modal programmatically.
+ * Useful for AJAX responses.
+ */
+window.showGlobalModal = function (title, body, btnClass = 'btn-primary') {
+    const modalTitle = document.getElementById('globalSuccessModalLabel');
+    const modalBody = document.getElementById('globalSuccessModalBody');
+    const modalBtn = document.getElementById('globalSuccessModalBtn');
+
+    if (modalTitle && modalBody) {
+        modalTitle.textContent = title;
+        modalBody.textContent = body;
+
+        if (modalBtn) {
+            modalBtn.className = 'btn px-5 fw-bold ' + btnClass;
+        }
+
+        const modalEl = document.getElementById('globalSuccessModal');
+        if (modalEl) {
+            const myModal = new bootstrap.Modal(modalEl);
+            myModal.show();
+        }
+    }
+};
 
 
 

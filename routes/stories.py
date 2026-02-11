@@ -763,7 +763,7 @@ def delete_story(story_id):
     conn.execute("DELETE FROM comments WHERE story_id = ?", (story_id,))
     conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
     conn.commit()
-    flash('Story deleted successfully.', 'success')
+    flash('Story deleted successfully!', 'success')
     return redirect(url_for('stories.stories_list'))
 
 # ADD COMMENT ACTION: Appends a new user comment to a story thread
@@ -850,7 +850,7 @@ def edit_comment(comment_id):
     conn = db.get_connection()
     conn.execute("UPDATE comments SET content = ? WHERE id = ?", (new_content, comment_id))
     conn.commit()
-    flash('Comment updated.', 'success')
+    flash('Comment updated successfully!', 'success')
     return redirect(request.referrer)
 
 # DELETE COMMENT ACTION: Removes a user comment from a story thread
@@ -876,7 +876,7 @@ def delete_comment(comment_id):
     conn.execute("DELETE FROM comment_likes WHERE comment_id = ?", (comment_id,))
     conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
     conn.commit()
-    flash('Comment deleted.', 'info')
+    flash('Comment deleted successfully!', 'info')
     return redirect(request.referrer)
 
 # TOGGLE COMMENT LIKE ACTION: Like or unlike a comment
@@ -974,7 +974,7 @@ def add_comment_reply(comment_id):
             }
         })
     
-    flash('Reply added.', 'success')
+    flash('Reply posted successfully!', 'success')
     return redirect(request.referrer)
 
 # EDIT COMMENT REPLY ACTION: Updates the content of an existing reply
@@ -997,6 +997,13 @@ def edit_comment_reply(reply_id):
     if not reply:
         return jsonify({'success': False, 'error': 'Reply not found'}), 404
         
+    # CONTENT MODERATION CHECK
+    if check_content_moderation(content):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Your content has been flagged by our safety system.'}), 400
+        flash('Your content has been flagged by our safety system. Please ensure your edit follows community guidelines.', 'danger')
+        return redirect(request.referrer)
+
     if reply['user_id'] != user_id:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
@@ -1010,7 +1017,7 @@ def edit_comment_reply(reply_id):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'content': content})
     
-    flash('Reply updated.', 'success')
+    flash('Reply updated successfully!', 'success')
     return redirect(request.referrer)
 
 # DELETE COMMENT REPLY ACTION: Removes a reply from a comment
@@ -1033,5 +1040,5 @@ def delete_comment_reply(reply_id):
     conn.execute("DELETE FROM comment_replies WHERE id = ?", (reply_id,))
     conn.commit()
     
-    flash('Reply deleted.', 'info')
+    flash('Reply deleted successfully!', 'info')
     return redirect(request.referrer)

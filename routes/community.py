@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from utils import get_db, login_required, create_notification
+from utils import get_db, login_required, create_notification, check_content_moderation
 from werkzeug.utils import secure_filename
 import os
 import time
@@ -50,21 +50,21 @@ def create_group():
                 if not allowed_file(file.filename):
                     flash('Only image files are allowed.', 'danger')
                     return render_template('community/create.html')
+                
                 filename = secure_filename(file.filename)
                 # Ensure unique filename
                 filename = f"group_{int(time.time())}_{filename}"
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                # Ensure unique filename
-                filename = f"{int(time.time())}_{filename}"
+                
+                # Save file
                 file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename))
                 image_url = f"uploads/groups/{filename}"
                 
         db = get_db()
         conn = db.get_connection()
         try:
+            # FIX: Changed creator_id to created_by to match database schema
             cursor = conn.execute(
-                "INSERT INTO groups (name, description, creator_id, image_url) VALUES (?, ?, ?, ?)",
+                "INSERT INTO groups (name, description, created_by, image_url) VALUES (?, ?, ?, ?)",
                 (name, description, user_id, image_url)
             )
             group_id = cursor.lastrowid
@@ -80,6 +80,8 @@ def create_group():
         except Exception as e:
             flash(f'Error creating group: {e}', 'danger')
             return redirect(url_for('community.create_group'))
+        finally:
+            conn.close()
             
     return render_template('community/create.html')
 
@@ -122,12 +124,14 @@ def view_group(group_id):
     # Calculate total members in the group
     member_count = len(db.query("SELECT * FROM group_members WHERE group_id = ?", (group_id,)))
     
-    # Fetch all members of the group
+    # Fetch all members of the group, prioritizing the creator
     members = db.query("""
-        SELECT u.* FROM users u
+        SELECT u.*, gm.role 
+        FROM users u
         JOIN group_members gm ON u.id = gm.user_id
         WHERE gm.group_id = ?
-    """, (group_id,))
+        ORDER BY (u.id = ?) DESC, u.username ASC
+    """, (group_id, group['created_by']))
     
     user_id = session.get('user_id')
     is_member = False
@@ -280,7 +284,7 @@ def update_group(group_id):
          conn.execute("UPDATE groups SET name = ?, description = ? WHERE id = ?", (name, description, group_id))
 
     conn.commit()
-    flash('Group updated successfully.', 'success')
+    flash('Group updated successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=group_id))
 
 @community_bp.route('/community/<int:group_id>/post', methods=['POST'])
@@ -289,6 +293,11 @@ def create_group_post(group_id):
     user_id = session['user_id']
     content = request.form['content']
     
+    # CONTENT MODERATION CHECK
+    if check_content_moderation(content):
+        flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
+        return redirect(url_for('community.view_group', group_id=group_id))
+
     db = get_db()
     conn = db.get_connection()
     conn.execute(
@@ -296,7 +305,7 @@ def create_group_post(group_id):
         (group_id, user_id, content)
     )
     conn.commit()
-    flash('Post created!', 'success')
+    flash('Post created successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=group_id))
 
 @community_bp.route('/community/post/<int:post_id>/update', methods=['POST'])
@@ -305,6 +314,11 @@ def update_group_post(post_id):
     user_id = session['user_id']
     new_content = request.form['content']
     
+    # CONTENT MODERATION CHECK
+    if check_content_moderation(new_content):
+        flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
+        return redirect(request.referrer)
+
     db = get_db()
     post = db.query("SELECT * FROM group_posts WHERE id = ?", (post_id,), one=True)
     
@@ -319,7 +333,7 @@ def update_group_post(post_id):
     conn.execute("UPDATE group_posts SET content = ? WHERE id = ?", (new_content, post_id))
     conn.commit()
     
-    flash('Post updated.', 'success')
+    flash('Post updated successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=post['group_id']))
 
 @community_bp.route('/community/post/<int:post_id>/delete', methods=['POST'])
@@ -341,7 +355,7 @@ def delete_group_post(post_id):
     conn.execute("DELETE FROM group_posts WHERE id = ?", (post_id,))
     conn.commit()
     
-    flash('Post deleted.', 'success')
+    flash('Post deleted successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=post['group_id']))
 
 @community_bp.route('/community/post/<int:post_id>/like', methods=['POST'])
@@ -385,6 +399,11 @@ def create_group_post_comment(post_id):
     user_id = session['user_id']
     content = request.form['content']
     
+    # CONTENT MODERATION CHECK
+    if check_content_moderation(content):
+        flash('Your content has been flagged by our safety system. Please ensure your comment follows community guidelines.', 'danger')
+        return redirect(request.referrer)
+
     db = get_db()
     conn = db.get_connection()
     post = db.query("SELECT group_id FROM group_posts WHERE id = ?", (post_id,), one=True)
@@ -405,6 +424,7 @@ def create_group_post_comment(post_id):
                 f"{sender['username']} commented on your post",
                 url_for('community.view_group', group_id=post_info['group_id'])
             )
+        flash('Comment posted successfully!', 'success')
     
     if post:
         return redirect(url_for('community.view_group', group_id=post['group_id']))
@@ -433,7 +453,7 @@ def update_group_post_comment(comment_id):
     conn.execute("UPDATE group_post_comments SET content = ? WHERE id = ?", (new_content, comment_id))
     conn.commit()
     
-    flash('Comment updated.', 'success')
+    flash('Comment updated successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=post['group_id']))
 
 @community_bp.route('/community/post/comment/<int:comment_id>/delete', methods=['POST'])
@@ -456,5 +476,5 @@ def delete_group_post_comment(comment_id):
     conn.execute("DELETE FROM group_post_comments WHERE id = ?", (comment_id,))
     conn.commit()
     
-    flash('Comment deleted.', 'success')
+    flash('Comment deleted successfully!', 'success')
     return redirect(url_for('community.view_group', group_id=post['group_id']))
