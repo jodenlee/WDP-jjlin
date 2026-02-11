@@ -58,6 +58,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.querySelector('form');
@@ -67,19 +70,38 @@
             const name = document.getElementById('name').value.trim();
 
             if (!name) {
-                errors.push('Group name is required.');
+                errors.push('Please input a group name.');
             } else if (name.length < 5) {
-                errors.push('Group name must be at least 5 characters.');
+                errors.push('Group name needs a minimum of 5 characters.');
             }
 
             if (errors.length > 0) {
                 e.preventDefault();
                 const errorList = document.getElementById('validation-errors');
                 errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
-                const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+                const modalEl = document.getElementById('validationModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 modal.show();
             }
         });
+
+        // Trigger modal if server-side validation error exists
+        const flashMessages = document.querySelectorAll('.modal-alert-check');
+        const validationErrors = [];
+        flashMessages.forEach(msg => {
+            const text = msg.textContent.trim();
+            if (text.includes('Please input a group name.') || text.includes('Group name needs a minimum of 5 characters.')) {
+                validationErrors.push(text);
+            }
+        });
+
+        if (validationErrors.length > 0) {
+            const errorList = document.getElementById('validation-errors');
+            errorList.innerHTML = validationErrors.map(err => `<li>${err}</li>`).join('');
+            const modalEl = document.getElementById('validationModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
     });
 </script>
 {% endblock %}

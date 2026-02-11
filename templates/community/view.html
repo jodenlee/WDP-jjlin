@@ -324,6 +324,7 @@
                                 required minlength="5"
                                 oninvalid="if(this.value.length > 0 && this.value.length < 5) this.setCustomValidity('Have at least 5 characters'); else this.setCustomValidity('');"
                                 oninput="this.setCustomValidity('');">
+                            <div class="form-text">Group name must be at least 5 characters.</div>
                         </div>
                         <div class="mb-3">
                             <label for="description" class="form-label fw-bold">Description</label>
@@ -430,299 +431,6 @@
         </div>
     </div>
 
-    <script>
-        function validateAndUpdate() {
-            var form = document.getElementById('updateGroupForm');
-            if (form.checkValidity()) {
-                // Hide edit modal
-                var updateModalEl = document.getElementById('updateGroupModal');
-                var updateModal = bootstrap.Modal.getInstance(updateModalEl);
-                updateModal.hide();
-
-                // Show confirmation modal
-                var confirmModal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
-                confirmModal.show();
-            } else {
-                form.reportValidity();
-            }
-        }
-
-        function toggleEnlarge(event, postId, btnElement) {
-            event.preventDefault(); // Prevent default anchor behavior
-            var postCard = document.getElementById(postId);
-            postCard.classList.toggle('enlarged-post');
-
-            if (postCard.classList.contains('enlarged-post')) {
-                btnElement.innerHTML = '<i class="fas fa-compress-alt me-2"></i> Shrink Post';
-            } else {
-                btnElement.innerHTML = '<i class="fas fa-expand-alt me-2"></i> Enlarge Post';
-            }
-        }
-
-        // Voice Recording Logic
-        document.addEventListener('DOMContentLoaded', function () {
-            const recordButton = document.getElementById('recordButton');
-            const stopButton = document.getElementById('stopButton');
-            const retryButton = document.getElementById('retryButton');
-            const audioPreview = document.getElementById('audioPreview');
-            const audioPreviewContainer = document.getElementById('audioPreviewContainer');
-            const recordingControls = document.getElementById('recordingControls');
-            const recordingStatus = document.getElementById('recordingStatus');
-            const timerDisplay = document.getElementById('timer');
-            const createPostForm = document.getElementById('createPostForm');
-            const postContent = document.getElementById('postContent');
-            const submitPostButton = document.getElementById('submitPostButton');
-
-            let mediaRecorder;
-            let audioChunks = [];
-            let audioBlob = null;
-            let startTime;
-            let timerInterval;
-
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                // Permissions and setup handled on click to avoid annoying popups on page load
-            } else {
-                recordButton.disabled = true;
-                recordButton.innerText = "Audio not supported";
-            }
-
-            recordButton.addEventListener('click', async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-
-                    mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' }); // or 'audio/mp3' if supported but wav is safer
-                        const audioUrl = URL.createObjectURL(audioBlob);
-                        audioPreview.src = audioUrl;
-
-                        audioChunks = [];
-
-                        // UI Updates
-                        recordingControls.classList.add('d-none');
-                        audioPreviewContainer.classList.remove('d-none');
-                        stopTimer();
-
-                        if (submitPostButton) submitPostButton.disabled = false;
-                    };
-
-                    mediaRecorder.start();
-                    if (submitPostButton) submitPostButton.disabled = true;
-
-                    // UI Updates
-                    recordButton.classList.add('d-none');
-                    stopButton.classList.remove('d-none');
-                    recordingStatus.classList.remove('d-none');
-                    startTimer();
-
-                } catch (err) {
-                    console.error("Error accessing microphone:", err);
-                    alert("Could not access microphone. Please ensure you have granted permission.");
-                }
-            });
-
-            stopButton.addEventListener('click', () => {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Stop stream
-                }
-            });
-
-            retryButton.addEventListener('click', () => {
-                audioBlob = null;
-                audioPreview.src = '';
-
-                audioPreviewContainer.classList.add('d-none');
-                recordingControls.classList.remove('d-none');
-                recordButton.classList.remove('d-none');
-                stopButton.classList.add('d-none');
-                recordingStatus.classList.add('d-none');
-                timerDisplay.innerText = "00:00";
-            });
-
-            // Form Submission Interception
-            createPostForm.addEventListener('submit', function (event) {
-
-                // Validation: Must have text OR audio
-                if (!postContent.value.trim() && !audioBlob) {
-                    event.preventDefault();
-                    alert("Please enter text or record a voice message.");
-                    return;
-                }
-
-                if (audioBlob) {
-                    event.preventDefault();
-                    const formData = new FormData(createPostForm);
-                    formData.append('audio', audioBlob, 'recording.wav');
-
-                    if (submitPostButton) {
-                        submitPostButton.disabled = true;
-                        submitPostButton.innerText = "Posting...";
-                    }
-
-                    fetch(createPostForm.action, {
-                        method: 'POST',
-                        body: formData
-                    })
-                        .then(response => {
-                            if (response.redirected) {
-                                window.location.href = response.url;
-                            } else {
-                                // Fallback if not redirected (e.g. error), reload or handle
-                                window.location.reload();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert("An error occurred while posting: " + error.message);
-                            if (submitPostButton) {
-                                submitPostButton.disabled = false;
-                                submitPostButton.innerText = "Post";
-                            }
-                        });
-                }
-                // If no audio, let the form submit normally
-            });
-
-            function startTimer() {
-                startTime = Date.now();
-                timerInterval = setInterval(() => {
-                    const elapsedTime = Date.now() - startTime;
-                    const seconds = Math.floor((elapsedTime / 1000) % 60);
-                    const minutes = Math.floor((elapsedTime / 1000 / 60));
-                    timerDisplay.innerText = `${pad(minutes)}:${pad(seconds)}`;
-                }, 1000);
-            }
-
-            function stopTimer() {
-                clearInterval(timerInterval);
-            }
-
-            function pad(number) {
-                return number.toString().padStart(2, '0');
-            }
-        });
-
-        // Speech-to-Text (Dictation) Logic
-        const dictateButton = document.getElementById('dictateButton');
-        const dictateStatus = document.getElementById('dictateStatus');
-        const postContentTextarea = document.getElementById('postContent');
-
-        let recognition = null;
-        let isListening = false;
-
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = function (event) {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    }
-                }
-                if (finalTranscript) {
-                    postContentTextarea.value += finalTranscript + ' ';
-                }
-            };
-
-            recognition.onerror = function (event) {
-                console.error('Speech recognition error:', event.error);
-                stopDictation();
-                alert('Speech recognition error: ' + event.error);
-            };
-
-            recognition.onend = function () {
-                if (isListening) {
-                    recognition.start(); // Restart if still listening
-                }
-            };
-
-            if (dictateButton) {
-                dictateButton.addEventListener('click', function () {
-                    if (isListening) {
-                        stopDictation();
-                    } else {
-                        startDictation();
-                    }
-                });
-            }
-        } else {
-            if (dictateButton) {
-                dictateButton.disabled = true;
-                dictateButton.innerHTML = '<i class="fas fa-microphone-alt-slash"></i> Not Supported';
-            }
-        }
-
-        function startDictation() {
-            if (recognition) {
-                isListening = true;
-                recognition.start();
-                dictateButton.innerHTML = '<i class="fas fa-stop"></i> Stop Dictation';
-                dictateButton.classList.remove('btn-outline-primary');
-                dictateButton.classList.add('btn-danger');
-                dictateStatus.classList.remove('d-none');
-            }
-        }
-
-        function stopDictation() {
-            if (recognition) {
-                isListening = false;
-                recognition.stop();
-                dictateButton.innerHTML = '<i class="fas fa-microphone-alt"></i> Dictate';
-                dictateButton.classList.remove('btn-danger');
-                dictateButton.classList.add('btn-outline-primary');
-                dictateStatus.classList.add('d-none');
-            }
-        }
-
-        // Text-to-Speech (Read Aloud) Logic - Global function
-        window.readAloud = function (elementId, buttonElement) {
-            const textElement = document.getElementById(elementId);
-            if (!textElement) return;
-
-            const text = textElement.innerText;
-
-            if ('speechSynthesis' in window) {
-                // Stop any ongoing speech
-                if (window.speechSynthesis.speaking) {
-                    window.speechSynthesis.cancel();
-                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
-                    return;
-                }
-
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-
-                utterance.onstart = function () {
-                    buttonElement.innerHTML = '<i class="fas fa-stop"></i> Stop';
-                };
-
-                utterance.onend = function () {
-                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
-                };
-
-                utterance.onerror = function () {
-                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
-                };
-
-                window.speechSynthesis.speak(utterance);
-            } else {
-                alert('Text-to-speech is not supported in your browser.');
-            }
-        };
-
-    </script>
-
     <style>
         .blink {
             animation: blinker 1s linear infinite;
@@ -780,45 +488,6 @@
         </div>
     </div>
 
-    <script>
-        function openEditPostModal(element) {
-            var url = element.getAttribute('data-update-url');
-            var content = element.getAttribute('data-post-content');
-
-            document.getElementById('editPostForm').action = url;
-            document.getElementById('editPostContent').value = content;
-
-            var modal = new bootstrap.Modal(document.getElementById('editPostModal'));
-            modal.show();
-        }
-
-        function openDeletePostModal(element) {
-            var url = element.getAttribute('data-delete-url');
-            document.getElementById('deletePostForm').action = url;
-
-            var modal = new bootstrap.Modal(document.getElementById('deletePostModal'));
-            modal.show();
-        }
-
-        function openEditCommentModal(element) {
-            var url = element.getAttribute('data-update-url');
-            var content = element.getAttribute('data-comment-content');
-
-            document.getElementById('editCommentForm').action = url;
-            document.getElementById('editCommentContent').value = content;
-
-            var modal = new bootstrap.Modal(document.getElementById('editCommentModal'));
-            modal.show();
-        }
-
-        function openDeleteCommentModal(element) {
-            var url = element.getAttribute('data-delete-url');
-            document.getElementById('deleteCommentForm').action = url;
-
-            var modal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
-            modal.show();
-        }
-    </script>
 
     <!-- Edit Comment Modal -->
     <div class="modal fade" id="editCommentModal" tabindex="-1" aria-hidden="true">
@@ -891,4 +560,395 @@
         </div>
     </div>
 
+    <!-- Validation Modal -->
+    <div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark fs-4" id="validationModalLabel">Missing Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-secondary fs-5 py-3">
+                    <p class="mb-2">Please fix the following issues:</p>
+                    <ul id="validation-errors" class="text-danger mb-0"></ul>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 justify-content-center">
+                    <button type="button" class="btn btn-primary px-5 fw-bold" data-bs-dismiss="modal">Okay</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endblock %}
+
+    {% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Trigger modal if server-side validation error exists
+            const flashMessages = document.querySelectorAll('.modal-alert-check');
+            const validationErrors = [];
+            flashMessages.forEach(msg => {
+                const text = msg.textContent.trim();
+                if (text.includes('Please input a group name.') || text.includes('Group name needs a minimum of 5 characters.')) {
+                    validationErrors.push(text);
+                }
+            });
+
+            if (validationErrors.length > 0) {
+                const errorList = document.getElementById('validation-errors');
+                if (errorList) {
+                    errorList.innerHTML = validationErrors.map(err => `<li>${err}</li>`).join('');
+                    const modalEl = document.getElementById('validationModal');
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
+            }
+        });
+
+        function validateAndUpdate() {
+            var form = document.getElementById('updateGroupForm');
+            var nameInput = document.getElementById('name');
+            var nameValue = nameInput.value.trim();
+            var errors = [];
+
+            if (!nameValue) {
+                errors.push('Please input a group name.');
+            } else if (nameValue.length < 5) {
+                errors.push('Group name needs a minimum of 5 characters.');
+            }
+
+            if (errors.length > 0) {
+                const errorList = document.getElementById('validation-errors');
+                errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+                const modalEl = document.getElementById('validationModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else {
+                // Hide edit modal
+                var updateModalEl = document.getElementById('updateGroupModal');
+                var updateModal = bootstrap.Modal.getInstance(updateModalEl);
+                if (updateModal) updateModal.hide();
+
+                // Show confirmation modal
+                var confirmModalEl = document.getElementById('confirmUpdateModal');
+                var confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+                confirmModal.show();
+            }
+        }
+
+        function toggleEnlarge(event, postId, btnElement) {
+            event.preventDefault(); // Prevent default anchor behavior
+            var postCard = document.getElementById(postId);
+            postCard.classList.toggle('enlarged-post');
+
+            if (postCard.classList.contains('enlarged-post')) {
+                btnElement.innerHTML = '<i class="fas fa-compress-alt me-2"></i> Shrink Post';
+            } else {
+                btnElement.innerHTML = '<i class="fas fa-expand-alt me-2"></i> Enlarge Post';
+            }
+        }
+
+        // Voice Recording Logic
+        (function () {
+            const recordButton = document.getElementById('recordButton');
+            if (!recordButton) return;
+
+            const stopButton = document.getElementById('stopButton');
+            const retryButton = document.getElementById('retryButton');
+            const audioPreview = document.getElementById('audioPreview');
+            const audioPreviewContainer = document.getElementById('audioPreviewContainer');
+            const recordingControls = document.getElementById('recordingControls');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const timerDisplay = document.getElementById('timer');
+            const createPostForm = document.getElementById('createPostForm');
+            const postContent = document.getElementById('postContent');
+            const submitPostButton = document.getElementById('submitPostButton');
+
+            let mediaRecorder;
+            let audioChunks = [];
+            let audioBlob = null;
+            let startTime;
+            let timerInterval;
+
+            if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+                recordButton.disabled = true;
+                recordButton.innerText = "Audio not supported";
+            }
+
+            recordButton.addEventListener('click', async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        audioPreview.src = audioUrl;
+
+                        audioChunks = [];
+
+                        recordingControls.classList.add('d-none');
+                        audioPreviewContainer.classList.remove('d-none');
+                        stopTimer();
+
+                        if (submitPostButton) submitPostButton.disabled = false;
+                    };
+
+                    mediaRecorder.start();
+                    if (submitPostButton) submitPostButton.disabled = true;
+
+                    recordButton.classList.add('d-none');
+                    stopButton.classList.remove('d-none');
+                    recordingStatus.classList.remove('d-none');
+                    startTimer();
+
+                } catch (err) {
+                    console.error("Error accessing microphone:", err);
+                    alert("Could not access microphone. Please ensure you have granted permission.");
+                }
+            });
+
+            if (stopButton) {
+                stopButton.addEventListener('click', () => {
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    }
+                });
+            }
+
+            if (retryButton) {
+                retryButton.addEventListener('click', () => {
+                    audioBlob = null;
+                    audioPreview.src = '';
+
+                    audioPreviewContainer.classList.add('d-none');
+                    recordingControls.classList.remove('d-none');
+                    recordButton.classList.remove('d-none');
+                    stopButton.classList.add('d-none');
+                    recordingStatus.classList.add('d-none');
+                    timerDisplay.innerText = "00:00";
+                });
+            }
+
+            if (createPostForm) {
+                createPostForm.addEventListener('submit', function (event) {
+                    if (!postContent.value.trim() && !audioBlob) {
+                        event.preventDefault();
+                        alert("Please enter text or record a voice message.");
+                        return;
+                    }
+
+                    if (audioBlob) {
+                        event.preventDefault();
+                        const formData = new FormData(createPostForm);
+                        formData.append('audio', audioBlob, 'recording.wav');
+
+                        if (submitPostButton) {
+                            submitPostButton.disabled = true;
+                            submitPostButton.innerText = "Posting...";
+                        }
+
+                        fetch(createPostForm.action, {
+                            method: 'POST',
+                            body: formData
+                        })
+                            .then(response => {
+                                if (response.redirected) {
+                                    window.location.href = response.url;
+                                } else {
+                                    window.location.reload();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert("An error occurred while posting: " + error.message);
+                                if (submitPostButton) {
+                                    submitPostButton.disabled = false;
+                                    submitPostButton.innerText = "Post";
+                                }
+                            });
+                    }
+                });
+            }
+
+            function startTimer() {
+                startTime = Date.now();
+                timerInterval = setInterval(() => {
+                    const elapsedTime = Date.now() - startTime;
+                    const seconds = Math.floor((elapsedTime / 1000) % 60);
+                    const minutes = Math.floor((elapsedTime / 1000 / 60));
+                    timerDisplay.innerText = `${pad(minutes)}:${pad(seconds)}`;
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+            }
+
+            function pad(number) {
+                return number.toString().padStart(2, '0');
+            }
+        })();
+
+        // Speech-to-Text (Dictation) Logic
+        (function () {
+            const dictateButton = document.getElementById('dictateButton');
+            const dictateStatus = document.getElementById('dictateStatus');
+            const postContentTextarea = document.getElementById('postContent');
+
+            if (!dictateButton) return;
+
+            let recognition = null;
+            let isListening = false;
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = function (event) {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (finalTranscript) {
+                        postContentTextarea.value += finalTranscript + ' ';
+                    }
+                };
+
+                recognition.onerror = function (event) {
+                    console.error('Speech recognition error:', event.error);
+                    stopDictation();
+                    alert('Speech recognition error: ' + event.error);
+                };
+
+                recognition.onend = function () {
+                    if (isListening) {
+                        recognition.start();
+                    }
+                };
+
+                dictateButton.addEventListener('click', function () {
+                    if (isListening) {
+                        stopDictation();
+                    } else {
+                        startDictation();
+                    }
+                });
+            } else {
+                dictateButton.disabled = true;
+                dictateButton.innerHTML = '<i class="fas fa-microphone-alt-slash"></i> Not Supported';
+            }
+
+            function startDictation() {
+                if (recognition) {
+                    isListening = true;
+                    recognition.start();
+                    dictateButton.innerHTML = '<i class="fas fa-stop"></i> Stop Dictation';
+                    dictateButton.classList.remove('btn-outline-primary');
+                    dictateButton.classList.add('btn-danger');
+                    dictateStatus.classList.remove('d-none');
+                }
+            }
+
+            function stopDictation() {
+                if (recognition) {
+                    isListening = false;
+                    recognition.stop();
+                    dictateButton.innerHTML = '<i class="fas fa-microphone-alt"></i> Dictate';
+                    dictateButton.classList.remove('btn-danger');
+                    dictateButton.classList.add('btn-outline-primary');
+                    dictateStatus.classList.add('d-none');
+                }
+            }
+        })();
+
+        // Text-to-Speech (Read Aloud) Logic - Global function
+        window.readAloud = function (elementId, buttonElement) {
+            const textElement = document.getElementById(elementId);
+            if (!textElement) return;
+
+            const text = textElement.innerText;
+
+            if ('speechSynthesis' in window) {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+
+                utterance.onstart = function () {
+                    buttonElement.innerHTML = '<i class="fas fa-stop"></i> Stop';
+                };
+
+                utterance.onend = function () {
+                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
+                };
+
+                utterance.onerror = function () {
+                    buttonElement.innerHTML = '<i class="fas fa-volume-up"></i> Read Aloud';
+                };
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert('Text-to-speech is not supported in your browser.');
+            }
+        };
+
+        function openEditPostModal(element) {
+            var url = element.getAttribute('data-update-url');
+            var content = element.getAttribute('data-post-content');
+
+            document.getElementById('editPostForm').action = url;
+            document.getElementById('editPostContent').value = content;
+
+            var modalEl = document.getElementById('editPostModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        function openDeletePostModal(element) {
+            var url = element.getAttribute('data-delete-url');
+            document.getElementById('deletePostForm').action = url;
+
+            var modalEl = document.getElementById('deletePostModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        function openEditCommentModal(element) {
+            var url = element.getAttribute('data-update-url');
+            var content = element.getAttribute('data-comment-content');
+
+            document.getElementById('editCommentForm').action = url;
+            document.getElementById('editCommentContent').value = content;
+
+            var modalEl = document.getElementById('editCommentModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        function openDeleteCommentModal(element) {
+            var url = element.getAttribute('data-delete-url');
+            document.getElementById('deleteCommentForm').action = url;
+
+            var modalEl = document.getElementById('deleteCommentModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    </script>
     {% endblock %}

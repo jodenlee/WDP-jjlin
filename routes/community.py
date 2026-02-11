@@ -38,7 +38,11 @@ def community():
 @login_required
 def create_group():
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form.get('name', '').strip()
+        if len(name) < 5:
+            flash('Group name needs a minimum of 5 characters.', 'danger')
+            return render_template('community/create.html')
+            
         description = request.form.get('description', '')
         user_id = session['user_id']
         
@@ -248,11 +252,11 @@ def update_group(group_id):
         return redirect(url_for('community.view_group', group_id=group_id))
 
     name = request.form.get('name', '').strip()
-    description = request.form.get('description', '')
-    
-    if not name:
-        flash('Group name is required.', 'danger')
+    if len(name) < 5:
+        flash('Group name needs a minimum of 5 characters.', 'danger')
         return redirect(url_for('community.view_group', group_id=group_id))
+
+    description = request.form.get('description', '')
 
     conn = db.get_connection()
     

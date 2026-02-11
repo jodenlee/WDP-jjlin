@@ -149,7 +149,12 @@
         <script>
             // Immediately check alerts and hide those that trigger modals
             (function () {
-                var modalKeywords = ['Welcome back!', 'Story published!', 'Story updated successfully!', 'Story reported', 'already reported this story', 'Account created successfully!', 'You have been logged out.', 'Comment posted successfully!', 'Comment deleted.'];
+                var modalKeywords = [
+                    'Welcome back!', 'Story published!', 'Story updated successfully!', 'Story reported',
+                    'already reported this story', 'Account created successfully!', 'You have been logged out.',
+                    'Comment posted successfully!', 'Comment deleted.',
+                    'Please input a group name.', 'Group name needs a minimum of 5 characters.'
+                ];
                 document.querySelectorAll('.modal-alert-check').forEach(function (alert) {
                     var text = alert.textContent.trim();
                     var shouldHide = modalKeywords.some(function (kw) { return text.includes(kw); });
@@ -194,6 +199,9 @@
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    {% block scripts %}{% endblock %}
+
     {% if g.user %}
     <script>
         function fetchNotifications() {
