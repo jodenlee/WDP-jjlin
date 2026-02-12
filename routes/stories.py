@@ -4,8 +4,16 @@ from utils import get_db, login_required, allowed_file, check_content_moderation
 import os
 import time
 import math
-from google import genai
-from google.cloud import storage
+try:
+    from google import genai
+except ImportError:
+    genai = None
+    print("WARNING: google-genai not installed. AI location insights will be disabled.")
+try:
+    from google.cloud import storage as gcs_storage
+except ImportError:
+    gcs_storage = None
+    print("WARNING: google-cloud-storage not installed. GCS uploads will fall back to local storage.")
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +24,7 @@ GENAI_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY') # User put it here based on pre
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 client = None
-if GEMINI_API_KEY:
+if genai and GEMINI_API_KEY:
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
@@ -41,21 +49,22 @@ def get_location_insight(location):
 
 def upload_to_gcs(file_obj, filename):
     """Uploads a file to Google Cloud Storage and returns the public URL."""
+    if gcs_storage is None:
+        print("GCS library not available, skipping cloud upload.")
+        return None
+    
     bucket_name = os.getenv('GCS_BUCKET_NAME')
     if not bucket_name:
         print("GCS_BUCKET_NAME not set in environment.")
         return None
     
     try:
-        storage_client = storage.Client()
+        storage_client = gcs_storage.Client()
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(f"uploads/{filename}")
         
         # Upload from the file object
         blob.upload_from_file(file_obj, content_type=file_obj.content_type)
-        
-        # Make the blob public (optional, depends on bucket settings)
-        # blob.make_public() 
         
         return blob.public_url
     except Exception as e:
@@ -165,88 +174,95 @@ def stories_list():
 @login_required
 def create_story():
     if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
-        location = request.form['location']
-        
-        # Handle file uploads
-        images = request.files.getlist('images')
-        saved_image_paths = []
-        
-        allowed_ext = current_app.config.get('ALLOWED_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'webp'})
-        upload_folder = current_app.config.get('UPLOAD_FOLDER')
+        try:
+            title = request.form['title']
+            content = request.form['content']
+            location = request.form['location']
+            
+            # Handle file uploads
+            images = request.files.getlist('images')
+            saved_image_paths = []
+            
+            allowed_ext = current_app.config.get('ALLOWED_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'webp'})
+            upload_folder = current_app.config.get('UPLOAD_FOLDER')
 
-        for image in images:
-            if image and allowed_file(image.filename, allowed_ext):
-                filename = secure_filename(image.filename)
-                filename = f"{int(time.time())}_{filename}"
+            for image in images:
+                if image and allowed_file(image.filename, allowed_ext):
+                    filename = secure_filename(image.filename)
+                    filename = f"{int(time.time())}_{filename}"
+                    
+                    # Try GCS Upload first
+                    gcs_url = upload_to_gcs(image, filename)
+                    if gcs_url:
+                        saved_image_paths.append(gcs_url)
+                    else:
+                        # Reset file stream position after GCS attempt
+                        image.seek(0)
+                        # Fallback to local storage if GCS fails
+                        os.makedirs(upload_folder, exist_ok=True)
+                        filepath = os.path.join(upload_folder, filename)
+                        image.save(filepath)
+                        saved_image_paths.append(url_for('static', filename='uploads/' + filename))
+            
+            # Validation
+            if len(title) < 3 or len(title) > 100:
+                flash('Title must be between 3 and 100 characters.', 'danger')
+                return render_template('stories/create.html', form=request.form)
                 
-                # Try GCS Upload first
-                gcs_url = upload_to_gcs(image, filename)
-                if gcs_url:
-                    saved_image_paths.append(gcs_url)
-                else:
-                    # Reset file stream position after GCS attempt
-                    image.seek(0)
-                    # Fallback to local storage if GCS fails
-                    os.makedirs(upload_folder, exist_ok=True)
-                    filepath = os.path.join(upload_folder, filename)
-                    image.save(filepath)
-                    saved_image_paths.append(request.url_root + 'static/uploads/' + filename)
-        
-        # Validation
-        if len(title) < 3 or len(title) > 100:
-            flash('Title must be between 3 and 100 characters.', 'danger')
-            return render_template('stories/create.html', form=request.form)
+            if len(content) < 10:
+                flash('Content must be at least 10 characters long.', 'danger')
+                return render_template('stories/create.html', form=request.form)
             
-        if len(content) < 10:
-            flash('Content must be at least 10 characters long.', 'danger')
-            return render_template('stories/create.html', form=request.form)
-        
-        # Content Moderation Check
-        combined_text = f"{title} {content}"
-        if check_content_moderation(combined_text):
-            flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
-            return render_template('stories/create.html', form=request.form)
+            # Content Moderation Check
+            combined_text = f"{title} {content}"
+            if check_content_moderation(combined_text):
+                flash('Your content has been flagged by our safety system. Please ensure your post follows community guidelines.', 'danger')
+                return render_template('stories/create.html', form=request.form)
 
-        # Fallback to URL if provided
-        image_url = request.form.get('image_url')
-        if not saved_image_paths and image_url:
-            main_image = image_url
-        elif saved_image_paths:
-            main_image = saved_image_paths[0]
-        else:
-            main_image = None
+            # Fallback to URL if provided
+            image_url = request.form.get('image_url')
+            if not saved_image_paths and image_url:
+                main_image = image_url
+            elif saved_image_paths:
+                main_image = saved_image_paths[0]
+            else:
+                main_image = None
+                
+            author_id = session['user_id']
+            db = get_db()
+            conn = db.get_connection()
+            cursor = conn.cursor()
             
-        author_id = session['user_id']
-        db = get_db()
-        conn = db.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "INSERT INTO stories (title, content, author_id, location, image_url) VALUES (?, ?, ?, ?, ?)",
-            (title, content, author_id, location, main_image)
-        )
-        story_id = cursor.lastrowid
-        
-        # Insert extra images (skip first one if it's already the main image)
-        for idx, img_path in enumerate(saved_image_paths[1:]):
             cursor.execute(
-                "INSERT INTO story_images (story_id, image_path, position) VALUES (?, ?, ?)",
-                (story_id, img_path, idx + 1) # Start position from 1 since 0 is logically the main image
+                "INSERT INTO stories (title, content, author_id, location, image_url) VALUES (?, ?, ?, ?, ?)",
+                (title, content, author_id, location, main_image)
             )
-        
-        # SAVE TAGS TO DATABASE: Handle tags input (comma-separated, max 5)
-        tags_input = request.form.get('tags', '')
-        tags = [tag.strip() for tag in tags_input.split(',') if tag.strip()][:5]  # Limit to 5 tags
-        for tag in tags:
-            cursor.execute("INSERT INTO story_tags (story_id, tag) VALUES (?, ?)", (story_id, tag))
+            story_id = cursor.lastrowid
             
-        conn.commit()
-        flash('Story created successfully!', 'success')
-        return redirect(url_for('stories.view_story', story_id=story_id))
+            # Insert extra images (skip first one if it's already the main image)
+            for idx, img_path in enumerate(saved_image_paths[1:]):
+                cursor.execute(
+                    "INSERT INTO story_images (story_id, image_path, position) VALUES (?, ?, ?)",
+                    (story_id, img_path, idx + 1) # Start position from 1 since 0 is logically the main image
+                )
+            
+            # SAVE TAGS TO DATABASE: Handle tags input (comma-separated, max 5)
+            tags_input = request.form.get('tags', '')
+            tags = [tag.strip() for tag in tags_input.split(',') if tag.strip()][:5]  # Limit to 5 tags
+            for tag in tags:
+                cursor.execute("INSERT INTO story_tags (story_id, tag) VALUES (?, ?)", (story_id, tag))
+                
+            conn.commit()
+            flash('Story created successfully!', 'success')
+            return redirect(url_for('stories.view_story', story_id=story_id))
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            flash(f'Error creating story: {str(e)}', 'danger')
+            return render_template('stories/create.html', form=request.form)
         
     return render_template('stories/create.html')
+
 
 # STORY DETAIL VIEW: Displays a single story with its gallery, tags, and comment thread
 @stories_bp.route('/stories/<int:story_id>')
