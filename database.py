@@ -334,6 +334,12 @@ class Database:
         except sqlite3.OperationalError:
             cursor.execute("ALTER TABLE group_posts ADD COLUMN likes INTEGER DEFAULT 0")
 
+        # Add role column to group_members if not exists
+        try:
+            cursor.execute("SELECT role FROM group_members LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_members ADD COLUMN role TEXT DEFAULT 'member'")
+
         # Add notification preference columns if not exists
         try:
             cursor.execute("SELECT notify_messages FROM users LIMIT 1")
@@ -580,7 +586,14 @@ class Database:
             )
         ''')
 
+        # Add audio_url column to group_posts if not exists
+        try:
+            cursor.execute("SELECT audio_url FROM group_posts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE group_posts ADD COLUMN audio_url TEXT")
+
         conn.commit()
+
         conn.close()
         Database._db_initialized = True
 

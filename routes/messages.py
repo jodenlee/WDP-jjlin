@@ -520,6 +520,19 @@ def unarchive_chat(user_id):
     conn.commit()
     return jsonify({'status': 'success'})
 
+@messages_bp.route('/messages/pin/<int:message_id>', methods=['POST'])
+@login_required
+def pin_message(message_id):
+    db = get_db()
+    msg = db.query("SELECT * FROM messages WHERE id = ?", (message_id,), one=True)
+    if not msg:
+        return jsonify({'status': 'error', 'message': 'Message not found'}), 404
+    new_val = 0 if msg['is_pinned'] else 1
+    conn = get_conn()
+    conn.execute("UPDATE messages SET is_pinned = ? WHERE id = ?", (new_val, message_id))
+    conn.commit()
+    return jsonify({'status': 'success', 'is_pinned': bool(new_val)})
+
 @messages_bp.route('/api/chats/pin/<int:user_id>', methods=['POST'])
 @login_required
 def pin_chat(user_id):

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from utils import get_db, login_required, create_notification
 from werkzeug.utils import secure_filename
 import os
@@ -57,7 +57,9 @@ def create_group():
                 filename = secure_filename(file.filename)
                 # Ensure unique filename
                 filename = f"{int(time.time())}_{filename}"
-                file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename))
+                groups_upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups')
+                os.makedirs(groups_upload_dir, exist_ok=True)
+                file.save(os.path.join(groups_upload_dir, filename))
                 image_url = f"uploads/groups/{filename}"
                 
         db = get_db()
@@ -291,15 +293,15 @@ def update_group(group_id):
                 
                 # Delete old image
                 if group['image_url']:
-                    from flask import current_app
                     old_image_path = os.path.join(current_app.root_path, 'static', group['image_url'])
                     if os.path.exists(old_image_path):
                         os.remove(old_image_path)
                 
                 filename = secure_filename(file.filename)
                 filename = f"group_{int(time.time())}_{filename}"
-                from flask import current_app
-                filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups', filename) # Fixed path
+                groups_upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'groups')
+                os.makedirs(groups_upload_dir, exist_ok=True)
+                filepath = os.path.join(groups_upload_dir, filename)
                 file.save(filepath)
                 image_url = f"uploads/groups/{filename}"
                 conn.execute("UPDATE groups SET name = ?, description = ?, image_url = ? WHERE id = ?", 
@@ -323,17 +325,27 @@ def update_group(group_id):
 @login_required
 def create_group_post(group_id):
     user_id = session['user_id']
-    content = request.form['content']
+    content = request.form.get('content', '')
+    
+    audio_url = None
+    audio_file = request.files.get('audio')
+    if audio_file and audio_file.filename:
+        posts_upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'posts')
+        os.makedirs(posts_upload_dir, exist_ok=True)
+        audio_filename = f"voice_{user_id}_{int(time.time())}_{secure_filename(audio_file.filename)}"
+        audio_file.save(os.path.join(posts_upload_dir, audio_filename))
+        audio_url = f"uploads/posts/{audio_filename}"
     
     db = get_db()
     conn = db.get_connection()
     conn.execute(
-        "INSERT INTO group_posts (group_id, user_id, content) VALUES (?, ?, ?)",
-        (group_id, user_id, content)
+        "INSERT INTO group_posts (group_id, user_id, content, audio_url) VALUES (?, ?, ?, ?)",
+        (group_id, user_id, content, audio_url)
     )
     conn.commit()
     flash('Post created!', 'success')
     return redirect(url_for('community.view_group', group_id=group_id))
+
 
 @community_bp.route('/community/post/<int:post_id>/update', methods=['POST'])
 @login_required

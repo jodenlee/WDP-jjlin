@@ -1611,15 +1611,15 @@
     left: 0;
     width: 100%;
     /* Use % instead of vw to respect container width if needed, or keeping vw if full width desired. Let's stick to full width but in flow keying off body/main */
-    min-height: 80vh;
-    /* Ensure enough height but allow growth */
+    height: calc(100vh - 20px);
+    /* Fixed viewport height minus margin */
     background: #F9F5F1;
     /* Cream/Light Theme Base */
     z-index: 10;
     display: flex;
     flex-direction: column;
-    /* overflow: hidden; */
-    /* Remove clipping to allow full scroll */
+    overflow: hidden;
+    /* Contain children, let chat-list scroll */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1c1c1e;
     /* Default text dark for light mode */

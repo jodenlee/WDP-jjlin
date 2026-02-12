@@ -1,9 +1,9 @@
 import os
 import uuid
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
-from utils import get_db, login_required, allowed_file, create_notification
+from utils import get_db, get_conn, login_required, allowed_file, create_notification
 
 activities_bp = Blueprint('activities', __name__)
 
@@ -124,21 +124,21 @@ def create_activity():
                 flash('Invalid file type. Allowed: PNG, JPG, JPEG, GIF, PDF, DOC, DOCX', 'danger')
                 return redirect(request.url)
 
-            from app import app # To get UPLOAD_FOLDER
             filename = secure_filename(file.filename)
             ext = filename.rsplit('.', 1)[1].lower()
             new_name = f"{uuid.uuid4().hex}.{ext}"
             
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], new_name)
+            save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], new_name)
             file.save(save_path)
             attachment_filename = new_name
 
         user_id = session['user_id']
-        db = get_db()
-        db.query(
+        conn = get_conn()
+        conn.execute(
             "INSERT INTO activities (title, description, type, location, event_date, organizer_id, attachment) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (title, description, activity_type, location, event_date, user_id, attachment_filename)
         )
+        conn.commit()
         # Re-lock after successful creation
         session.pop("activities_unlocked", None)
         flash('Activity created successfully!', 'success')
@@ -181,18 +181,19 @@ def edit_activity(activity_id):
                 flash("Invalid file type.", "danger")
                 return render_template("activities/edit.html", activity=activity)
 
-            from app import app
             filename = secure_filename(file.filename)
             ext = filename.rsplit(".", 1)[1].lower()
             new_name = f"{uuid.uuid4().hex}.{ext}"
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], new_name)
+            save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], new_name)
             file.save(save_path)
             attachment_filename = new_name
 
-        db.query(
+        conn = get_conn()
+        conn.execute(
             "UPDATE activities SET title=?, description=?, type=?, location=?, event_date=?, attachment=? WHERE id=?",
             (title, description, activity_type, location, event_date, attachment_filename, activity_id)
         )
+        conn.commit()
         
         session.pop("activities_unlocked", None)
         flash("Activity updated successfully.", "success")
@@ -219,8 +220,10 @@ def delete_activity(activity_id):
         pwd_hash = db.get_setting("activities_password_hash")
 
         if pwd_hash and check_password_hash(pwd_hash, pwd):
-            db.query("DELETE FROM activity_rsvps WHERE activity_id = ?", (activity_id,))
-            db.query("DELETE FROM activities WHERE id = ?", (activity_id,))
+            conn = get_conn()
+            conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ?", (activity_id,))
+            conn.execute("DELETE FROM activities WHERE id = ?", (activity_id,))
+            conn.commit()
             flash("Activity deleted successfully.", "success")
             return redirect(url_for("activities.activities_list"))
         else:
@@ -234,7 +237,9 @@ def join_activity(activity_id):
     user_id = session['user_id']
     db = get_db()
     try:
-        db.query("INSERT INTO activity_rsvps (activity_id, user_id) VALUES (?, ?)", (activity_id, user_id))
+        conn = get_conn()
+        conn.execute("INSERT INTO activity_rsvps (activity_id, user_id) VALUES (?, ?)", (activity_id, user_id))
+        conn.commit()
         flash('Successfully joined the activity!', 'success')
         
         # Notify Organizer (if not by themselves)
@@ -255,8 +260,9 @@ def join_activity(activity_id):
 @login_required
 def leave_activity(activity_id):
     user_id = session['user_id']
-    db = get_db()
-    db.query("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
+    conn = get_conn()
+    conn.execute("DELETE FROM activity_rsvps WHERE activity_id = ? AND user_id = ?", (activity_id, user_id))
+    conn.commit()
     flash('You have left the activity.', 'info')
     return redirect(request.referrer or url_for('activities.activities_list'))
 
